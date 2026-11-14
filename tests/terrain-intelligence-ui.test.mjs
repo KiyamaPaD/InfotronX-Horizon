@@ -21,7 +21,7 @@ test("spatial tools are integrated into the existing human-first science sidebar
 test("the spatial analysis UI discloses the scientific exclusions and exposes live results", () =>
 {
     assert.match(panel, /role="status"/);
-    assert.match(panel, /not a hazard map/);
+    assert.match(panel, /does not establish route safety/);
     assert.match(panel, /No rock mapping/);
     assert.match(panel, /not predict radio link quality/);
     assert.match(panel, /Low modeled clearance/);
