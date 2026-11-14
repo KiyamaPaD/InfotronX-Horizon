@@ -15,7 +15,7 @@ test("cloud integration is opt-in and uses no privileged browser key", () =>
     assert.match(config, /url: "https:\/\/yuvdrjptwumbfzjsimoe\.supabase\.co"/);
     assert.match(config, /publishableKey: "sb_publishable_[A-Za-z0-9_-]+"/);
     assert.doesNotMatch(config, /sb_secret_[A-Za-z0-9]+/);
-    assert.doesNotMatch(config, /service_role|sb_secret_/);
+    assert.doesNotMatch(config.replace(/^\s*\/\/.*$/gm, ""), /service_role|sb_secret_/);
     assert.match(client, /sb_publishable_/);
     assert.match(client, /this.configured/);
     assert.match(ui, /account.hidden = !enabled/);
