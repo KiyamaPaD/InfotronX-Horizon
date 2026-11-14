@@ -36,6 +36,10 @@ export class MarsMap
         this.tileCacheLimit = 72;
         this.tileTemplates = new Map();
         this.capabilityRequest = 0;
+        this.frameScheduled = false;
+        this.wheelDelta = 0;
+        this.wheelTimer = null;
+        this.activeTiles = new Set();
 
         this.container.innerHTML = `<div class="map-fallback" aria-hidden="true"><div class="fallback-globe"></div><div class="coordinate-grid"></div></div><div class="map-tiles"></div><svg class="map-overlays" role="img" aria-label="Editable mission route overlays"></svg><div class="map-attribution">Map tiles © NASA / JPL · Mars Trek</div><div class="map-load-notice" role="status">Loading Mars imagery…</div>`;
         this.tileContainer = this.container.querySelector(".map-tiles");
@@ -45,11 +49,7 @@ export class MarsMap
         this.container.addEventListener("pointerdown", event => this.onPointerDown(event));
         window.addEventListener("pointermove", event => this.onPointerMove(event));
         window.addEventListener("pointerup", event => this.onPointerUp(event));
-        this.container.addEventListener("wheel", event =>
-{
-            event.preventDefault();
-            this.changeZoom(event.deltaY < 0 ? 1 : -1);
-        }, { passive: false });
+        this.container.addEventListener("wheel", event => this.onWheel(event), { passive: false });
         this.resizeObserver = new ResizeObserver(() => this.render());
         this.resizeObserver.observe(container);
         this.render();
@@ -145,6 +145,10 @@ export class MarsMap
 
     setLayer(id)
     {
+        this.capabilityRequest++;
+        this.activeTiles.clear();
+        this.container.classList.remove("map-has-imagery");
+        this.notice.textContent = "Loading Mars imagery…";
         this.layer = MAP_LAYERS.find(layer => layer.id === id) || MAP_LAYERS[0];
         this.layerMaxZoom = this.tileTemplates.get(this.layer.id)?.maxZoom || 11;
         this.tiles.clear();
@@ -160,6 +164,31 @@ export class MarsMap
         }
 
         this.options.onLayerChange?.(this.layer);
+    }
+
+    onWheel(event)
+    {
+        event.preventDefault();
+
+        if (!Number.isFinite(event.deltaY) || event.deltaY === 0)
+        {
+            return;
+        }
+
+        this.wheelDelta += Math.sign(event.deltaY) * Math.min(Math.abs(event.deltaY), 160);
+        clearTimeout(this.wheelTimer);
+        this.wheelTimer = setTimeout(() =>
+        {
+            const direction = Math.sign(this.wheelDelta);
+            const amount = Math.min(2, Math.max(1, Math.ceil(Math.abs(this.wheelDelta) / 120)));
+            this.wheelDelta = 0;
+            this.wheelTimer = null;
+
+            if (direction)
+            {
+                this.changeZoom(-direction * amount);
+            }
+        }, 120);
     }
 
     changeZoom(delta)
@@ -489,7 +518,17 @@ export class MarsMap
 
     render()
     {
-        this.renderTiles();
-        this.renderOverlays();
+        if (this.frameScheduled)
+        {
+            return;
+        }
+
+        this.frameScheduled = true;
+        requestAnimationFrame(() =>
+        {
+            this.frameScheduled = false;
+            this.renderTiles();
+            this.renderOverlays();
+        });
     }
 }
