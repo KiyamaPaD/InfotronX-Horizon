@@ -478,3 +478,93 @@
         bottom:auto;
     }
 }
+
+
+/* Account panels obey hidden in every layout. */
+.header-cloud[hidden],
+.cloud-modal [hidden]
+{
+    display:none!important;
+}
+
+.cloud-identity
+{
+    margin-top:19px;
+    padding:16px;
+    border:1px solid #385062;
+    border-radius:12px;
+    background:#152431;
+}
+
+.cloud-identity h3,
+.cloud-share h3
+{
+    margin:0 0 10px;
+    font-size:14px;
+}
+
+.cloud-identity p
+{
+    margin:0 0 10px;
+    color:#a9c5d4;
+    font-size:12px;
+    line-height:1.5;
+}
+
+.cloud-identity-row
+{
+    display:flex;
+    gap:8px;
+}
+
+.cloud-identity-row input
+{
+    min-width:0;
+    flex:1;
+    padding:10px;
+    color:#dbeaf0;
+    border:1px solid #496375;
+    background:#101c29;
+    border-radius:8px;
+}
+
+.cloud-members
+{
+    display:grid;
+    gap:10px;
+    min-width:0;
+}
+
+.cloud-member-row
+{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    min-width:0;
+    padding:9px 11px;
+    background:#152738;
+    border:1px solid #385263;
+    border-radius:9px;
+}
+
+.cloud-member-row span
+{
+    min-width:0;
+    overflow-wrap:anywhere;
+    color:#d4e4eb;
+    font-size:12px;
+}
+
+.cloud-member-row button
+{
+    flex-shrink:0;
+}
+
+@media(max-width:480px)
+{
+    .cloud-identity-row
+    {
+        flex-direction:column;
+    }
+}
