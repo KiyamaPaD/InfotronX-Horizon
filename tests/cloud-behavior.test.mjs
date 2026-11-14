@@ -174,3 +174,31 @@ test("first cloud save creates one mission and one history snapshot", async () =
     assert.equal(db.state.snapshots.length, 1);
     assert.equal(db.state.snapshots[0].revision, 1);
 });
+
+
+test("listing cloud missions is independent of email invitation processing", async () =>
+{
+    const cloud = new MissionCloud();
+    cloud.user = { id: ownerId };
+    let queryCount = 0;
+    cloud.claimEmailInvitations = () =>
+    {
+        throw new Error("Invitation RPC unavailable");
+    };
+    cloud.client = {
+        from(table)
+        {
+            assert.equal(table, "mars_missions");
+            queryCount++;
+            return {
+                select() { return this; },
+                order() { return this; },
+                limit() { return Promise.resolve({ data: [{ id: missionId, title: "Jezero study" }], error: null }); }
+            };
+        }
+    };
+
+    const items = await cloud.listMissions();
+    assert.equal(items[0].id, missionId);
+    assert.equal(queryCount, 1);
+});

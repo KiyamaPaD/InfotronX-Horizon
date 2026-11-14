@@ -106,7 +106,6 @@ export class MarsMap
             const previousZoom = this.zoom;
             this.layerMaxZoom = Math.min(this.layer.maxUsefulZoom || 13, highestZoom);
             this.zoom = clamp(this.zoom, 3, this.layerMaxZoom);
-            this.options.onViewChange?.(this.center, this.zoom);
             this.tileTemplates.set(this.layer.id, { template, matrixLookup, maxZoom: this.layerMaxZoom });
 
             if (this.zoom !== previousZoom)
@@ -393,7 +392,7 @@ export class MarsMap
                 return;
             }
 
-            if (image.naturalWidth < 128 || image.naturalHeight < 128)
+            if (image.naturalWidth < 240 || image.naturalHeight < 240)
             {
                 nextCandidate();
                 return;

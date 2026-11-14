@@ -127,7 +127,15 @@ export function mountCloudWorkspace({ store, notify })
 
     dialog.querySelectorAll("[data-hub-tab]").forEach(button =>
     {
-        button.addEventListener("click", () => showHubTab(button.dataset.hubTab));
+        button.addEventListener("click", () =>
+        {
+            showHubTab(button.dataset.hubTab);
+
+            if (button.dataset.hubTab === "cloud" && cloud.user)
+            {
+                run(() => updateLibrary(store.current.id));
+            }
+        });
     });
 
     dialog.addEventListener("click", event =>
@@ -368,10 +376,6 @@ export function mountCloudWorkspace({ store, notify })
             ? "Changes saved automatically on this device."
             : "Device save failed. Export a JSON backup.";
 
-        if (cloud.user)
-        {
-            run(() => updateLibrary(store.current.id));
-        }
     });
 
     get("#cloud-close").addEventListener("click", () => dialog.close());
