@@ -28,20 +28,20 @@ Optional: test Firefox/Safari, slow Wi-Fi, page reload after changing layers, ke
 
 ## Cloud library and team collaboration
 
-These checks use real Supabase email accounts and two separate browsers or devices. Test with fictional mission names and coordinates only. **Do not send a password, access token or cookie to anyone.** The account ID is not secret, but share it only with a teammate who needs it.
+These checks use real Supabase email accounts and two separate browsers or devices. Test with fictional mission names and coordinates only. **Do not send a password, access token or cookie to anyone.** Use the teammate's verified email address for sharing; do not exchange passwords.
 
 - [ ] **Account:** Create an account, confirm the email, then sign in. Confirm that the Account panel shows your email.
 - [ ] **Local first:** Sign out and verify that routes saved on this device still open without cloud access.
 - [ ] **Cloud save:** Sign in, create a new mission, add waypoints, then choose **Account → Save current mission**.
 - [ ] **Reload:** Sign in on a second clean device or browser. Select your mission in the cloud library and choose **Open selected mission**. Check that its route and notes are identical.
-- [ ] **Share with viewer:** Teammate B signs in and chooses **Copy ID**. Owner A selects a cloud mission they own, pastes B's ID and grants **Can view**.
+- [ ] **Share with viewer:** Owner A selects a cloud mission they own, enters teammate B's verified email address and grants **Can view**. B signs in and refreshes the cloud library.
 - [ ] **Viewer:** B refreshes the cloud library and opens the shared mission. B should be able to inspect it but **not** update the cloud copy. Local manual edits are allowed, but must not overwrite the owner's data.
-- [ ] **Editor:** A revokes B's viewer permission and grants **Can edit**. B reloads, opens the latest mission and saves a change to the cloud; A can reopen that change.
+- [ ] **Editor:** A grants B **Can edit** using the same email. B reloads, opens the latest mission and saves a change to the cloud; A can reopen that change.
 - [ ] **Conflict prevention:** Both users open the same cloud revision, B saves a change first, then A tries to save their old copy. The second save must be rejected with a revision/conflict message, not silently overwrite B.
-- [ ] **Revoke access:** A selects the cloud mission and clicks **Revoke** for B. After B refreshes, the shared mission should no longer be accessible from the cloud.
+- [ ] **Revoke access:** A selects the cloud mission and clicks **Revoke** for B (or **Cancel** for a pending email invitation). After B refreshes, the shared mission should no longer be accessible from the cloud.
 - [ ] **Backup:** Export JSON and import it before running destructive test scenarios. Do not use private real mission data for testing.
 
-**What the two sharing modes mean:** Header **Share mission** creates an exported-link copy. **Account → Share selected mission** grants authenticated access to a mission in Supabase. These are separate operations; neither provides simultaneous live cursor editing.
+**What the two sharing modes mean:** Header **Share mission** creates an exported-link copy. **Account → Share selected mission** grants authenticated access to a mission in Supabase. These are separate operations; neither provides simultaneous live cursor editing. Email-based access does not send an invitation email automatically; the owner must share the site link separately.
 
 If any step fails, create a GitHub Issue with the exact step, browser, expected versus actual result and a sanitized screenshot. Don't publish account email addresses, full access tokens or mission contents in bug reports.
 

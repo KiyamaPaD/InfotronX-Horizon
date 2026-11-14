@@ -1,7 +1,7 @@
 -- Read-only Mars Atlas RLS inspection. Run after the main schema.
 select schemaname, tablename, rowsecurity
 from pg_tables where schemaname='public'
-and tablename in ('mars_missions','mars_mission_members','mars_mission_versions');
+and tablename in ('mars_missions','mars_mission_members','mars_mission_versions','mars_email_invitations');
 select tablename, policyname, cmd, roles, qual, with_check
 from pg_policies where schemaname='public' and tablename like 'mars_%'
 order by tablename, policyname;
