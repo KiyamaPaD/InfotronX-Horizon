@@ -112,8 +112,8 @@ const map = new MarsMap(get("#map-root"), store, {
 });
 
 const scienceWorkbench = initScienceWorkbench({ store, map, notify });
-setupAnalyticsNavigation(get("#analytics-panel"));
 mountCloudWorkspace({ store, notify });
+setupAnalyticsNavigation(get("#analytics-panel"));
 
 function renderRoutes()
 {
@@ -504,7 +504,7 @@ document.addEventListener("click", event =>
 
             openMissionModal(action);
             break;
-        case "open-library": get("#library-modal").showModal(); break;
+        case "open-library": get("#mission-hub-open")?.click(); break;
         case "close-modal": event.target.closest("dialog")?.close(); break;
         case "add-coordinates": pointBeingEdited = null; get("#coordinate-form").reset(); get("#coordinate-modal h2").textContent = "Enter coordinates"; get("#coordinate-submit-label").textContent = "Add waypoint"; get("#coordinate-modal").showModal(); break;
         case "delete-route": if (store.current.routes.length < 2) { notify("Keep at least one route in the mission."); } else if (confirm("Delete the active route?")) { store.deleteRoute(store.activeRoute.id); } break;

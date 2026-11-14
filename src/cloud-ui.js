@@ -5,8 +5,9 @@ export function mountCloudWorkspace({ store, notify })
     const account = document.createElement("button");
     account.type = "button";
     account.className = "btn btn-outline compact header-cloud";
-    account.textContent = "Account";
-    account.hidden = true;
+    account.id = "mission-hub-open";
+    account.textContent = "Mission Center";
+    account.hidden = false;
     document.querySelector(".header-actions").prepend(account);
 
     const dialog = document.createElement("dialog");
@@ -14,7 +15,16 @@ export function mountCloudWorkspace({ store, notify })
     dialog.setAttribute("aria-labelledby", "cloud-title");
     dialog.innerHTML = [
         '<div class="modal-header"><span class="section-label">MARS ATLAS ACCOUNT</span><button class="modal-x" type="button" id="cloud-close" aria-label="Close account">×</button></div>',
-        '<h2 id="cloud-title">Your mission library</h2>',
+        '<h2 id="cloud-title">Mission Center</h2>',
+        '<p id="hub-status" role="status" aria-live="polite">Missions are saved automatically on this device.</p>',
+        '<div class="mission-hub-tabs" role="tablist" aria-label="Mission Center sections">',
+        '<button type="button" data-hub-tab="device" class="active" role="tab" aria-selected="true">On device</button>',
+        '<button type="button" data-hub-tab="cloud" role="tab" aria-selected="false">Cloud library</button>',
+        '<button type="button" data-hub-tab="export" role="tab" aria-selected="false">Share &amp; export</button></div>',
+        '<section class="mission-hub-panel" id="hub-device" data-hub-panel="device"><h3>Saved on this device</h3>',
+        '<p>Your routes are saved automatically while you work. Create checkpoints to return to an earlier plan.</p>',
+        '<div id="hub-device-list"></div><div id="hub-checkpoints"></div></section>',
+        '<section class="mission-hub-panel" id="hub-cloud" data-hub-panel="cloud" hidden>',
         '<p id="cloud-status" role="status" aria-live="polite">Sign in to access your cloud missions.</p>',
         '<form id="cloud-auth-form" class="cloud-auth-form">',
         '<label>Email<input type="email" name="email" autocomplete="email" maxlength="254" required /></label>',
@@ -35,18 +45,116 @@ export function mountCloudWorkspace({ store, notify })
         '<label>Access<select id="cloud-member-access"><option value="viewer">Can view</option><option value="editor">Can edit</option></select></label>',
         '<button id="cloud-invite" type="button" class="btn btn-outline">Share by email</button>',
         '<div id="cloud-members" class="cloud-members" aria-live="polite"></div>',
-        '<div id="cloud-pending" class="cloud-members" aria-live="polite"></div></div></div>'
+        '<div id="cloud-pending" class="cloud-members" aria-live="polite"></div></div></div></section>',
+        '<section class="mission-hub-panel" id="hub-export" data-hub-panel="export" hidden>',
+        '<h3>Share and export</h3><p>Share a copy by link, or download a backup and route data.</p>',
+        '<div id="hub-export-actions" class="mission-hub-actions"></div></section>'
     ].join("");
     document.body.append(dialog);
 
+    const deviceList = dialog.querySelector("#hub-device-list");
+    const localList = document.querySelector("#library-list");
+    const localDialog = document.querySelector("#library-modal");
+
+    if (localList)
+    {
+        deviceList.append(localList);
+    }
+
+    const importLabel = localDialog?.querySelector(".file-input-button");
+    const createMission = localDialog?.querySelector('[data-action="new-mission"]');
+
+    if (importLabel)
+    {
+        const localActions = document.createElement("div");
+        localActions.className = "mission-hub-actions";
+        localActions.append(importLabel);
+
+        if (createMission)
+        {
+            localActions.append(createMission);
+        }
+
+        deviceList.append(localActions);
+    }
+
+    const checkpointPanel = document.querySelector("#checkpoint-list")?.closest(".panel-section");
+
+    if (checkpointPanel)
+    {
+        dialog.querySelector("#hub-checkpoints").append(checkpointPanel);
+    }
+
+    const exports = dialog.querySelector("#hub-export-actions");
+    const linkButton = document.querySelector(".header-share");
+    const originalFooter = document.querySelector(".right-footer");
+
+    if (linkButton)
+    {
+        linkButton.classList.remove("header-share", "compact");
+        linkButton.textContent = "Copy mission link";
+        exports.append(linkButton);
+    }
+
+    for (const button of [...(originalFooter?.querySelectorAll("button") || [])])
+    {
+        exports.append(button);
+    }
+
+    if (originalFooter)
+    {
+        originalFooter.hidden = true;
+    }
+
+    document.querySelector(".header-library")?.remove();
+
     const get = selector => dialog.querySelector(selector);
+
+    function showHubTab(name)
+    {
+        for (const panel of dialog.querySelectorAll("[data-hub-panel]"))
+        {
+            panel.hidden = panel.dataset.hubPanel !== name;
+        }
+
+        for (const button of dialog.querySelectorAll("[data-hub-tab]"))
+        {
+            const selected = button.dataset.hubTab === name;
+            button.classList.toggle("active", selected);
+            button.setAttribute("aria-selected", String(selected));
+        }
+    }
+
+    dialog.querySelectorAll("[data-hub-tab]").forEach(button =>
+    {
+        button.addEventListener("click", () => showHubTab(button.dataset.hubTab));
+    });
+
+    dialog.addEventListener("click", event =>
+    {
+        if (event.target.closest("[data-select-mission], [data-action='new-mission']"))
+        {
+            dialog.close();
+        }
+    });
+
+    if (document.querySelector("#import-json"))
+    {
+        document.querySelector("#import-json").addEventListener("change", () =>
+        {
+            if (document.querySelector("#import-json").files.length)
+            {
+                dialog.close();
+            }
+        });
+    }
     let cloudRows = [];
 
     const cloud = new MissionCloud(user =>
     {
         get("#cloud-auth-form").hidden = Boolean(user);
         get("#cloud-session").hidden = !user;
-        account.textContent = user ? "My account" : "Account";
+        account.textContent = "Mission Center";
         get("#cloud-email").textContent = user ? "Signed in as " + (user.email || "user") : "";
         get("#cloud-status").textContent = user ? "Your cloud library is available." : "Sign in to access your cloud missions.";
 
@@ -61,7 +169,20 @@ export function mountCloudWorkspace({ store, notify })
     function message(value)
     {
         get("#cloud-status").textContent = value;
+        get("#hub-status").textContent = value;
     }
+
+    store.subscribe(() =>
+    {
+        if (!dialog.open)
+        {
+            return;
+        }
+
+        get("#hub-status").textContent = store.lastSaveSucceeded
+            ? "Changes saved automatically on this device."
+            : "Device save failed. Export a JSON backup.";
+    });
 
     function selectedMission()
     {
@@ -164,6 +285,17 @@ export function mountCloudWorkspace({ store, notify })
     {
         const select = get("#cloud-missions");
         const previousId = preferredId || select.value;
+        let invitationsWarning = null;
+
+        try
+        {
+            await cloud.claimEmailInvitations();
+        }
+        catch (error)
+        {
+            invitationsWarning = error;
+        }
+
         cloudRows = await cloud.listMissions();
         select.replaceChildren();
 
@@ -183,7 +315,22 @@ export function mountCloudWorkspace({ store, notify })
         }
 
         get("#cloud-open").disabled = !cloudRows.length;
-        await refreshMembers();
+
+        try
+        {
+            await refreshMembers();
+        }
+        catch (error)
+        {
+            get("#cloud-members").textContent = "Sharing details unavailable. Refresh the library to try again.";
+        }
+
+        if (invitationsWarning)
+        {
+            message("Cloud library loaded. Pending email invitations could not be checked.");
+        }
+
+        return cloudRows;
     }
 
     async function run(task)
@@ -216,6 +363,10 @@ export function mountCloudWorkspace({ store, notify })
     account.addEventListener("click", () =>
     {
         dialog.showModal();
+        showHubTab("device");
+        get("#hub-status").textContent = store.lastSaveSucceeded
+            ? "Changes saved automatically on this device."
+            : "Device save failed. Export a JSON backup.";
 
         if (cloud.user)
         {
@@ -263,9 +414,19 @@ export function mountCloudWorkspace({ store, notify })
 
     get("#cloud-save").addEventListener("click", () => run(async () =>
     {
+        const missionId = store.current.id;
         const result = await cloud.saveMission(store.current);
-        await updateLibrary(store.current.id);
-        message(result.snapshotSaved ? "Mission saved to the cloud." : "Mission saved; its history snapshot could not be recorded.");
+        const missions = await updateLibrary(missionId);
+
+        if (!missions.some(item => item.id === missionId))
+        {
+            throw new Error("Cloud accepted this save, but the mission is missing from your library. Refresh and check your account.");
+        }
+
+        get("#cloud-missions").value = missionId;
+        message(result.snapshotSaved
+            ? "Saved to cloud and verified in your mission library."
+            : "Saved to cloud and verified. A history snapshot could not be recorded.");
     }));
 
     get("#cloud-refresh").addEventListener("click", () => run(async () =>
@@ -328,10 +489,18 @@ export function mountCloudWorkspace({ store, notify })
 
     cloud.initialize().then(enabled =>
     {
-        account.hidden = !enabled;
+        account.hidden = false;
+
+        if (!enabled)
+        {
+            get("#cloud-status").textContent = "Cloud service is not configured. Your device library and exports remain available.";
+            get("#cloud-auth-form").hidden = true;
+        }
     }).catch(error =>
     {
         console.warn("Cloud sign-in could not be initialized:", error);
-        account.hidden = true;
+        account.hidden = false;
+        get("#cloud-status").textContent = "Cloud connection unavailable. Device saves and exports are still available.";
+        get("#cloud-auth-form").hidden = true;
     });
 }

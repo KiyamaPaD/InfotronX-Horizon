@@ -18,7 +18,7 @@ test("cloud integration is opt-in and uses no privileged browser key", () =>
     assert.doesNotMatch(config.replace(/^\s*\/\/.*$/gm, ""), /service_role|sb_secret_/);
     assert.match(client, /sb_publishable_/);
     assert.match(client, /this.configured/);
-    assert.match(ui, /account.hidden = !enabled/);
+    assert.match(ui, /account.hidden = false/);
 });
 
 test("cloud actions preserve manual mission ownership and RLS", () =>
