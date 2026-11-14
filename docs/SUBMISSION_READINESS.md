@@ -1,28 +1,42 @@
-# Mars Atlas — submission readiness (14 November 2026)
+# Mars Atlas — NASA Space Apps Challenge 2026 readiness
 
-This is a **verification checklist**, not evidence that the submission has been filed.
+**As checked 14 November 2026:** this is a compliance and demonstration checklist, **not a confirmation of an accepted official entry**.
 
-## Current artifact
-- Review preview: https://mars-atlas-nasa-2026-d8wm2rtg5-kiyama1.vercel.app
-- Source branch: `feature/review-ready-v6-1`; draft PR #13.
-- Production `main` is the old V3.1; do **not** submit the production URL as though it already contains V6.1.
-- Current actual tests: 67/67 local/cloud Node tests; HTTP 200 for preview HTML, official DEM JSON, JS; CTX/MOLA/Viking actual Jezero imagery tiles HTTP 200.
-- **Not yet proven:** on-device interactive smoke tests, live tile display inside browser, full accessibility check.
-- V6.1 includes 104 × 96 actual CTX height samples; A* / scenario math are our demonstration models, not flight software or a safety-approved EVA plan.
+## Main project artifact
 
-## NASA source citation
-Use USGS Astrogeology / NASA Mars Reconnaissance Orbiter Context Camera (CTX): Mars 2020 Terrain Relative Navigation CTX DTM mosaic (Fergason et al., 2020), DOI: https://doi.org/10.5066/P906QQT8. Source product `JEZ_ctx_B_soc_008_DTM_MOLAtopography_DeltaGeoid_20m_Eqc_latTs0_lon0.tif`, 20 m/pixel, Jezero. We redistribute a numerical 104×96 clip, centimeter-quantized; not a new NASA instrument measurement. Citing USGS/mission/instrument/scientists is mandatory in the presentation even if the source data are CC0.
+- Code: https://github.com/KiyamaPaD/Mars-Atlas (`main`)
+- Deployed application: https://mars-atlas-mu.vercel.app (external access and interactive browser testing still need verification)
+- GitHub Actions: initial `Verify` run successful
+- Demo evidence: must still be recorded from a real browser/device
 
-Other baselayers: NASA Mars Trek MRO CTX, MGS MOLA color relief, Viking global color mosaic. Note what those images **do not** show (point-specific hazard or medical safety).
+Older V3–V9 reports and earlier preview links are historic research notes; they are not the current production version.
 
-## Eligibility and timing blockers — resolve before submitting
-1. The official organizer confirms that at least **one NASA dataset from the exact chosen challenge's Resources tab** must be used for Global Awards eligibility. The team must inspect the live Resources tab and explicitly identify the matching resource in the submitted attribution. Current V6.1 has not cross-checked that list.
-2. NASA Space Apps' GO Team has clarified: challenge-specific coding/development must happen within the November 14–15 hackathon window (starting November 14, 09:00 in the local event / team owner timezone); working ahead can lead to disqualification. Existing third-party or prior unrelated code can be reused with proper credit under the rules. **Check the actual history of every reused asset and state it truthfully.** No postdating or misrepresenting commit history. Sources: https://github.com/nasa/spaceapps/discussions/1827 and https://github.com/nasa/spaceapps/discussions/1924.
-3. The published deadline is **November 15, 2026, 23:59 local time of the team owner's event**, not necessarily the current device timezone: https://www.spaceappschallenge.org/2026/ . The team must submit via its official Project tab.
-5. Create a 30-second demo video or up to seven slides and make the link accessible; verify the latest official submission guide before choosing a format.
-6. Obtain a real browser recording: open review preview, launch Jezero demo, load CTX DEM, compare and add A* candidate, toggle what-if exclusion, show resources, export, mobile panel. Film truthful labels and assumptions.
+## Time and reuse rules — important
 
-## Final merge discipline
-- PR #13 is a draft, based on V6; V6 depends on V5, V5 on V4, V4 on main. Do **not** merge #13 to main blindly, and don't auto-promote to production.
-- Run `npm test` and live browser smoke before deciding on release.
-- Record real test evidence and limitations in `docs/REVIEW_RUNBOOK.md`.
+NASA Space Apps Challenge 2026 takes place **14–15 November 2026**. The official GO Team clarified that **challenge-specific project development is expected during the hackathon**, and working ahead may risk disqualification. Previously existing tools/code may be reused only within the organizer's stated limits, with proper attribution; code already built specifically for this challenge before the start is **not made eligible by moving it to a new repository or resetting Git history**.
+
+The team's Mars Atlas work and features began before the new repository's first commit. Preserve an accurate account of when and how these components were built, and obtain clarification from the GO Team about eligibility if submitting for awards.
+
+Official sources:
+- https://www.spaceappschallenge.org/2026/
+- https://github.com/nasa/spaceapps/discussions/1827
+- https://github.com/nasa/spaceapps/discussions/1924
+
+## NASA datasets and claims
+
+- Cite the USGS Astrogeology / NASA MRO CTX DTM (Fergason et al. 2020): https://doi.org/10.5066/P906QQT8
+- Clearly distinguish the real 104×96 bundled CTX numeric clip from derived route and scenario calculations.
+- Check that at least one NASA dataset actually used is listed in the chosen **official 2026 challenge's Resources tab** for Global Awards eligibility; cite it and all additional sources.
+- Do not claim calibrated human EVA safety or certified rover navigation.
+
+## Before sending to judges
+
+- [ ] Verify contestant/team registration and selected challenge.
+- [ ] Clarify the actual pre-hackathon build history and eligibility with the organizers.
+- [ ] Inspect the official challenge's Resources and cite actual incorporated NASA data.
+- [ ] Test the published site on desktop and mobile, not just in CI.
+- [ ] Make a truthful short demo and confirm its link can be opened publicly.
+- [ ] List relevant datasets, libraries, media, tools (including AI assistance), and contributions in the submission.
+- [ ] Submit from the team's Project tab by **15 November 2026 at 23:59 in the team owner's Local Event timezone**, according to official guidance.
+
+For issues found during team testing use [BETA_TESTING.md](BETA_TESTING.md).

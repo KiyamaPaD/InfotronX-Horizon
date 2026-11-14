@@ -1,37 +1,27 @@
-# Deployment — Mars Atlas
+# Deploy Mars Atlas
 
-## Fastest production deployment
+The current working code is in **https://github.com/KiyamaPaD/Mars-Atlas**, branch `main`. The primary live host is Vercel project `mars-atlas` with production alias **https://mars-atlas-mu.vercel.app**.
 
-1. Upload the entire `mars-atlas` folder to your own **new** GitHub repository (do not overwrite a previous project).
-2. On Netlify, choose **Add new project → Import an existing project** and select that repository.
-3. Use **no build command**. Set publish directory to the repository root (`.`).
-4. Deploy. Add your own domain in **Domain management** when the application works.
-5. Open the public URL and verify CTX/MOLA/Viking imagery. If NASA blocks access or a tile URL does not resolve, inspect WMTS capabilities for the correct tile matrix identifiers before submission.
-6. Test Draw → add two waypoints → Edit exact coordinates → New Route → Duplicate → Inspector → Share → reopen shared link in an incognito window.
-7. Test refreshing the site and selecting the previously active mission; test export/import and deleting a mission.
-8. Export a mission JSON as a backup before the final presentation.
+## Vercel (current setup)
 
-A custom domain and GitHub repository are presentation infrastructure, not the scientific innovation. Do not delay the actual demo for domain propagation.
+1. The Vercel project is linked to `KiyamaPaD/Mars-Atlas`.
+2. A direct push to `main` triggers the connected deployment.
+3. Check the Vercel Deployments page for **READY** and the expected Git commit.
+4. Check GitHub Actions Verify, then test the actual production URL in an incognito browser window.
+5. If the generated deployment URL requests Vercel Authentication, use the short production alias; for external reviewers use a Shareable Link where needed.
 
-## GitHub Pages alternative
+No production build command is required: this app serves HTML/CSS/native JS modules from the repository root.
 
-Use the repository's Settings → Pages and deploy from the root of the default branch. All asset imports are relative paths, so the site also supports a project subdirectory such as `https://example.github.io/mars-atlas/`.
+## Netlify (optional alternative)
 
-## Public-facing honesty
+The existing `netlify.toml` publishes `.` with no compilation. Import the GitHub repo into Netlify, set the publish directory to the root (`.`), leave Build Command blank, and test the real site before switching any production links. Do **not** duplicate production domains across hosts without planning DNS.
 
-- This static build saves data **in the browser**, not Supabase. JSON export/import and URL sharing are operational.
-- `supabase/schema.sql` is an optional database design, **not a deployed cloud backend**.
-- The detour example does **not** incorporate a hazard model.
-- Do not claim measured slope/altitude profile data until a separate numeric DEM pipeline has been implemented and tested.
+## Browser smoke test
 
-## Vercel option (mobile-friendly)
+Use [docs/BETA_TESTING.md](docs/BETA_TESTING.md). At a minimum, check map imagery, manual routes, save/refresh, JSON/GeoJSON export/import and mobile viewport controls.
 
-1. Create a new public GitHub repository and push the project files to its **root**.
-2. In Vercel → Add New → Project, import the GitHub repository.
-3. Framework Preset: **Other**. No build command. Output Directory: `.` (repository root).
-4. Deploy and check route drawing, saved missions, NASA map layer state and export/import.
+## Limitations
 
+Mission storage is currently browser-local. `supabase/schema.sql` is proposed, not deployed. Public image tiles and the bundled USGS/NASA numerical DEM have separate loading/error paths. The route scenarios are **not** certified planetary navigation or verified hazards.
 
-## Automated verification
-
-`.github/workflows/verify.yml` runs JS syntax checks and `npm test` on push and pull requests. Tests validate local logic only; a passing action does **not** prove NASA WMTS imagery loads in a real browser.
+A purchased domain comes later; do not block testing on DNS.

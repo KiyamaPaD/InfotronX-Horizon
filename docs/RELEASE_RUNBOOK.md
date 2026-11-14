@@ -1,29 +1,33 @@
-# InfotronX Horizon — release runbook
+# InfotronX Horizon — release checklist
 
-## Current environments
+## Current environment
 
-- Production: https://mars-atlas-nasa-2026.vercel.app (**V3.1**)
-- Consolidated V9 preview: https://mars-atlas-nasa-2026-mmayo5ed1-kiyama1.vercel.app
-- InfotronX Horizon candidate: `brand/infotronx-horizon` (no production changes)
+- Repository: https://github.com/KiyamaPaD/Mars-Atlas (`main`)
+- Vercel project: `mars-atlas`
+- Production alias: https://mars-atlas-mu.vercel.app
+- Domain purchase: planned for later
 
-## Before approval
+Every push to `main` can deploy automatically. No PR/merge phase is required; **local review happens before pushing**, and the GitHub Actions result is checked immediately afterward.
 
-1. Run `npm test`, `node --check` for all source modules and GitHub Actions Verify.
-2. Test the deployed preview in a real desktop and mobile browser: Jezero DEM loader, map layers, manual waypoint editing, alternative routing, checkpoints and JSON/GeoJSON export.
-3. Verify original NASA/USGS source attributions, planetocentric coordinate conventions and limits of every calculated science result.
-4. Collect screenshots and a concise bug list in the Pull Request.
-5. Obtain a reviewer and release-owner approval; do not bypass checks.
+## Before push
 
-## Repository migration
+1. Pull recent changes from `main`, ensure no teammate is editing the same shared area.
+2. Run `npm test` and `node --check` for modified JS modules.
+3. Perform the related manual UI flows in desktop and mobile views; record reproduction steps for any failures.
+4. Check source attribution, numerical units, missing-data behavior, and the distinction between measured and modeled outputs.
+5. Commit a focused, comprehensible change.
 
-Transfer the existing GitHub repository to an InfotronX Horizon organization after backup and approval. Verify Git remotes and restore preview deployments; keep PRs and issues. Confirm which Git branch becomes the production source.
+## After push
 
-## Deployment
+1. Confirm GitHub Actions Verify is green for the actual commit.
+2. Confirm Vercel's latest **production** deployment is READY for the same commit.
+3. Open the production alias in a private browser window. Test routes, exports, DEM loading, map tiles and mobile navigation.
+4. Ask a teammate to run [BETA_TESTING.md](BETA_TESTING.md) and open Issues for failures.
 
-Current static Vercel project uses the `kiyama1` Hobby account. Choose between linking its existing Git repository (only after signoff) or setting up a separate staging project that automatically produces PR previews. Confirm expected domain, branch and costs.
+## Access and rollback
 
-Vercel only hosts the frontend; user accounts and shared mission storage require a separate backend and access-control project.
+If a teammate sees Vercel Authentication, share access via the deployment's **Share → Anyone with the link** option, or change protection only after deliberate team approval. Do not assume the unique deployment URL is the public production URL.
 
-## Rollback
+If a push breaks production, identify the last verified working commit/deployment and roll back via the Vercel dashboard. Do not rewrite shared Git history to conceal mistakes.
 
-Keep the previous production deployment and commit reference until the new release has been tested in production. Never delete the only working version.
+Vercel hosts only the frontend; cloud accounts and real-time collaborative missions need a future backend.

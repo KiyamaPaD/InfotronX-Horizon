@@ -1,31 +1,29 @@
 # InfotronX Horizon — engineering standards
 
-These standards apply to Mars Atlas source code, data pipelines, research and review.
+## Code
 
-## Source style
-
-- JavaScript native ES modules with small named functions and clear domain identifiers.
-- Allman braces: opening braces on their own line for functions, loops, conditionals and classes.
-- Keep simple assignments, parameters, calls and arithmetic on one line: `total += distance;`.
-- Few comments, focused on nontrivial algorithms, scientific provenance and constraints.
-- Add deterministic tests for numerical code and regressions; make missing-data and invalid input behavior explicit.
-- Keep mobile layout, accessibility and keyboard controls functional.
+- Native JavaScript modules and small, named functions with meaningful domain names.
+- Allman braces for functions, branches, loops and classes.
+- Simple math and assignments stay on one line (`total += distance;`).
+- Minimal comments; explain formulas, non-obvious trade-offs and data provenance.
+- Deterministic regression tests for algorithms and numerical calculations.
+- Responsive mobile layout, keyboard accessibility and sensible error states.
 
 ## Scientific integrity
 
-- Always distinguish public NASA/USGS raster measurements from independently calculated outputs and user-provided scenario assumptions.
-- Mars coordinates are planetocentric, east-positive unless a source states otherwise; check projections and vertical datums before combining datasets.
-- Document distance in meters, slope as a percentage or degrees, areas in km² and scientific uncertainties with the relevant source.
-- A modeled route or line of sight is not certified safe; sample density and DEM posting are not independently measured hazard accuracy.
-- Retain original data citations, references and applicable licenses in all exports and submissions.
+- Clearly separate USGS/NASA-sourced measurements from modeled outcomes or user assumptions.
+- Check coordinate conventions, projections, resolutions, reference datums and physical units.
+- Document missing-data handling and do not invent calibrated risk/safety ratings.
+- Retain source and third-party asset attributions in the application and submission.
 
-## Collaboration and security
+## Direct-to-main collaboration
 
-- Reviewable PRs and one issue per meaningful change; tests and evidence before merging.
-- No production deployment or database schema migration without release-owner approval.
-- Never commit `.env`, API keys, tokens, passwords, cloud service secrets or personal data.
-- Keep the project modular; do not introduce major new frameworks without an agreed engineering need.
+- One GitHub Issue per meaningful problem, with ownership agreed beforehand.
+- Pull current `main` before editing; test locally, commit small, push without force.
+- Avoid simultaneous editing of shared entry points; resolve conflicts with the other author.
+- Check CI and deployment after each push; keep a known-good deployment for rollback.
+- No credentials, API keys, cookies, private user data or unauthorized media in commits.
 
 ## Definition of done
 
-A feature is done when the actual code is committed, tests pass, a relevant manual workflow is checked, data provenance is documented, and limitations are recorded in the PR.
+The source change is committed, automated tests pass, real affected browser interactions were checked, the results/limitations are noted, and any GitHub Issue is updated.

@@ -1,29 +1,39 @@
 ---
 name: Bug report
-about: A reproducible problem in Mars Atlas
+about: A reproducible problem found when testing Mars Atlas
 labels: bug
 ---
 
-## What happened?
+## Summary
 
-## Expected behavior
+Short description:
 
-## How to reproduce
+## Severity
+
+Blocker / High / Medium / Low
+
+## Steps to reproduce
 
 1.
 2.
 3.
 
+## Expected behavior
+
+## Actual behavior
+
 ## Environment
 
-- Deployment URL or branch:
-- Browser / device:
-- NASA map layer selected (if relevant):
+- URL:
+- Browser and version:
+- Device and OS:
+- Screen size (if relevant):
+- Map layer / panel:
 
 ## Evidence
 
-Screenshots, error messages, browser console output (remove credentials and private info).
+Screenshot or error/console message (remove credentials, cookies and private data).
 
-## Impact
+## Scope
 
-Does it block manual drawing, save/reload, NASA map visibility or mission export?
+Does it block manual route editing, mission saving, terrain analysis, imagery or exports?

@@ -1,78 +1,80 @@
 # Mars Atlas
 
-**A planetary mission-planning and terrain intelligence platform by InfotronX Horizon.**
+**Explore Jezero. Plan a route. Understand the terrain.**
 
-**NASA Space Apps Challenge 2026** · **InfotronX Horizon team season 2026–2027**
+A manual-first Mars mission-planning workspace developed by **InfotronX Horizon**.
 
-Mars Atlas helps explorers create, inspect, compare and revise mission routes across Jezero Crater using public NASA/USGS planetary data and transparent mathematical models. The project is created by the **InfotronX Horizon** team; it is an independent challenge entry, not an official NASA navigation product.
+**NASA Space Apps Challenge 2026** · Team season **2026–2027** · Independent student project (not an official NASA navigation tool)
 
-## Explore
+[![Verify](https://github.com/KiyamaPaD/Mars-Atlas/actions/workflows/verify.yml/badge.svg)](https://github.com/KiyamaPaD/Mars-Atlas/actions/workflows/verify.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-- **Latest V9 research preview:** https://mars-atlas-nasa-2026-mmayo5ed1-kiyama1.vercel.app
-- **InfotronX Horizon team-relaunch preview:** https://mars-atlas-nasa-2026-jz8zcij5x-kiyama1.vercel.app
-- **Existing production (V3.1):** https://mars-atlas-nasa-2026.vercel.app
+**[Open Mars Atlas](https://mars-atlas-mu.vercel.app)** · **[Team testing guide](docs/BETA_TESTING.md)** · **[Report a bug](https://github.com/KiyamaPaD/Mars-Atlas/issues/new?template=bug_report.md)**
 
-The current `brand/infotronx-horizon` branch is **a review candidate**, not production. The `main` branch remains at V3.1 until team review and release approval.
+> **Team-testing stage.** A successful deployment and automated checks do not replace testing the interactive map in a real browser. If you see a Vercel access screen, request a shareable link from the maintainer.
 
-## What Mars Atlas does
+## What you can do
 
-- **Mission Workspace:** manually draw and edit routes, reorder waypoints, add observations and evidence links, save checkpoints, compare alternatives, import/export JSON and GeoJSON, and copy shareable mission links.
-- **NASA/USGS imagery and elevations:** NASA Mars Trek CTX/MOLA/Viking background imagery and a real, limited-area USGS Mars Reconnaissance Orbiter CTX Jezero digital terrain model.
-- **Routing:** A*, D* Lite incremental route updating, bounded multi-objective Pareto exploration and hypothetical no-go zones.
-- **Terrain intelligence:** slope, local roughness, line of sight, altitude profiles and time-reachability maps.
-- **Advanced mathematics:** spherical surface-area measurement, Haar multi-resolution altitude contrasts, area-weighted hypsometry, elevation contours, CVaR and Wasserstein scenario comparisons, and terrain topology.
+- **Plan directly on the map:** create missions, draw and edit routes, move/reorder waypoints, and attach observations and references. AI is not required.
+- **Compare route alternatives:** inspect A*, D* Lite replanning, bounded multi-objective route searches, and user-defined hypothetical exclusion zones.
+- **Explore real terrain data:** study a limited-area USGS/NASA Mars Reconnaissance Orbiter CTX elevation clip near Jezero alongside NASA Mars Trek imagery layers.
+- **Analyze terrain:** elevation and slope profiles, local roughness, line of sight, reachability, contours, and experimental scientific models.
+- **Take your work with you:** local browser checkpoints, JSON/GeoJSON import/export, and shareable mission links.
 
-These are **educational and exploratory models**, not certified astronaut/rover guidance, real oxygen telemetry, field-verified hazards or medical risk probabilities. The CTX elevation dataset is authentic; inferred model results have additional assumptions.
+## Current product status
 
-## Run locally
+| Area | Status |
+| --- | --- |
+| Code and automated verification | Available; GitHub Actions runs on pushes to `main` |
+| Manual mission workspace and analysis modules | Implemented; team browser testing in progress |
+| NASA/USGS DEM | Bundled numerical clip, **not** a complete Jezero elevation survey |
+| NASA background maps | External image services; actual tile loading depends on connectivity |
+| Mission saving | Browser-local storage plus user-controlled exports/links |
+| Multi-user accounts and real-time synchronization | **Not implemented** |
+| Rover/astronaut safety certification | **Not provided** |
 
-Requires Node.js 22+ for tests, Python 3 for the local web server and Git.
+The scientific analyses are educational approximations, not real mission-operational hazard measurements, EVA medical advice, or safety approvals. Scenario assumptions must not be confused with source measurements.
+
+## Try the project locally
+
+Requires **Git**, **Python 3** for the development server, and **Node.js 22+** for automated tests.
 
 ```bash
-git clone https://github.com/KiyamaPaD/Mars-Atlas-NASA-2026.git
-cd Mars-Atlas-NASA-2026
-git switch brand/infotronx-horizon
+git clone https://github.com/KiyamaPaD/Mars-Atlas.git
+cd Mars-Atlas
 python3 -m http.server 4173
 ```
 
-Visit http://localhost:4173. Run `npm test` to execute the test suite. All runtime code uses native browser ES modules; no production install/build step is needed.
+Open `http://localhost:4173` in your browser. In another terminal:
 
-## Team development
+```bash
+npm test
+```
 
-**Team:** InfotronX Horizon · **Project:** Mars Atlas · **Season:** 2026–2027.
+The website uses native browser JavaScript modules and does not need an npm build step.
 
-Every teammate uses their own GitHub account. Assign an issue, create a feature branch, commit a small and testable change, then submit a Pull Request for review. Release changes are approved by maintainers, not pushed directly to production.
+## Work with the team
 
-- [Team setup and permissions](docs/TEAM_SETUP.md)
-- [Contribution guide](CONTRIBUTING.md)
-- [Development standards](docs/DEVELOPMENT_STANDARDS.md)
-- [Architecture](docs/ARCHITECTURE.md)
-- [Current project state](docs/PROJECT_STATE.md)
-- [Release and hosting guide](docs/RELEASE_RUNBOOK.md)
-- [Review checklist](docs/REVIEW_RUNBOOK.md)
+We work on **`main`**, without a mandatory Pull Request/merge workflow. Agree on ownership of shared files, synchronize before editing, run the tests, and push a small clear commit. **Never force-push `main`.** A push triggers both CI and the connected Vercel deployment; test locally before pushing.
 
-A future GitHub organization may use the slug **`InfotronX-Horizon`**, subject to availability and creation by the team owner. This repository is **currently still owned by `KiyamaPaD`**. Do not delete it while transferring; preserve commits, issues and review history.
+Start with [Contributing](CONTRIBUTING.md), [Team workflow](docs/TEAM_WORKFLOW.md), [Engineering standards](docs/DEVELOPMENT_STANDARDS.md), and [Current state](docs/PROJECT_STATE.md). Testers should use [Beta testing](docs/BETA_TESTING.md) and open a GitHub Issue for reproducible defects.
 
-## Hosting and backend
+## Technical structure
 
-The frontend currently runs as a static site on Vercel. Missions are stored in browser `localStorage` with user-triggered exports and link-based copies; **live account synchronization is not implemented**. `supabase/schema.sql` is a proposed design, not an active database or authentication service. Hosting and cloud collaboration are separate projects.
-
-## Data, attribution and limitations
-
-Source: USGS Astrogeology / NASA Mars Reconnaissance Orbiter CTX Jezero DTM, Fergason et al. (2020), DOI [10.5066/P906QQT8](https://doi.org/10.5066/P906QQT8); NASA Mars Trek imaging services. See [NASA_DATA.md](NASA_DATA.md) and [science validation](docs/SCIENCE_VALIDATION.md).
-
-The repository's MIT license covers original Mars Atlas source code, not automatically the licenses or attribution requirements of separately obtained data and media. The [submission document](SUBMISSION.md) contains the final project credits and tool acknowledgments.
-
-## Project structure
-
-| Area | Files |
+| Area | Primary files |
 | --- | --- |
-| Browser mission interface | `index.html`, `src/main.js`, `src/design.css`, `src/store.js` |
-| Planetary map and routing | `src/map.js`, `src/geo.js`, `src/terrain.js`, `src/dstar-lite.js` |
-| Scientific algorithms | `src/measure-theory.js`, `src/advanced-math.js`, `src/terrain-topology.js` |
-| Research interfaces | `src/science-workbench.js`, `src/mission-research-ui.js` |
-| Real numeric terrain | `assets/jezero_ctx_trn_dem_20m_clip.json` |
-| Verification | `tests/`, `.github/workflows/verify.yml` |
-| Project documentation | `docs/`, `SUBMISSION.md`, `NASA_DATA.md` |
+| Main UI / mission controls | `index.html`, `src/main.js`, `src/design.css` |
+| Mission data and export | `src/store.js`, `src/share.js` |
+| Mapping, terrain, routing | `src/map.js`, `src/terrain.js`, `src/dstar-lite.js`, `src/pareto-routes.js` |
+| Science / numerical analysis | `src/science-workbench.js`, `src/advanced-math.js`, `src/terrain-topology.js` |
+| CTX elevation sample | `assets/jezero_ctx_trn_dem_20m_clip.json` |
+| Automated tests | `tests/`, `.github/workflows/verify.yml` |
+| Data provenance and project credits | `NASA_DATA.md`, `SUBMISSION.md`, `docs/SCIENCE_VALIDATION.md` |
 
-Historical V3–V9 engineering reports remain under `docs/` for review.
+Older V3–V9 reports remain for historical research and are **not** the live deployment instructions.
+
+## Sources and acknowledgments
+
+The numeric terrain clip derives from the **USGS Astrogeology / NASA MRO CTX Mars 2020 Terrain Relative Navigation DTM** (Fergason et al., 2020), [DOI 10.5066/P906QQT8](https://doi.org/10.5066/P906QQT8). Basemap imagery is served through NASA Mars Trek. For technical attribution and modeled-versus-observed limitations, see [NASA_DATA.md](NASA_DATA.md) and [Science validation](docs/SCIENCE_VALIDATION.md). The project's software license does not replace third-party data/imagery licenses.
+
+**InfotronX Horizon** is an independent team. The clean Git repository is a publication reset, **not evidence that all components were written during the hackathon**. See [Submission readiness](docs/SUBMISSION_READINESS.md) for the official timing and source-eligibility considerations. Tools and contributors are acknowledged in [SUBMISSION.md](SUBMISSION.md).

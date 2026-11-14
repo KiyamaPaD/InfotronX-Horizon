@@ -1,31 +1,32 @@
-# InfotronX Horizon — development workflow
+# InfotronX Horizon — team workflow
 
-Mars Atlas is developed in one shared GitHub repository with a tracked history of tasks, branches, commits and reviews.
+**Repository:** https://github.com/KiyamaPaD/Mars-Atlas  
+**Primary branch:** `main`  
+**Integration policy:** direct commits; no required Pull Requests or branch merges.
 
-## Everyday workflow
+## Daily routine
 
-1. Select a GitHub issue and leave a comment assigning yourself the scope.
-2. Create one short-lived branch from the owner-approved integration branch.
-3. Implement a small, testable change in your own files; coordinate before editing shared entry points.
-4. Run `npm test`, syntax checks and relevant browser tests.
-5. Open a Pull Request that names the issue, changed interfaces, results and remaining blockers.
-6. Ask another teammate for review, apply feedback and merge only through the approved integration flow.
-7. If unfinished, write a short handoff with exact commit SHA, next step and known limitations.
+1. Pick/assign a GitHub Issue and agree who edits each shared file.
+2. Run `git pull --ff-only origin main` before making changes.
+3. Work on a small change, run `npm test`, syntax checks, and relevant real-browser tests.
+4. Commit with an informative message. Rebase on updated `main` before pushing if necessary.
+5. Push to `main`. Check GitHub Actions and the deployment; tell the team what changed and whether anything remains broken.
+6. If a conflict appears or another teammate is editing the same entry point, coordinate instead of force-pushing.
 
-## Workstreams
+## Ownership map
 
 | Area | Files |
 | --- | --- |
-| GIS and NASA sources | `src/map.js`, `src/constants.js`, `src/dem-audit.js`, `NASA_DATA.md` |
-| Mission data and export | `src/store.js`, `src/share.js`, `src/inspector.js` |
-| Mathematics and routing | `src/terrain.js`, `src/dstar-lite.js`, `src/pareto-routes.js`, `src/advanced-math.js` |
-| UI, accessibility and mobile | `src/main.js`, `src/design.css`, `src/science.css` |
-| Quality, hosting and release | `tests/`, `.github/workflows/`, `docs/RELEASE_RUNBOOK.md` |
+| GIS and source attribution | `src/map.js`, `src/constants.js`, `NASA_DATA.md` |
+| Mission data | `src/store.js`, `src/share.js`, `src/inspector.js` |
+| Mathematics / routing | `src/terrain.js`, `src/dstar-lite.js`, `src/pareto-routes.js` |
+| UI / mobile | `src/main.js`, `src/design.css`, `src/science.css` |
+| Tests / deploy / documentation | `tests/`, `.github/workflows/`, `docs/` |
 
-If two tasks need `src/main.js`, one integrator controls that entry point and other contributors expose modular interfaces. Avoid unrelated changes within the same PR.
+The owner of `src/main.js` should coordinate integrations when multiple modules touch it. No teammate should erase another's work by resetting or force-pushing shared history.
 
-## Release
+## Testing and release
 
-`main` becomes the canonical production source only after the consolidated candidate is reviewed and accepted. Historical V4–V9 branches are preserved for audit, not merged repeatedly. One release owner confirms the production deployment, dataset citations and submission completeness.
+Use [BETA_TESTING.md](BETA_TESTING.md) for a reproducible test pass. Report defects in Issues, not only via chat. The new Vercel project is wired to `main`; each push may update the deployment even before CI finishes. Test first, verify again afterward.
 
-For a detailed workflow see `CONTRIBUTING.md` and `docs/DEVELOPMENT_STANDARDS.md`.
+The prior V3–V9 branch/review reports are historical references, not steps to execute now.

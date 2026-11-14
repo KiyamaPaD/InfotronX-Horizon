@@ -1,34 +1,36 @@
-# Mars Atlas — current team state
+# Mars Atlas — current project state
 
-**Owner / team identity:** InfotronX Horizon · **season 2026–2027**  
-**Challenge:** NASA Space Apps Challenge **2026**  
-**Repository currently hosted at:** https://github.com/KiyamaPaD/Mars-Atlas-NASA-2026
+**Team:** InfotronX Horizon · **Challenge:** NASA Space Apps Challenge 2026 · **Season:** 2026–2027  
+**Repo:** https://github.com/KiyamaPaD/Mars-Atlas  
+**Branch:** `main`  
+**Vercel project:** `mars-atlas`; production alias https://mars-atlas-mu.vercel.app
 
-## Branches
+## Verified on 14 November 2026
 
-- `main` — existing production V3.1, deployed at https://mars-atlas-nasa-2026.vercel.app.
-- `team/relaunch-candidate` — consolidated V9 candidate and contributor setup, PR #27, not merged.
-- `brand/infotronx-horizon` — proposed team branding and public documentation; separate review branch.
-- `feature/team-algorithms-v9` and earlier V4–V9 branches — retained for history, not to be merged a second time.
+- New repository has a single initial release commit (`ac7fa28`), copied from the earlier InfotronX Horizon V9 candidate.
+- GitHub Actions initial `Verify` run completed successfully on `main`.
+- The new Vercel project reports its production deployment as `READY` and tied to `ac7fa28`.
+- Vercel Authentication / Standard-style deployment protection is enabled. **Public access to the short production alias must be tested in an unauthenticated browser**, and a Shareable Link used if necessary.
+- A successful deploy and JS tests do **not** establish full desktop/mobile functionality.
 
-V9 preview: https://mars-atlas-nasa-2026-mmayo5ed1-kiyama1.vercel.app  
-Team-relaunch preview: https://mars-atlas-nasa-2026-jz8zcij5x-kiyama1.vercel.app
+## Present in source code
 
-## What exists
+Manual-first route and waypoint editing, mission-local persistence and exports, Jezero NASA/USGS map resources, a 104×96 numeric CTX DEM clip, routing algorithms (A*, D* Lite, bounded Pareto), and exploratory terrain/science calculations.
 
-A manual Mars mission planner with browser-local mission storage, checkpoints, imports/exports, NASA imagery, a limited real numeric USGS MRO CTX Jezero DEM sample, A*/D* Lite/Pareto, spherical area and contours, reachability, terrain topology and scenario calculations. The scientific models are exploratory; a source-derived elevation is not a real-world hazard assessment.
+## Not yet established or implemented
 
-Last confirmed V9 baseline: 118/118 Node tests. Each new branch must rerun checks and document actual results.
+- No account-based collaboration, live cross-device sync, or operational Supabase backend.
+- No independently documented complete browser smoke test of the newly migrated production URL.
+- No measured rover safety or certified EVA/hazard model; modeled outputs must be labeled.
+- No purchased domain yet.
+- NASA Space Apps 2026 **eligibility is not validated**; the new Git commit must not be mistaken for the actual dates of prior development.
 
-## What is not operational
+## Immediate priorities
 
-No dedicated account-based mission storage, realtime edits, production-calibrated EVA models, co-registered HiRISE accuracy reference or proof of complete deployed mobile/desktop end-to-end functionality. The existing Vercel project is in a one-member Hobby team; Git integration and account permissions must be reviewed separately.
+1. Run the [beta testing checklist](BETA_TESTING.md) from fresh desktop/mobile sessions.
+2. Confirm external access to the short production URL, then invite teammates to report reproducible defects.
+3. Fix actual high-severity bugs, performance and mobile accessibility issues before adding more research panels.
+4. Review the official challenge Resources and build/submission timing rules with the organizers; disclose previous code and tools accurately.
+5. Buy a domain only after the beta site works reliably.
 
-## Next actions
-
-1. Review the V9 consolidated candidate and branding PR.
-2. Create an **InfotronX Horizon** GitHub organization if a suitable slug is available.
-3. Back up and transfer the existing repository without deleting history.
-4. Invite teammates with `Write`, protect `main`, and set required CI + approvals.
-5. Review Vercel Git integration and a separate staging deployment.
-6. Confirm NASA challenge dataset eligibility and full final acknowledgments.
+Historical V3–V9 research reports remain under `docs/` for reference; the instructions referring to retired branches/PR numbers in those documents are archival.
