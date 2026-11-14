@@ -361,7 +361,7 @@ export class MarsMap
 
             if (match)
             {
-                this.preferredTileSuffix.set(this.layer.id, `/${match[1]}/`);
+                this.preferredTileSuffix.set(this.layer.id, `/default/${match[1]}/`);
             }
 
             this.updateImageryStatus();
