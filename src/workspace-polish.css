@@ -752,3 +752,26 @@
         padding:8px 3px;
     }
 }
+
+
+/* Keep the central mission action available on narrow screens. */
+.header-actions #mission-hub-open
+{
+    display:inline-flex!important;
+    align-items:center;
+    justify-content:center;
+    white-space:nowrap;
+    min-height:40px;
+    padding:8px 13px;
+    font-size:12px;
+}
+
+@media(max-width:480px)
+{
+    .header-actions #mission-hub-open
+    {
+        min-height:38px;
+        padding:8px 9px;
+        font-size:11px;
+    }
+}

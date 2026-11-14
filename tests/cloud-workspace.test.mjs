@@ -52,3 +52,11 @@ test("Mission Center combines device saves, cloud saves, checkpoints and exports
     assert.match(main, /mountCloudWorkspace\(\{ store, notify \}\)/);
     assert.match(main, /get\("#mission-submit"\).textContent/);
 });
+
+
+test("Mission Center remains visible on mobile despite legacy header selectors", () =>
+{
+    assert.match(ui, /account.id = "mission-hub-open"/);
+    assert.match(css, /\.header-actions #mission-hub-open/);
+    assert.match(css, /display:inline-flex!important/);
+});
