@@ -40,6 +40,7 @@ export class MarsMap
         this.wheelDelta = 0;
         this.wheelTimer = null;
         this.activeTiles = new Set();
+        this.preferredTileSuffix = new Map();
 
         this.container.innerHTML = `<div class="map-fallback" aria-hidden="true"><div class="fallback-globe"></div><div class="coordinate-grid"></div></div><div class="map-tiles"></div><svg class="map-overlays" role="img" aria-label="Editable mission route overlays"></svg><div class="map-attribution">Map tiles © NASA / JPL · Mars Trek</div><div class="map-load-notice" role="status">Loading Mars imagery…</div>`;
         this.tileContainer = this.container.querySelector(".map-tiles");
@@ -329,11 +330,19 @@ export class MarsMap
         const capabilities = this.tileTemplates.get(this.layer.id);
         const matrixId = capabilities?.matrixLookup.get(`${2 ** (zoom + 1)}-${2 ** zoom}`) || String(zoom);
         const verifiedTemplate = capabilities?.template?.replaceAll("{TileMatrix}", matrixId).replaceAll("{TileRow}", String(y)).replaceAll("{TileCol}", String(x)).replaceAll("{Style}", "default");
-        const candidates = [
+        const candidates = [...new Set([
             ...(verifiedTemplate ? [verifiedTemplate] : []),
             ...this.layer.extensions.map(extension => `${this.layer.url}/default/default028mm/${zoom}/${y}/${x}.${extension}`),
             ...this.layer.extensions.map(extension => `${this.layer.url}/default/default/${zoom}/${y}/${x}.${extension}`)
-        ];
+        ])];
+        const preferred = this.preferredTileSuffix.get(this.layer.id);
+
+        if (preferred)
+        {
+            candidates.sort((left, right) => Number(right.includes(preferred)) - Number(left.includes(preferred)));
+        }
+
+        image.dataset.state = "loading";
         let candidateIndex = 0;
 
         const sourceLayerId = this.layer.id;
@@ -345,10 +354,17 @@ export class MarsMap
                 return;
             }
 
+            image.dataset.state = "loaded";
             this.loadedImages++;
             image.style.opacity = "1";
-            this.notice.hidden = true;
-            this.container.classList.add("map-has-imagery");
+            const match = candidates[candidateIndex].match(/\/default\/(default028mm|default)\/\d+\/\d+\/\d+\.(png|jpg)$/);
+
+            if (match)
+            {
+                this.preferredTileSuffix.set(this.layer.id, `/${match[1]}/`);
+            }
+
+            this.updateImageryStatus();
         };
         image.onerror = () =>
 {
@@ -366,13 +382,10 @@ export class MarsMap
             }
 
             this.imageErrors++;
+            image.dataset.state = "error";
+            image.dataset.failedAt = String(Date.now());
             image.style.display = "none";
-
-            if (!this.loadedImages && this.imageErrors >= 3)
-            {
-                this.notice.textContent = "NASA imagery is unavailable. Choose another basemap.";
-                this.container.classList.remove("map-has-imagery");
-            }
+            this.updateImageryStatus();
         };
         image.src = candidates[0];
         return image;
@@ -411,21 +424,31 @@ export class MarsMap
                 const left = x * 256 - center.x + width / 2;
                 const top = y * 256 - center.y + height / 2;
 
-                if (!this.tiles.has(key))
+                let tile = this.tiles.get(key);
+
+                if (tile?.dataset.state === "error" && Date.now() - Number(tile.dataset.failedAt) > 15000)
                 {
-                    const tile = this.createTile(x, y, this.zoom, left, top);
+                    tile.onload = null;
+                    tile.onerror = null;
+                    tile.remove();
+                    this.tiles.delete(key);
+                    tile = null;
+                }
+
+                if (!tile)
+                {
+                    tile = this.createTile(x, y, this.zoom, left, top);
                     this.tiles.set(key, tile);
                     this.tileContainer.appendChild(tile);
                 }
-                else
-                {
-                    const tile = this.tiles.get(key);
-                    tile.style.left = `${left}px`;
-                    tile.style.top = `${top}px`;
-                    tile.style.display = "";
-                }
+
+                tile.style.left = `${left}px`;
+                tile.style.top = `${top}px`;
+                tile.style.display = tile.dataset.state === "error" ? "none" : "";
             }
         }
+
+        this.activeTiles = active;
 
         for (const [key, tile] of this.tiles)
         {
@@ -444,6 +467,9 @@ export class MarsMap
                     continue;
                 }
 
+                tile.onload = null;
+                tile.onerror = null;
+                tile.removeAttribute("src");
                 tile.remove();
                 this.tiles.delete(key);
 
@@ -453,6 +479,32 @@ export class MarsMap
                 }
             }
         }
+
+        this.updateImageryStatus();
+    }
+
+    updateImageryStatus()
+    {
+        let loaded = 0;
+        let loading = 0;
+
+        for (const key of this.activeTiles)
+        {
+            const image = this.tiles.get(key);
+
+            if (image?.dataset.state === "loaded" && image.naturalWidth > 0)
+            {
+                loaded++;
+            }
+            else if (image?.dataset.state !== "error")
+            {
+                loading++;
+            }
+        }
+
+        this.container.classList.toggle("map-has-imagery", loaded > 0);
+        this.notice.hidden = loaded > 0;
+        this.notice.textContent = loading ? "Loading Mars imagery…" : "NASA imagery is unavailable at this zoom. Zoom out or change the layer.";
     }
 
     renderOverlays()
