@@ -25,7 +25,7 @@ export class MarsMap
         this.zoom = 11;
         this.center = { ...JEZERO };
         this.layer = MAP_LAYERS[0];
-        this.layerMaxZoom = 11;
+        this.layerMaxZoom = Math.min(11, this.layer.maxUsefulZoom || 13);
         this.mode = "pan";
         this.scenarioZones = [];
         this.scenarioSignature = "[]";
@@ -104,17 +104,25 @@ export class MarsMap
             const availableLevels = [...matrixLookup.values()].map(Number).filter(Number.isInteger);
             const highestZoom = availableLevels.length ? Math.max(...availableLevels) : 11;
             const previousZoom = this.zoom;
-            this.layerMaxZoom = Math.min(13, highestZoom);
+            this.layerMaxZoom = Math.min(this.layer.maxUsefulZoom || 13, highestZoom);
             this.zoom = clamp(this.zoom, 3, this.layerMaxZoom);
             this.options.onViewChange?.(this.center, this.zoom);
             this.tileTemplates.set(this.layer.id, { template, matrixLookup, maxZoom: this.layerMaxZoom });
 
-            if (this.zoom !== previousZoom || (!this.loadedImages && this.imageErrors > 0))
+            if (this.zoom !== previousZoom)
             {
-                this.tiles.clear();
-                this.tileContainer.replaceChildren();
-                this.loadedImages = 0;
-                this.imageErrors = 0;
+                this.options.onViewChange?.(this.center, this.zoom);
+            }
+
+            for (const [key, image] of this.tiles)
+            {
+                if (image.dataset.state === "error")
+                {
+                    image.onload = null;
+                    image.onerror = null;
+                    image.remove();
+                    this.tiles.delete(key);
+                }
             }
 
             this.render();
@@ -152,7 +160,9 @@ export class MarsMap
         this.container.classList.remove("map-has-imagery");
         this.notice.textContent = "Loading Mars imagery…";
         this.layer = MAP_LAYERS.find(layer => layer.id === id) || MAP_LAYERS[0];
-        this.layerMaxZoom = this.tileTemplates.get(this.layer.id)?.maxZoom || 11;
+        this.layerMaxZoom = Math.min(this.layer.maxUsefulZoom || 13, this.tileTemplates.get(this.layer.id)?.maxZoom || 11);
+        this.zoom = clamp(this.zoom, 3, this.layerMaxZoom);
+        this.options.onViewChange?.(this.center, this.zoom);
         this.tiles.clear();
         this.tileContainer.replaceChildren();
         this.loadedImages = 0;
@@ -330,8 +340,8 @@ export class MarsMap
         image.draggable = false;
         image.decoding = "async";
         image.style.opacity = "0";
-        image.style.left = `${left}px`;
-        image.style.top = `${top}px`;
+        image.style.left = `${Math.round(left)}px`;
+        image.style.top = `${Math.round(top)}px`;
 
         const capabilities = this.tileTemplates.get(this.layer.id);
         const matrixId = capabilities?.matrixLookup.get(`${2 ** (zoom + 1)}-${2 ** zoom}`) || String(zoom);
@@ -359,10 +369,33 @@ export class MarsMap
 
         const sourceLayerId = this.layer.id;
 
+        const nextCandidate = () =>
+        {
+            candidateIndex++;
+
+            if (candidateIndex < candidates.length)
+            {
+                image.src = candidates[candidateIndex];
+                return;
+            }
+
+            this.imageErrors++;
+            image.dataset.state = "error";
+            image.dataset.failedAt = String(Date.now());
+            image.style.display = "none";
+            this.updateImageryStatus();
+        };
+
         image.onload = () =>
 {
             if (sourceLayerId !== this.layer.id || !image.isConnected)
             {
+                return;
+            }
+
+            if (image.naturalWidth < 128 || image.naturalHeight < 128)
+            {
+                nextCandidate();
                 return;
             }
 
@@ -385,19 +418,7 @@ export class MarsMap
                 return;
             }
 
-            candidateIndex++;
-
-            if (candidateIndex < candidates.length)
-            {
-                image.src = candidates[candidateIndex];
-                return;
-            }
-
-            this.imageErrors++;
-            image.dataset.state = "error";
-            image.dataset.failedAt = String(Date.now());
-            image.style.display = "none";
-            this.updateImageryStatus();
+            nextCandidate();
         };
         image.src = candidates[0];
         return image;
@@ -454,8 +475,8 @@ export class MarsMap
                     this.tileContainer.appendChild(tile);
                 }
 
-                tile.style.left = `${left}px`;
-                tile.style.top = `${top}px`;
+                tile.style.left = `${Math.round(left)}px`;
+                tile.style.top = `${Math.round(top)}px`;
                 tile.style.display = tile.dataset.state === "error" ? "none" : "";
             }
         }

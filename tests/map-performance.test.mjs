@@ -201,3 +201,61 @@ test("once a NASA tile format works, other tiles avoid duplicate format requests
         globalThis.document = original;
     }
 });
+
+
+test("Mars imagery does not stretch 1-pixel placeholders into huge map blocks", () =>
+{
+    const previous = globalThis.document;
+    let image;
+    globalThis.document = {
+        createElement()
+        {
+            image = { dataset: {}, style: {}, isConnected: true, naturalWidth: 1, naturalHeight: 1, set src(value) { this.lastSrc = value; } };
+            return image;
+        }
+    };
+
+    try
+    {
+        const map = Object.create(MarsMap.prototype);
+        map.layer = { id: "ctx", url: "https://example.invalid/1.0.0", extensions: ["jpg"] };
+        map.tiles = new Map();
+        map.tileTemplates = new Map();
+        map.preferredTileSuffix = new Map([["ctx", { matrixSet: "default028mm", extension: "jpg" }]]);
+        map.imageErrors = 0;
+        map.updateImageryStatus = () => {};
+        map.createTile(5, 6, 11, 0, 0);
+        image.onload();
+
+        assert.equal(image.dataset.state, "error");
+        assert.equal(image.style.opacity, "0");
+        assert.equal(map.imageErrors, 1);
+    }
+    finally
+    {
+        globalThis.document = previous;
+    }
+});
+
+test("native useful zoom limits avoid enlarging regional relief imagery", () =>
+{
+    const map = Object.create(MarsMap.prototype);
+    map.layer = { id: "mola", maxUsefulZoom: 7 };
+    map.zoom = 11;
+    map.tileTemplates = new Map();
+    map.tiles = new Map();
+    map.activeTiles = new Set();
+    map.capabilityRequest = 0;
+    map.tileContainer = { replaceChildren() {} };
+    map.notice = { hidden: false, textContent: "" };
+    map.container = { classList: { remove() {} } };
+    map.render = () => {};
+    map.options = { onViewChange() {}, onLayerChange() {} };
+    map.loadCapabilities = () => {};
+    map.setLayer("mola");
+    assert.equal(map.zoom, 11);
+
+    // Switching from a detailed layer clamps to the selected basemap's native detail.
+    map.setLayer("viking");
+    assert.ok(map.zoom <= 8);
+});

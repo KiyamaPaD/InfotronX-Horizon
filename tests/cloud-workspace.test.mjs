@@ -21,7 +21,7 @@ test("sharing always uses a selected cloud mission owned by the signer", () =>
     assert.match(ui, /cloud\.shareByEmail\(row\.id, email, access\)/);
     assert.match(ui, /cloud\.removeMember\(row\.id, member\.user_id\)/);
     assert.match(ui, /cloud\.cancelPendingInvitation\(row\.id, invite\.email\)/);
-    assert.match(ui, /await updateLibrary\(store\.current\.id\)/);
+    assert.match(ui, /updateLibrary\(store\.current\.id\)/);
     assert.match(ui, /await updateLibrary\(missionId\)/);
     assert.match(ui, /missions\.some\(item => item\.id === missionId\)/);
 });

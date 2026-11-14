@@ -14,7 +14,8 @@ export const MAP_LAYERS = [
         dataset: "CTX_beta01_uncontrolled_5m_Caltech",
         description: "Mars Reconnaissance Orbiter CTX global image mosaic. Visual planning context, not a certified hazard map.",
         url: "https://trek.nasa.gov/tiles/Mars/EQ/CTX_beta01_uncontrolled_5m_Caltech/1.0.0",
-        extensions: ["jpg", "png"]
+        extensions: ["jpg", "png"],
+        maxUsefulZoom: 13
     },
     {
         id: "mola",
@@ -24,7 +25,8 @@ export const MAP_LAYERS = [
         dataset: "Mars_MGS_MOLA_ClrShade_merge_global_463m",
         description: "Mars Global Surveyor MOLA color hillshade. Regional relief overview; not a local elevation profile.",
         url: "https://trek.nasa.gov/tiles/Mars/EQ/Mars_MGS_MOLA_ClrShade_merge_global_463m/1.0.0",
-        extensions: ["png", "jpg"]
+        extensions: ["png", "jpg"],
+        maxUsefulZoom: 7
     },
     {
         id: "viking",
@@ -34,7 +36,8 @@ export const MAP_LAYERS = [
         dataset: "Mars_Viking_MDIM21_ClrMosaic_global_232m",
         description: "Viking global color mosaic for planetary visual context.",
         url: "https://trek.nasa.gov/tiles/Mars/EQ/Mars_Viking_MDIM21_ClrMosaic_global_232m/1.0.0",
-        extensions: ["jpg", "png"]
+        extensions: ["jpg", "png"],
+        maxUsefulZoom: 8
     }
 ];
 
