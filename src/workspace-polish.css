@@ -1,0 +1,348 @@
+/* Workspace polish: predictable spacing, compact comparisons and fast science navigation. */
+.map-top-overlay
+{
+    column-gap:32px;
+    row-gap:14px;
+}
+
+.map-top-overlay .mode-indicator
+{
+    max-width:58%;
+}
+
+.map-top-overlay .planet-tag
+{
+    flex-shrink:0;
+    white-space:nowrap;
+}
+
+.panel-section.top-section [data-action="load-review-demo"]
+{
+    margin-top:20px;
+}
+
+.panel-section.top-section .mission-quick-guide
+{
+    margin-bottom:2px;
+}
+
+.science-model-section #dem-load-official
+{
+    margin-bottom:14px;
+}
+
+.science-model-section .terrain-upload
+{
+    margin-bottom:20px;
+}
+
+.science-model-section .science-details + .science-details
+{
+    margin-top:16px;
+}
+
+.science-model-section #terrain-plan
+{
+    margin-top:20px;
+}
+
+.science-model-section #terrain-compare
+{
+    margin-top:13px;
+}
+
+.science-model-section .dem-status
+{
+    margin:18px 0;
+}
+
+.science-model-section .section-help
+{
+    margin-bottom:19px;
+}
+
+.bottom-area
+{
+    display:flex;
+    flex-direction:column;
+    max-height:min(34vh,268px);
+    overflow:hidden;
+}
+
+.bottom-section-header
+{
+    flex-shrink:0;
+    gap:16px;
+}
+
+.bottom-area .route-comparison
+{
+    grid-template-columns:repeat(auto-fit,minmax(min(100%,255px),1fr));
+    gap:15px;
+    min-height:0;
+    max-height:182px;
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    align-content:start;
+    padding:2px 8px 8px 0;
+    scrollbar-color:#536a7b transparent;
+}
+
+.compare-row
+{
+    min-width:0;
+    padding:12px 13px;
+    border:1px solid #314355;
+    background:#142130;
+    border-radius:10px;
+}
+
+.compare-label
+{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) max-content;
+    align-items:center;
+    column-gap:12px;
+    row-gap:5px;
+    min-width:0;
+}
+
+.compare-label span
+{
+    min-width:0;
+    overflow:hidden;
+    white-space:nowrap;
+    text-overflow:ellipsis;
+}
+
+.compare-label strong
+{
+    justify-self:end;
+    font-variant-numeric:tabular-nums;
+}
+
+.compare-label .comparison-delta
+{
+    grid-column:1/-1;
+    justify-self:start;
+    text-align:left;
+    line-height:1.3;
+    font-size:11px;
+    color:#a0dfd3;
+    margin:0;
+}
+
+.compare-row .bar-track
+{
+    margin-top:12px;
+}
+
+.comparison-toggle
+{
+    min-height:42px;
+    border:1px solid #526879;
+    border-radius:9px;
+    background:#192a38;
+    color:#e6f2f8;
+    padding:10px 14px;
+    font:600 12px 'DM Sans',sans-serif;
+}
+
+.comparison-toggle:hover,
+.comparison-toggle:focus-visible
+{
+    background:#2d4251;
+}
+
+#analytics-panel
+{
+    scroll-behavior:smooth;
+    overscroll-behavior:contain;
+}
+
+.analytics-quickbar
+{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    align-items:end;
+    gap:9px;
+    position:sticky;
+    top:0;
+    z-index:15;
+    padding:13px 14px;
+    border-bottom:1px solid #3b5061;
+    background:#111d29f5;
+    backdrop-filter:blur(12px);
+}
+
+.analytics-quickbar label
+{
+    grid-column:1/-1;
+    font-size:10px;
+    font-weight:800;
+    letter-spacing:1.1px;
+    color:#a8c5d1;
+}
+
+.analytics-quickbar select
+{
+    width:100%;
+    min-width:0;
+    min-height:42px;
+    padding:8px 10px;
+    border:1px solid #536d7e;
+    border-radius:9px;
+    background:#192a38;
+    color:#f0f5f7;
+    font:600 12px 'DM Sans',sans-serif;
+}
+
+.analytics-toggle-all,
+.analytics-section-toggle
+{
+    border:1px solid #506477;
+    border-radius:9px;
+    background:#1b2d3a;
+    color:#e5f1f7;
+    cursor:pointer;
+}
+
+.analytics-toggle-all
+{
+    min-height:42px;
+    padding:8px 11px;
+    white-space:nowrap;
+    font:700 11px 'DM Sans',sans-serif;
+}
+
+.analytics-section-toggle
+{
+    min-width:36px;
+    min-height:36px;
+    padding:4px 8px;
+    margin-left:auto;
+    font-size:21px;
+    line-height:1;
+}
+
+.analytics-collapsible
+{
+    scroll-margin-top:89px;
+}
+
+.analytics-collapsible > .panel-title-row
+{
+    display:flex;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:10px;
+}
+
+.analytics-collapsible > .panel-title-row .section-label
+{
+    min-width:0;
+    flex:1 1 auto;
+}
+
+.analytics-collapsed > :not(.panel-title-row)
+{
+    display:none!important;
+}
+
+.analytics-collapsed
+{
+    padding-top:17px;
+    padding-bottom:17px;
+    background:#131f2a;
+}
+
+.analytics-quickbar :is(button,select):focus-visible,
+.analytics-section-toggle:focus-visible
+{
+    outline:2px solid #99dfce;
+    outline-offset:3px;
+}
+
+.map-tiles
+{
+    contain:layout paint;
+}
+
+.map-tile
+{
+    backface-visibility:hidden;
+}
+
+@media (min-width:1201px) and (max-height:820px)
+{
+    .map-controls
+    {
+        top:auto;
+        bottom:69px;
+        flex-direction:row;
+        right:14px;
+    }
+
+    .map-controls button
+    {
+        width:43px;
+        height:43px;
+        border-bottom:0;
+        border-right:1px solid #344a5d;
+    }
+
+    .map-controls .control-break
+    {
+        width:5px;
+        height:auto;
+        border-bottom:0;
+        border-right:1px solid #344a5d;
+    }
+
+    .map-top-overlay
+    {
+        gap:15px;
+    }
+}
+
+@media (max-width:1200px)
+{
+    .bottom-area
+    {
+        display:none;
+    }
+
+    .analytics-quickbar
+    {
+        padding:11px 12px;
+    }
+}
+
+@media (max-width:700px)
+{
+    .map-top-overlay .mode-indicator
+    {
+        max-width:100%;
+    }
+
+    .map-top-overlay .planet-tag
+    {
+        display:none;
+    }
+
+    .analytics-quickbar
+    {
+        grid-template-columns:minmax(0,1fr) auto;
+    }
+
+    .compare-row
+    {
+        padding:12px;
+    }
+
+    #route-comparison-mobile
+    {
+        max-height:320px;
+        overflow-y:auto;
+    }
+}

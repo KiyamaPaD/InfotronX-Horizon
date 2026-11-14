@@ -52,8 +52,17 @@ export function renderRouteComparison(container, routes, activeRouteId = null)
     const maximum = Math.max(...rows.map(item => item.analysis.totalDistance), 1);
     const active = rows.find(item => item.route.id === activeRouteId);
     const referenceDistance = active?.analysis.totalDistance || 0;
+    const expanded = container.dataset.expanded === "true";
+    const visibleRows = !expanded && rows.length > 4 ? rows.slice(-4) : [...rows];
 
-    for (const item of rows)
+    if (!expanded && rows.length > 4 && active && !visibleRows.some(item => item.route.id === activeRouteId))
+    {
+        visibleRows[0] = active;
+    }
+
+    container.classList.toggle("comparison-expanded", expanded);
+
+    for (const item of visibleRows)
     {
         const wrapper = document.createElement("div");
         wrapper.className = "compare-row";
@@ -82,5 +91,20 @@ export function renderRouteComparison(container, routes, activeRouteId = null)
         track.appendChild(bar);
         wrapper.append(label, track);
         container.appendChild(wrapper);
+    }
+
+    if (rows.length > 4)
+    {
+        const toggle = document.createElement("button");
+        toggle.type = "button";
+        toggle.className = "comparison-toggle";
+        toggle.textContent = expanded ? "Show fewer routes" : "Show all " + rows.length + " routes";
+        toggle.setAttribute("aria-expanded", String(expanded));
+        toggle.addEventListener("click", () =>
+        {
+            container.dataset.expanded = String(!expanded);
+            renderRouteComparison(container, routes, activeRouteId);
+        });
+        container.appendChild(toggle);
     }
 }

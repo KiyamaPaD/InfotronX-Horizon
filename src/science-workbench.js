@@ -116,17 +116,17 @@ export function initScienceWorkbench({ store, map, notify })
     terrain.className = "panel-section science-model-section";
     terrain.setAttribute("aria-labelledby", "terrain-model-heading");
     terrain.innerHTML = `
-        <div class="panel-title-row"><h2 id="terrain-model-heading" class="section-label">DEM ROUTE LAB</h2><span class="tiny-pill">A* / GRAPH</span></div>
-        <p class="section-help">Import a <strong>numeric</strong> Jezero elevation-grid JSON. A* can then compare routes while avoiding NoData and steep links. Image colors are never treated as elevation.</p>
-        <button type="button" class="btn btn-accent wide" id="dem-load-official">◉ Load official Jezero CTX elevations</button>
-        <label class="btn btn-outline wide terrain-upload">↑ Import my numeric DEM (.json)<input id="dem-file" type="file" accept=".json,application/json" hidden /></label>
+        <div class="panel-title-row"><h2 id="terrain-model-heading" class="section-label">DEM ROUTE LAB</h2><span class="tiny-pill">TERRAIN</span></div>
+        <p class="section-help">Explore elevation data and compare routes around Jezero. Load the sample terrain grid or import your own.</p>
+        <button type="button" class="btn btn-accent wide" id="dem-load-official">◉ Load Jezero terrain data</button>
+        <label class="btn btn-outline wide terrain-upload">↑ Import terrain grid (.json)<input id="dem-file" type="file" accept=".json,application/json" hidden /></label>
         <div id="dem-status" class="dem-status" role="status">No numeric DEM loaded. Terrain routing unavailable until you import real elevation data.</div>
         <details class="science-details"><summary>Terrain cost assumptions</summary>
             <div class="eva-form terrain-options"><label>Max modeled grade <small>%</small><input id="terrain-grade" type="number" min="1" max="100" step="1" value="18" /></label>
             <label>Slope penalty <small>weight</small><input id="terrain-penalty" type="number" min="0" max="40" step="1" value="6" /></label></div>
             <p class="section-help">These thresholds are user-selected scenario parameters, not official NASA EVA or rover operating limits.</p>
         </details>
-        <details class="science-details" id="scenario-exclusion"><summary>What-if: exclusion around a field note</summary>
+        <details class="science-details" id="scenario-exclusion"><summary>What-if: route around a note</summary>
             <p class="section-help">Select an existing <strong>user observation</strong> to test a hypothetical no-go area. This does not certify the observation as a real hazard.</p>
             <label class="science-label">Observation <select id="exclusion-note" class="science-select"><option value="">No exclusion area</option></select></label>
             <label class="science-label">Exclusion radius <small>meters</small><input id="exclusion-radius" type="number" min="10" max="1000" step="10" value="80" /></label>

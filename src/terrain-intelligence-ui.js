@@ -52,7 +52,7 @@ export function mountTerrainIntelligence({ panel, before, store, readDem, readCo
     section.className = "panel-section terrain-intelligence-section";
     section.setAttribute("aria-labelledby", "terrain-intel-heading");
     section.innerHTML = `
-        <div class="panel-title-row"><h2 id="terrain-intel-heading" class="section-label">TERRAIN INTELLIGENCE</h2><span class="tiny-pill">V7 · SPATIAL ANALYSIS</span></div>
+        <div class="panel-title-row"><h2 id="terrain-intel-heading" class="section-label">TERRAIN INTELLIGENCE</h2><span class="tiny-pill">SPATIAL TOOLS</span></div>
         <p class="section-help">Explore the same <strong>numeric DEM</strong> with a slope/roughness raster, a line-of-sight model and a time-limited reachability map. Inspired by NASA MMGIS and TIG; all calculations are independently implemented.</p>
         <div class="intel-stack">
             <div class="intel-tool"><h3>1 · Slope &amp; roughness</h3><p class="section-help">3 × 3 least-squares terrain plane; residual RMS indicates local height variation (not directly a rock or traction hazard).</p>

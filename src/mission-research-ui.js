@@ -14,7 +14,7 @@ export function mountMissionResearch({ panel, before, store, map, readDem, readC
     section.className = "panel-section math-research-v9";
     section.setAttribute("aria-labelledby", "v9-heading");
     section.innerHTML = `
-        <div class="panel-title-row"><h2 id="v9-heading" class="section-label">ADVANCED ALGORITHMS</h2><span class="tiny-pill">V9 · RESEARCH</span></div>
+        <div class="panel-title-row"><h2 id="v9-heading" class="section-label">ADVANCED ALGORITHMS</h2><span class="tiny-pill">RESEARCH</span></div>
         <p class="section-help">Incremental graph search, distance/ascent tradeoffs, topological structure and scientific DEM comparisons. <strong>Manual routes stay in your control.</strong></p>
         <div class="intel-stack">
             <div class="intel-tool">

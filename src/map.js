@@ -33,6 +33,7 @@ export class MarsMap
         this.loadedImages = 0;
         this.imageErrors = 0;
         this.tiles = new Map();
+        this.tileCacheLimit = 72;
         this.tileTemplates = new Map();
         this.capabilityRequest = 0;
 
@@ -100,14 +101,20 @@ export class MarsMap
 
             const availableLevels = [...matrixLookup.values()].map(Number).filter(Number.isInteger);
             const highestZoom = availableLevels.length ? Math.max(...availableLevels) : 11;
+            const previousZoom = this.zoom;
             this.layerMaxZoom = Math.min(13, highestZoom);
             this.zoom = clamp(this.zoom, 3, this.layerMaxZoom);
             this.options.onViewChange?.(this.center, this.zoom);
-            this.tileTemplates.set(this.layer.id, { template, matrixLookup });
-            this.tiles.clear();
-            this.tileContainer.replaceChildren();
-            this.loadedImages = 0;
-            this.imageErrors = 0;
+            this.tileTemplates.set(this.layer.id, { template, matrixLookup, maxZoom: this.layerMaxZoom });
+
+            if (this.zoom !== previousZoom || (!this.loadedImages && this.imageErrors > 0))
+            {
+                this.tiles.clear();
+                this.tileContainer.replaceChildren();
+                this.loadedImages = 0;
+                this.imageErrors = 0;
+            }
+
             this.render();
         }
         catch
@@ -139,14 +146,19 @@ export class MarsMap
     setLayer(id)
     {
         this.layer = MAP_LAYERS.find(layer => layer.id === id) || MAP_LAYERS[0];
-        this.layerMaxZoom = 11;
+        this.layerMaxZoom = this.tileTemplates.get(this.layer.id)?.maxZoom || 11;
         this.tiles.clear();
         this.tileContainer.replaceChildren();
         this.loadedImages = 0;
         this.imageErrors = 0;
         this.notice.hidden = false;
         this.render();
-        this.loadCapabilities();
+
+        if (!this.tileTemplates.has(this.layer.id))
+        {
+            this.loadCapabilities();
+        }
+
         this.options.onLayerChange?.(this.layer);
     }
 
@@ -280,6 +292,7 @@ export class MarsMap
         image.className = "map-tile";
         image.alt = "";
         image.draggable = false;
+        image.decoding = "async";
         image.style.opacity = "0";
         image.style.left = `${left}px`;
         image.style.top = `${top}px`;
@@ -380,6 +393,7 @@ export class MarsMap
                     const tile = this.tiles.get(key);
                     tile.style.left = `${left}px`;
                     tile.style.top = `${top}px`;
+                    tile.style.display = "";
                 }
             }
         }
@@ -388,8 +402,26 @@ export class MarsMap
         {
             if (!active.has(key))
             {
+                tile.style.display = "none";
+            }
+        }
+
+        if (this.tiles.size > this.tileCacheLimit)
+        {
+            for (const [key, tile] of this.tiles)
+            {
+                if (active.has(key))
+                {
+                    continue;
+                }
+
                 tile.remove();
                 this.tiles.delete(key);
+
+                if (this.tiles.size <= this.tileCacheLimit - 12)
+                {
+                    break;
+                }
             }
         }
     }
