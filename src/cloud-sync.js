@@ -93,7 +93,6 @@ export class MissionCloud
     async listMissions()
     {
         this.requireUser();
-        await this.claimEmailInvitations();
         return assertResult(await this.client.from("mars_missions")
             .select("id,title,owner_id,revision,updated_at")
             .order("updated_at", { ascending: false }).limit(60));
