@@ -37,7 +37,7 @@ export class MarsMap
         this.tileTemplates = new Map();
         this.capabilityRequest = 0;
 
-        this.container.innerHTML = `<div class="map-fallback" aria-hidden="true"><div class="fallback-globe"></div><div class="coordinate-grid"></div></div><div class="map-tiles"></div><svg class="map-overlays" role="img" aria-label="Editable mission route overlays"></svg><div class="map-attribution">Map tiles © NASA / JPL · Mars Trek</div><div class="map-load-notice" role="status">NASA imagery loading · local planning remains available</div>`;
+        this.container.innerHTML = `<div class="map-fallback" aria-hidden="true"><div class="fallback-globe"></div><div class="coordinate-grid"></div></div><div class="map-tiles"></div><svg class="map-overlays" role="img" aria-label="Editable mission route overlays"></svg><div class="map-attribution">Map tiles © NASA / JPL · Mars Trek</div><div class="map-load-notice" role="status">Loading Mars imagery…</div>`;
         this.tileContainer = this.container.querySelector(".map-tiles");
         this.overlay = this.container.querySelector(".map-overlays");
         this.notice = this.container.querySelector(".map-load-notice");
@@ -341,7 +341,7 @@ export class MarsMap
 
             if (!this.loadedImages && this.imageErrors >= 3)
             {
-                this.notice.textContent = "NASA tiles unavailable · route editing still works · try another layer";
+                this.notice.textContent = "NASA imagery is unavailable. Choose another basemap.";
                 this.container.classList.remove("map-has-imagery");
             }
         };

@@ -14,7 +14,7 @@ export function createMission(title = "Untitled Marswalk")
     return {
         id: createId(),
         title,
-        description: "Human-first exploration · Jezero Crater",
+        description: "Exploration mission · Jezero Crater",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         activeRouteId: routeId,
@@ -28,7 +28,7 @@ export function createMission(title = "Untitled Marswalk")
 export function createDemoMission()
 {
     const mission = createMission("Jezero field reconnaissance");
-    mission.description = "Illustrative planning mission · locations are not verified safe";
+    mission.description = "Explore Jezero with an editable route. Traversability has not been assessed.";
     mission.routes[0].points = [
         { id: createId(), lat: 18.44460, lon: 77.45090 },
         { id: createId(), lat: 18.44960, lon: 77.45610 },

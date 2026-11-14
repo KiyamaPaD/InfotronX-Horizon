@@ -346,3 +346,53 @@
         overflow-y:auto;
     }
 }
+
+
+/* Keep NASA attribution separate from the surface-distance label. */
+.map-wrap .map-bottom-overlay
+{
+    bottom:32px;
+    z-index:7;
+}
+.map-wrap .map-attribution
+{
+    right:13px;
+    bottom:6px;
+    z-index:8;
+    max-width:calc(100% - 26px);
+    padding:3px 8px;
+    white-space:nowrap;
+    border-radius:5px;
+    background:#0d1724e6;
+    font-size:10px;
+    line-height:1.35;
+}
+.map-wrap .map-scale
+{
+    max-width:calc(100% - 240px);
+    text-align:right;
+}
+.map-wrap .map-load-notice
+{
+    max-width:min(340px,calc(100% - 40px));
+}
+@media(max-width:1200px)
+{
+    .map-wrap .map-bottom-overlay
+    {
+        bottom:27px;
+    }
+}
+@media(max-width:700px)
+{
+    .map-wrap .map-bottom-overlay
+    {
+        bottom:18px;
+    }
+    .map-wrap .map-attribution
+    {
+        font-size:8px;
+        right:7px;
+        bottom:3px;
+    }
+}

@@ -76,7 +76,7 @@ export function mountTerrainIntelligence({ panel, before, store, readDem, readCo
                 <div id="intel-reach-result" class="intel-output" role="status">Run the time reachability model after loading DEM data.</div>
             </div>
         </div>
-        <p class="science-footnote">No rock mapping, loose-soil measurements, DEM accuracy bounds, astronaut mobility certification or communications guarantee is inferred here. The map is an analytical preview, not a hazard map.</p>
+        <p class="science-footnote">No rock mapping, loose-soil measurements, DEM accuracy bounds, astronaut mobility certification or communications guarantee is inferred here. This terrain analysis does not establish route safety.</p>
     `;
     panel.insertBefore(section, before);
     const surfaceButton = section.querySelector("#intel-run-surface");

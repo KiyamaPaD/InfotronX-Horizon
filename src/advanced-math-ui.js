@@ -55,7 +55,7 @@ export function mountAdvancedMathematics({ panel, before, store, readDem })
     section.className = "panel-section advanced-math-section";
     section.setAttribute("aria-labelledby", "advanced-math-heading");
     section.innerHTML = `
-        <div class="panel-title-row"><h2 id="advanced-math-heading" class="section-label">ADVANCED MATHEMATICS LAB</h2><span class="tiny-pill">V8 · RESEARCH</span></div>
+        <div class="panel-title-row"><h2 id="advanced-math-heading" class="section-label">ADVANCED MATHEMATICS LAB</h2><span class="tiny-pill">MATHEMATICS</span></div>
         <p class="section-help">Numerical geomorphometry and decision analysis: <strong>elevation measures, contour geometry, CVaR and optimal transport</strong>. All manual routes remain editable.</p>
         <div class="intel-stack">
             <div class="intel-tool">

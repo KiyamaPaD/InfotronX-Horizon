@@ -120,7 +120,7 @@ export function initScienceWorkbench({ store, map, notify })
         <p class="section-help">Explore elevation data and compare routes around Jezero. Load the sample terrain grid or import your own.</p>
         <button type="button" class="btn btn-accent wide" id="dem-load-official">◉ Load Jezero terrain data</button>
         <label class="btn btn-outline wide terrain-upload">↑ Import terrain grid (.json)<input id="dem-file" type="file" accept=".json,application/json" hidden /></label>
-        <div id="dem-status" class="dem-status" role="status">No numeric DEM loaded. Terrain routing unavailable until you import real elevation data.</div>
+        <div id="dem-status" class="dem-status" role="status">Load the Jezero elevation grid to analyze terrain routes.</div>
         <details class="science-details"><summary>Terrain cost assumptions</summary>
             <div class="eva-form terrain-options"><label>Max modeled grade <small>%</small><input id="terrain-grade" type="number" min="1" max="100" step="1" value="18" /></label>
             <label>Slope penalty <small>weight</small><input id="terrain-penalty" type="number" min="0" max="40" step="1" value="6" /></label></div>
