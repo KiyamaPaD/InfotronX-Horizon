@@ -491,19 +491,25 @@ export class MissionStore
         return true;
     }
 
-    movePoint(id, coordinate)
+    movePoint(id, coordinate, persist = true)
     {
         const point = this.activeRoute.points.find(item => item.id === id);
 
         if (!point || !isValidCoordinate(coordinate))
         {
-            return;
+            return false;
         }
 
         point.lat = coordinate.lat;
         point.lon = coordinate.lon;
         this.activeRoute.terrainModel = null;
-        this.save();
+
+        if (persist)
+        {
+            this.save();
+        }
+
+        return true;
     }
 
     updatePoint(id, coordinate)

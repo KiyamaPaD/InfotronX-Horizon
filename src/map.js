@@ -50,6 +50,7 @@ export class MarsMap
         this.container.addEventListener("pointerdown", event => this.onPointerDown(event));
         window.addEventListener("pointermove", event => this.onPointerMove(event));
         window.addEventListener("pointerup", event => this.onPointerUp(event));
+        window.addEventListener("pointercancel", event => this.onPointerUp(event));
         this.container.addEventListener("wheel", event => this.onWheel(event), { passive: false });
         this.resizeObserver = new ResizeObserver(() => this.render());
         this.resizeObserver.observe(container);
@@ -282,7 +283,7 @@ export class MarsMap
 
         if (this.drag.pointId)
         {
-            this.store.movePoint(this.drag.pointId, this.screenToGeo(event.clientX, event.clientY));
+            this.store.movePoint(this.drag.pointId, this.screenToGeo(event.clientX, event.clientY), false);
             this.render();
             return;
         }
@@ -301,6 +302,11 @@ export class MarsMap
         const drag = this.drag;
         this.drag = null;
         this.container.classList.remove("is-dragging");
+
+        if (drag.moved && drag.pointId)
+        {
+            this.store.save();
+        }
 
         if (drag.moved || !this.container.contains(event.target))
         {
