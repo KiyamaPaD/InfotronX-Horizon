@@ -22,3 +22,11 @@ This public folder is intended for InfotronX Horizon teammates and code reviewer
 Cloud Save and Open are explicit actions; they do not claim realtime simultaneous editing. A stale revision rejects writes to avoid accidental overwrites. On-device mission data remain available independently.
 
 Security references: https://supabase.com/docs/guides/database/postgres/row-level-security and https://supabase.com/docs/guides/api/securing-your-api
+
+## Connected project
+
+Supabase project: [Mars Atlas](https://supabase.com/dashboard/project/yuvdrjptwumbfzjsimoe). The browser client uses the public project URL and publishable key in `src/cloud-config.js` (no private credentials).
+
+**Configure email confirmation redirects in Supabase Dashboard:** open Authentication → URL Configuration, set Site URL to `https://mars-atlas-mu.vercel.app` and add the same URL plus `http://localhost:4173/**` in Redirect URLs for testing. Keep email/password provider enabled. Review email delivery quotas and confirmation behavior before distributing the login to external testers.
+
+The schema and editor index are installed. Security Advisor found zero security issues; isolated, simulated owner/viewer/editor/uninvited access tests passed in a rolled-back transaction. Do not claim live auth or cross-device verification until you have tested real email accounts.

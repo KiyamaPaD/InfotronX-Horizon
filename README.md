@@ -19,7 +19,7 @@ A manual-first Mars mission-planning workspace developed by **InfotronX Horizon*
 - **Compare route alternatives:** inspect A*, D* Lite replanning, bounded multi-objective route searches, and user-defined hypothetical exclusion zones.
 - **Explore real terrain data:** study a limited-area USGS/NASA Mars Reconnaissance Orbiter CTX elevation clip near Jezero alongside NASA Mars Trek imagery layers.
 - **Analyze terrain:** elevation and slope profiles, local roughness, line of sight, reachability, contours, and experimental scientific models.
-- **Take your work with you:** local browser checkpoints, JSON/GeoJSON import/export, and shareable mission links.
+- **Take your work with you:** on-device checkpoints, JSON/GeoJSON exports, mission links and an authenticated cloud library.
 
 ## Current product status
 
@@ -29,8 +29,9 @@ A manual-first Mars mission-planning workspace developed by **InfotronX Horizon*
 | Manual mission workspace and analysis modules | Implemented; team browser testing in progress |
 | NASA/USGS DEM | Bundled numerical clip, **not** a complete Jezero elevation survey |
 | NASA background maps | External image services; actual tile loading depends on connectivity |
-| Mission saving | Browser-local storage plus user-controlled exports/links |
-| Multi-user accounts and real-time synchronization | **Not implemented** |
+| Mission saving | Browser-local storage, user exports and an optional authenticated Supabase cloud library |
+| Team account access | Authenticated cloud save/open with per-mission viewer/editor roles; email links and real-user flows need verification |
+| Live simultaneous editing | **Not implemented** — cloud snapshots are opened and saved explicitly |
 | Rover/astronaut safety certification | **Not provided** |
 
 The scientific analyses are educational approximations, not real mission-operational hazard measurements, EVA medical advice, or safety approvals. Scenario assumptions must not be confused with source measurements.

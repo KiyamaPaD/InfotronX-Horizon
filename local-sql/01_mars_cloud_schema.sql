@@ -124,3 +124,6 @@ grant update (access) on public.mars_mission_members to authenticated;
 grant select on public.mars_mission_versions to authenticated;
 grant insert (mission_id, editor_id, revision, payload) on public.mars_mission_versions to authenticated;
 grant usage, select on sequence public.mars_mission_versions_id_seq to authenticated;
+
+create index if not exists mars_mission_versions_editor_lookup
+    on public.mars_mission_versions(editor_id);

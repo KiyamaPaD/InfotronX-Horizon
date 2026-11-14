@@ -19,7 +19,7 @@ Manual-first route and waypoint editing, mission-local persistence and exports, 
 
 ## Not yet established or implemented
 
-- No account-based collaboration, live cross-device sync, or operational Supabase backend.
+- Account-based cloud libraries and role-based access are implemented and schema deployed, but email redirects and real-account tests still require verification. Live simultaneous editing is not implemented.
 - No independently documented complete browser smoke test of the newly migrated production URL.
 - No measured rover safety or certified EVA/hazard model; modeled outputs must be labeled.
 - No purchased domain yet.
@@ -34,3 +34,7 @@ Manual-first route and waypoint editing, mission-local persistence and exports, 
 5. Buy a domain only after the beta site works reliably.
 
 Historical V3–V9 research reports remain under `docs/` for reference; the instructions referring to retired branches/PR numbers in those documents are archival.
+
+## Cloud connection — November 2026
+
+The dedicated Mars Atlas Supabase project (`yuvdrjptwumbfzjsimoe`) is active. Three tables have RLS policies for mission owners, editors and viewers. Security Advisor found zero security issues and simulated multi-user tests passed with full rollback. A public publishable key is configured in the frontend, but email confirmation redirects and real-account cloud saving/sharing need browser verification. MathHard was paused separately, without data migration or deletion.

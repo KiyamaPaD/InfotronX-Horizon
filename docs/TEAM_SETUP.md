@@ -23,7 +23,7 @@ The clean repository was intentionally created as a new publication location. It
 
 ## Hosting and storage boundaries
 
-The Vercel site is a static frontend. Mission data are stored in the visitor's browser; JSON/GeoJSON export is the reliable user-controlled backup. `supabase/schema.sql` is a design proposal, **not** a deployed account, multi-user or synchronization backend.
+The Vercel frontend is connected to a dedicated Supabase project for authenticated cloud saving and per-mission roles. Browser-local saves and exports still work independently; cloud operations are explicit, not simultaneous realtime editing. Email redirects and real-user verification are still required.
 
 ## Team launch checklist
 
@@ -34,3 +34,7 @@ The Vercel site is a static frontend. Mission data are stored in the visitor's b
 - [ ] All key workflows tested, with bugs recorded in GitHub Issues
 - [ ] Source attributions and hackathon eligibility reviewed honestly
 - [ ] Custom domain purchased and connected (future task)
+
+## Cloud access activation
+
+The dedicated Mars Atlas project has been created and secured. See [local-sql/README.md](../local-sql/README.md) for Auth redirect URLs and the security checklist. Before publicly inviting accounts, test sign-up confirmation, sign-in, cloud save/open and sharing across two different users. Never share a private service key.

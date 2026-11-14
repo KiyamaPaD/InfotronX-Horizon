@@ -22,6 +22,6 @@ Use [docs/BETA_TESTING.md](docs/BETA_TESTING.md). At a minimum, check map imager
 
 ## Limitations
 
-Mission storage is currently browser-local. `supabase/schema.sql` is proposed, not deployed. Public image tiles and the bundled USGS/NASA numerical DEM have separate loading/error paths. The route scenarios are **not** certified planetary navigation or verified hazards.
+Mission storage works in the browser, with additional explicit saving/loading through the dedicated RLS-secured Mars Atlas Supabase project. Test email confirmation URLs, account flows and access with two users before public beta. Public image tiles and the bundled USGS/NASA numerical DEM have separate loading/error paths. The route scenarios are **not** certified planetary navigation or verified hazards.
 
 A purchased domain comes later; do not block testing on DNS.
