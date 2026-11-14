@@ -467,3 +467,14 @@
 {
     white-space:nowrap;
 }
+
+
+/* On shorter desktop viewports, position map tools above the distance badge. */
+@media (min-width:1201px) and (max-height:820px)
+{
+    .map-wrap .map-controls
+    {
+        top:128px;
+        bottom:auto;
+    }
+}
