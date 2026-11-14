@@ -19,7 +19,11 @@ A manual-first Mars mission-planning workspace developed by **InfotronX Horizon*
 - **Compare route alternatives:** inspect A*, D* Lite replanning, bounded multi-objective route searches, and user-defined hypothetical exclusion zones.
 - **Explore real terrain data:** study a limited-area USGS/NASA Mars Reconnaissance Orbiter CTX elevation clip near Jezero alongside NASA Mars Trek imagery layers.
 - **Analyze terrain:** elevation and slope profiles, local roughness, line of sight, reachability, contours, and experimental scientific models.
-- **Take your work with you:** on-device checkpoints, JSON/GeoJSON exports, mission links and an authenticated cloud library.
+- **Take your work with you:** on-device checkpoints, JSON/GeoJSON exports, mission links and an authenticated cloud library with sharing by teammate email.
+
+## Explore and analyze
+
+The map loads NASA Mars Trek imagery with bounded tile caching and throttled wheel zoom. Science tools are organized into **Overview**, **Terrain**, **Models** and **Mission**, with quick access to individual calculations. Route geometry remains fully editable without an AI assistant.
 
 ## Current product status
 
@@ -30,7 +34,7 @@ A manual-first Mars mission-planning workspace developed by **InfotronX Horizon*
 | NASA/USGS DEM | Bundled numerical clip, **not** a complete Jezero elevation survey |
 | NASA background maps | External image services; actual tile loading depends on connectivity |
 | Mission saving | Browser-local storage, user exports and an optional authenticated Supabase cloud library |
-| Team account access | Authenticated cloud save/open with per-mission viewer/editor roles; email links and real-user flows need verification |
+| Team account access | Authenticated cloud save/open with per-mission viewer/editor roles; email-based viewer/editor access (no automatic invitation emails); real-user flows need verification |
 | Live simultaneous editing | **Not implemented** — cloud snapshots are opened and saved explicitly |
 | Rover/astronaut safety certification | **Not provided** |
 

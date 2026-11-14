@@ -37,4 +37,8 @@ Historical V3–V9 research reports remain under `docs/` for reference; the inst
 
 ## Cloud connection — November 2026
 
-The dedicated Mars Atlas Supabase project (`yuvdrjptwumbfzjsimoe`) is active. Three tables have RLS policies for mission owners, editors and viewers. Security Advisor found zero security issues and simulated multi-user tests passed with full rollback. A public publishable key is configured in the frontend, but email confirmation redirects and real-account cloud saving/sharing need browser verification. MathHard was paused separately, without data migration or deletion.
+The dedicated Mars Atlas Supabase project (`yuvdrjptwumbfzjsimoe`) is active. Four tables have RLS policies for mission owners, editors and viewers. Database RLS and simulated email-invitation tests passed; the Auth advisor currently warns that leaked-password protection is disabled and simulated multi-user tests passed with full rollback. A public publishable key is configured in the frontend, but real-account cloud saving and email sharing still need end-to-end browser verification. MathHard was paused separately, without data migration or deletion.
+
+## Map and Analytics performance
+
+Wheel zoom events are batched, canvas overlay updates are coalesced to animation frames, tile requests reuse verified formats and successful cached imagery, and failed tiles can be retried. Dragging a waypoint now persists its position and refreshes full analytics when the drag ends rather than for every pointer event. Analytics groups calculations into Overview, Terrain, Models and Mission, with data-source labels corrected. These are code-level fixes; measured browser performance and high-zoom coverage still require desktop/mobile testing.
