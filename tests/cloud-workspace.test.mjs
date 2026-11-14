@@ -18,8 +18,9 @@ test("sharing always uses a selected cloud mission owned by the signer", () =>
 {
     assert.match(ui, /const row = selectedMission\(\)/);
     assert.match(ui, /row\.owner_id !== cloud\.user\?\.id/);
-    assert.match(ui, /cloud\.inviteMember\(row\.id, memberId, access\)/);
+    assert.match(ui, /cloud\.shareByEmail\(row\.id, email, access\)/);
     assert.match(ui, /cloud\.removeMember\(row\.id, member\.user_id\)/);
+    assert.match(ui, /cloud\.cancelPendingInvitation\(row\.id, invite\.email\)/);
     assert.match(ui, /await updateLibrary\(store\.current\.id\)/);
 });
 
@@ -29,5 +30,6 @@ test("account UI keeps local editing separate and reports auth errors", () =>
     assert.match(ui, /store\.loadCloudMission\(mission\)/);
     assert.match(ui, /catch \(error\)/);
     assert.match(ui, /Check your email to confirm your account/);
-    assert.match(ui, /Copy ID/);
+    assert.match(ui, /Share by email/);
+    assert.doesNotMatch(ui, /cloud-copy-id|cloud-member-id/);
 });

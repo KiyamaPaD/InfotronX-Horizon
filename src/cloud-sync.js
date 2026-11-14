@@ -93,6 +93,7 @@ export class MissionCloud
     async listMissions()
     {
         this.requireUser();
+        await this.claimEmailInvitations();
         return assertResult(await this.client.from("mars_missions")
             .select("id,title,owner_id,revision,updated_at")
             .order("updated_at", { ascending: false }).limit(60));
@@ -186,6 +187,43 @@ export class MissionCloud
         return { revision: saved.revision, snapshotSaved: !snapshot.error };
     }
 
+    async claimEmailInvitations()
+    {
+        this.requireUser();
+        return assertResult(await this.client.rpc("mars_claim_email_invitations"));
+    }
+
+    async shareByEmail(missionId, email, access)
+    {
+        this.requireUser();
+
+        if (!UUID.test(missionId) || !/^[^ @]+@[^ @]+\.[^ @]+$/.test(email.trim()) || !["viewer", "editor"].includes(access))
+        {
+            throw new Error("Enter a valid teammate email and permission.");
+        }
+
+        return assertResult(await this.client.rpc("mars_share_by_email", {
+            p_mission_id: missionId,
+            p_email: email.trim().toLowerCase(),
+            p_access: access
+        }));
+    }
+
+    async listPendingInvitations(missionId)
+    {
+        this.requireUser();
+        return assertResult(await this.client.from("mars_email_invitations")
+            .select("email,access,created_at").eq("mission_id", missionId)
+            .order("created_at", { ascending: false }));
+    }
+
+    async cancelPendingInvitation(missionId, email)
+    {
+        this.requireUser();
+        assertResult(await this.client.from("mars_email_invitations")
+            .delete().eq("mission_id", missionId).eq("email", email));
+    }
+
     async inviteMember(missionId, userId, access)
     {
         this.requireUser();
@@ -203,8 +241,7 @@ export class MissionCloud
     async listMembers(missionId)
     {
         this.requireUser();
-        return assertResult(await this.client.from("mars_mission_members")
-            .select("user_id,access").eq("mission_id", missionId));
+        return assertResult(await this.client.rpc("mars_member_directory", { p_mission_id: missionId }));
     }
 
     async removeMember(missionId, userId)

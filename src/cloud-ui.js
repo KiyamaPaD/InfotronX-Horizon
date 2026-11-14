@@ -29,16 +29,13 @@ export function mountCloudWorkspace({ store, notify })
         '<label class="cloud-label">Cloud missions<select id="cloud-missions" aria-label="Choose a cloud mission"></select></label>',
         '<div class="cloud-actions"><button id="cloud-open" type="button" class="btn btn-outline">Open selected mission</button>',
         '<button id="cloud-signout" type="button" class="btn btn-muted">Sign out</button></div>',
-        '<div class="cloud-identity"><h3>Your account ID</h3>',
-        '<p>Send this ID only to a teammate who needs to share a mission with you. It is not a password.</p>',
-        '<div class="cloud-identity-row"><input id="cloud-account-id" readonly aria-label="Your account ID" />',
-        '<button id="cloud-copy-id" type="button" class="btn btn-outline">Copy ID</button></div></div>',
         '<div class="cloud-share" id="cloud-share" hidden><h3>Share selected mission</h3>',
-        '<p>Choose a mission you own from the list above. Add teammates as viewers or editors.</p>',
-        '<label>Teammate account ID<input id="cloud-member-id" placeholder="Paste teammate account ID" autocomplete="off" spellcheck="false" /></label>',
+        '<p>Choose a mission you own, enter your teammate\'s email and select a role. They can access it after signing in with that address. No invitation email is sent automatically.</p>',
+        '<label>Teammate email<input id="cloud-member-email" type="email" maxlength="254" placeholder="teammate@example.com" autocomplete="off" /></label>',
         '<label>Access<select id="cloud-member-access"><option value="viewer">Can view</option><option value="editor">Can edit</option></select></label>',
-        '<button id="cloud-invite" type="button" class="btn btn-outline">Give access</button>',
-        '<div id="cloud-members" class="cloud-members" aria-live="polite"></div></div></div>'
+        '<button id="cloud-invite" type="button" class="btn btn-outline">Share by email</button>',
+        '<div id="cloud-members" class="cloud-members" aria-live="polite"></div>',
+        '<div id="cloud-pending" class="cloud-members" aria-live="polite"></div></div></div>'
     ].join("");
     document.body.append(dialog);
 
@@ -51,7 +48,6 @@ export function mountCloudWorkspace({ store, notify })
         get("#cloud-session").hidden = !user;
         account.textContent = user ? "My account" : "Account";
         get("#cloud-email").textContent = user ? "Signed in as " + (user.email || "user") : "";
-        get("#cloud-account-id").value = user?.id || "";
         get("#cloud-status").textContent = user ? "Your cloud library is available." : "Sign in to access your cloud missions.";
 
         if (!user)
@@ -78,22 +74,25 @@ export function mountCloudWorkspace({ store, notify })
         const isOwner = row && cloud.user && row.owner_id === cloud.user.id;
         get("#cloud-share").hidden = !isOwner;
         const list = get("#cloud-members");
+        const pendingList = get("#cloud-pending");
         list.replaceChildren();
+        pendingList.replaceChildren();
 
         if (!isOwner)
         {
             return;
         }
 
-        const members = await cloud.listMembers(row.id);
+        const [members, pending] = await Promise.all([
+            cloud.listMembers(row.id),
+            cloud.listPendingInvitations(row.id)
+        ]);
 
-        if (!members.length)
+        if (members.length)
         {
-            const empty = document.createElement("p");
-            empty.className = "section-help";
-            empty.textContent = "No teammates have access to this mission.";
-            list.append(empty);
-            return;
+            const title = document.createElement("h4");
+            title.textContent = "Shared with";
+            list.append(title);
         }
 
         for (const member of members)
@@ -101,17 +100,15 @@ export function mountCloudWorkspace({ store, notify })
             const item = document.createElement("div");
             item.className = "cloud-member-row";
             const info = document.createElement("span");
-            info.textContent = member.user_id.slice(0, 8) + "… · " + (member.access === "editor" ? "Editor" : "Viewer");
-            info.title = member.user_id;
+            info.textContent = member.email + " · " + (member.access === "editor" ? "Can edit" : "Can view");
 
             const remove = document.createElement("button");
             remove.type = "button";
             remove.className = "btn btn-muted";
             remove.textContent = "Revoke";
-            remove.setAttribute("aria-label", "Revoke access for account " + member.user_id);
             remove.addEventListener("click", () => run(async () =>
             {
-                if (!window.confirm("Remove this teammate's access to the selected mission?"))
+                if (!window.confirm("Remove this teammate's access?"))
                 {
                     return;
                 }
@@ -123,6 +120,43 @@ export function mountCloudWorkspace({ store, notify })
 
             item.append(info, remove);
             list.append(item);
+        }
+
+        if (pending.length)
+        {
+            const title = document.createElement("h4");
+            title.textContent = "Waiting for sign-in";
+            pendingList.append(title);
+        }
+
+        for (const invite of pending)
+        {
+            const item = document.createElement("div");
+            item.className = "cloud-member-row";
+            const info = document.createElement("span");
+            info.textContent = invite.email + " · " + (invite.access === "editor" ? "Can edit" : "Can view");
+
+            const cancel = document.createElement("button");
+            cancel.type = "button";
+            cancel.className = "btn btn-muted";
+            cancel.textContent = "Cancel";
+            cancel.addEventListener("click", () => run(async () =>
+            {
+                await cloud.cancelPendingInvitation(row.id, invite.email);
+                await refreshMembers();
+                message("Pending invitation cancelled.");
+            }));
+
+            item.append(info, cancel);
+            pendingList.append(item);
+        }
+
+        if (!members.length && !pending.length)
+        {
+            const empty = document.createElement("p");
+            empty.className = "section-help";
+            empty.textContent = "This mission is private. Share it with a teammate by email.";
+            list.append(empty);
         }
     }
 
@@ -275,12 +309,6 @@ export function mountCloudWorkspace({ store, notify })
         message("Signed out. On-device missions remain available.");
     }));
 
-    get("#cloud-copy-id").addEventListener("click", () => run(async () =>
-    {
-        await navigator.clipboard.writeText(cloud.user.id);
-        message("Account ID copied.");
-    }));
-
     get("#cloud-invite").addEventListener("click", () => run(async () =>
     {
         const row = selectedMission();
@@ -290,12 +318,12 @@ export function mountCloudWorkspace({ store, notify })
             throw new Error("Choose a cloud mission you own before sharing it.");
         }
 
-        const memberId = get("#cloud-member-id").value.trim();
+        const email = get("#cloud-member-email").value.trim();
         const access = get("#cloud-member-access").value;
-        await cloud.inviteMember(row.id, memberId, access);
-        get("#cloud-member-id").value = "";
+        await cloud.shareByEmail(row.id, email, access);
+        get("#cloud-member-email").value = "";
         await refreshMembers();
-        message("Mission access granted.");
+        message("Access saved. Ask your teammate to open Mars Atlas and sign in using that email.");
     }));
 
     cloud.initialize().then(enabled =>
