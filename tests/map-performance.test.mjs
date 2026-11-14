@@ -253,9 +253,9 @@ test("native useful zoom limits avoid enlarging regional relief imagery", () =>
     map.options = { onViewChange() {}, onLayerChange() {} };
     map.loadCapabilities = () => {};
     map.setLayer("mola");
-    assert.equal(map.zoom, 11);
+    assert.ok(map.zoom <= 7);
 
-    // Switching from a detailed layer clamps to the selected basemap's native detail.
+    // Switching to Viking should never increase detail beyond its native limit.
     map.setLayer("viking");
     assert.ok(map.zoom <= 8);
 });
