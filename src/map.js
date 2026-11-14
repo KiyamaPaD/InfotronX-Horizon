@@ -345,7 +345,13 @@ export class MarsMap
 
         if (preferred)
         {
-            candidates.sort((left, right) => Number(right.includes(preferred)) - Number(left.includes(preferred)));
+            const verifiedCandidates = candidates.filter(candidate =>
+                candidate.includes(`/default/${preferred.matrixSet}/`) && candidate.endsWith(`.${preferred.extension}`));
+
+            if (verifiedCandidates.length)
+            {
+                candidates.splice(0, candidates.length, ...verifiedCandidates);
+            }
         }
 
         image.dataset.state = "loading";
@@ -367,7 +373,7 @@ export class MarsMap
 
             if (match)
             {
-                this.preferredTileSuffix.set(this.layer.id, `/default/${match[1]}/`);
+                this.preferredTileSuffix.set(this.layer.id, { matrixSet: match[1], extension: match[2] });
             }
 
             this.updateImageryStatus();
