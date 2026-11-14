@@ -12,22 +12,99 @@ export function setupAnalyticsNavigation(panel)
         return;
     }
 
+    const groupDefinitions = [
+        { id: "overview", label: "Overview", items: ["MISSION TELEMETRY", "SEGMENT DISTANCES", "ROUTE INSPECTOR", "WAYPOINT COORDINATES"] },
+        { id: "terrain", label: "Terrain", items: ["DEM ROUTE LAB", "TERRAIN INTELLIGENCE", "ADVANCED MATHEMATICS LAB"] },
+        { id: "models", label: "Models", items: ["MARSWALK RESOURCE MODEL", "MISSION STRESS LAB", "ADVANCED ALGORITHMS"] },
+        { id: "mission", label: "Mission", items: ["MISSION CHECKPOINTS", "ROUTE INSIGHTS", "DATA SOURCES", "DATA INTEGRITY"] }
+    ];
+
+    const groups = new Map();
     const quickbar = document.createElement("div");
     quickbar.className = "analytics-quickbar";
 
+    const categories = document.createElement("div");
+    categories.className = "analytics-categories";
+    categories.setAttribute("role", "group");
+    categories.setAttribute("aria-label", "Science workspace categories");
+
     const label = document.createElement("label");
     label.htmlFor = "analytics-section-select";
-    label.textContent = "QUICK ACCESS";
+    label.textContent = "GO TO TOOL";
 
     const select = document.createElement("select");
     select.id = "analytics-section-select";
     select.setAttribute("aria-label", "Jump to a science section");
-    select.appendChild(new Option("Choose a section…", ""));
 
     const toggleAll = document.createElement("button");
     toggleAll.type = "button";
     toggleAll.className = "analytics-toggle-all";
-    toggleAll.textContent = "Expand all";
+    toggleAll.textContent = "Expand group";
+
+    let activeGroup = "overview";
+
+    function visibleSections()
+    {
+        return sections.filter(section => section.dataset.analyticsGroup === activeGroup);
+    }
+
+    function updateToggleAll()
+    {
+        toggleAll.textContent = visibleSections().some(section => section.classList.contains("analytics-collapsed"))
+            ? "Expand group" : "Collapse group";
+    }
+
+    function setExpanded(section, expanded)
+    {
+        section.classList.toggle("analytics-collapsed", !expanded);
+        const toggle = section.querySelector(".analytics-section-toggle");
+
+        if (toggle)
+        {
+            toggle.textContent = expanded ? "−" : "+";
+            toggle.setAttribute("aria-expanded", String(expanded));
+        }
+    }
+
+    function showGroup(group)
+    {
+        activeGroup = group;
+        select.replaceChildren();
+        select.add(new Option("Choose a tool…", ""));
+
+        for (const section of sections)
+        {
+            const visible = section.dataset.analyticsGroup === group;
+            section.hidden = !visible;
+
+            if (visible)
+            {
+                select.add(new Option(section.dataset.analyticsTitle, section.id));
+            }
+        }
+
+        categories.querySelectorAll("button").forEach(button =>
+        {
+            const selected = button.dataset.group === group;
+            button.classList.toggle("active", selected);
+            button.setAttribute("aria-pressed", String(selected));
+        });
+
+        updateToggleAll();
+        panel.scrollTop = 0;
+        window.dispatchEvent(new Event("resize"));
+    }
+
+    for (const definition of groupDefinitions)
+    {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.dataset.group = definition.id;
+        button.textContent = definition.label;
+        button.setAttribute("aria-pressed", String(definition.id === activeGroup));
+        button.addEventListener("click", () => showGroup(definition.id));
+        categories.append(button);
+    }
 
     sections.forEach((section, index) =>
     {
@@ -39,54 +116,44 @@ export function setupAnalyticsNavigation(panel)
             return;
         }
 
-        const name = heading.textContent.trim().replace(/\s+/g, " ");
+        const title = heading.textContent.trim().replace(/\s+/g, " ");
+        const group = groupDefinitions.find(definition => definition.items.includes(title))?.id || "models";
+        const expanded = title === "MISSION TELEMETRY" || title === "DEM ROUTE LAB" || title === "MARSWALK RESOURCE MODEL";
         const id = "analytics-section-" + index;
-        const expanded = name === "MISSION TELEMETRY" || name === "DEM ROUTE LAB";
         section.id = id;
+        section.dataset.analyticsGroup = group;
+        section.dataset.analyticsTitle = title.toLowerCase().replace(/\b\w/g, letter => letter.toUpperCase());
         section.classList.add("analytics-collapsible");
         section.classList.toggle("analytics-collapsed", !expanded);
-        select.appendChild(new Option(name.toLowerCase().replace(/\b\w/g, letter => letter.toUpperCase()), id));
+        groups.set(id, section);
 
         const toggle = document.createElement("button");
         toggle.className = "analytics-section-toggle";
         toggle.type = "button";
-        toggle.setAttribute("aria-label", "Toggle " + name.toLowerCase());
+        toggle.setAttribute("aria-label", "Toggle " + title.toLowerCase());
         toggle.setAttribute("aria-expanded", String(expanded));
         toggle.textContent = expanded ? "−" : "+";
-        header.appendChild(toggle);
+        header.append(toggle);
 
         toggle.addEventListener("click", () =>
         {
-            const nowExpanded = section.classList.toggle("analytics-collapsed") === false;
-            toggle.setAttribute("aria-expanded", String(nowExpanded));
-            toggle.textContent = nowExpanded ? "−" : "+";
-            toggleAll.textContent = sections.some(item => item.classList.contains("analytics-collapsed")) ? "Expand all" : "Collapse extras";
-
-            if (nowExpanded)
-            {
-                window.dispatchEvent(new Event("resize"));
-            }
+            setExpanded(section, section.classList.contains("analytics-collapsed"));
+            updateToggleAll();
+            window.dispatchEvent(new Event("resize"));
         });
     });
 
     select.addEventListener("change", () =>
     {
-        const section = document.getElementById(select.value);
+        const section = groups.get(select.value);
 
         if (!section)
         {
             return;
         }
 
-        section.classList.remove("analytics-collapsed");
-        const toggle = section.querySelector(".analytics-section-toggle");
-
-        if (toggle)
-        {
-            toggle.textContent = "−";
-            toggle.setAttribute("aria-expanded", "true");
-        }
-
+        setExpanded(section, true);
+        updateToggleAll();
         requestAnimationFrame(() =>
         {
             section.scrollIntoView({ block: "start", behavior: "smooth" });
@@ -96,26 +163,13 @@ export function setupAnalyticsNavigation(panel)
 
     toggleAll.addEventListener("click", () =>
     {
-        const expand = sections.some(section => section.classList.contains("analytics-collapsed"));
-
-        sections.forEach(section =>
-        {
-            const name = section.querySelector(".section-label")?.textContent.trim();
-            const open = expand || name === "MISSION TELEMETRY" || name === "DEM ROUTE LAB";
-            section.classList.toggle("analytics-collapsed", !open);
-            const toggle = section.querySelector(".analytics-section-toggle");
-
-            if (toggle)
-            {
-                toggle.textContent = open ? "−" : "+";
-                toggle.setAttribute("aria-expanded", String(open));
-            }
-        });
-
-        toggleAll.textContent = expand ? "Collapse extras" : "Expand all";
+        const expand = visibleSections().some(section => section.classList.contains("analytics-collapsed"));
+        visibleSections().forEach(section => setExpanded(section, expand));
+        updateToggleAll();
         window.dispatchEvent(new Event("resize"));
     });
 
-    quickbar.append(label, select, toggleAll);
+    quickbar.append(categories, label, select, toggleAll);
     panel.prepend(quickbar);
+    showGroup(activeGroup);
 }

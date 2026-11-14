@@ -568,3 +568,70 @@
         flex-direction:column;
     }
 }
+
+
+/* Science tools are grouped instead of stacked into one endless sidebar. */
+.analytics-categories
+{
+    grid-column:1/-1;
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:5px;
+}
+
+.analytics-categories button
+{
+    min-width:0;
+    min-height:37px;
+    padding:7px 4px;
+    border:1px solid #344a5a;
+    border-radius:8px;
+    background:#182634;
+    color:#9fbcca;
+    font-size:11px;
+    font-weight:700;
+    cursor:pointer;
+}
+
+.analytics-categories button.active
+{
+    color:#e8fff7;
+    background:#25534d;
+    border-color:#71b8a8;
+}
+
+.analytics-categories button:focus-visible
+{
+    outline:2px solid #a3e4d7;
+    outline-offset:2px;
+}
+
+.analytics-collapsible[hidden]
+{
+    display:none!important;
+}
+
+#analytics-panel .analytics-collapsible
+{
+    scroll-margin-top:151px;
+}
+
+#analytics-panel .analytics-quickbar
+{
+    row-gap:7px;
+    padding:10px 11px 12px;
+}
+
+#analytics-panel .analytics-toggle-all
+{
+    min-width:98px;
+}
+
+@media(max-width:480px)
+{
+    .analytics-categories button
+    {
+        font-size:10px;
+        min-height:39px;
+    }
+}
