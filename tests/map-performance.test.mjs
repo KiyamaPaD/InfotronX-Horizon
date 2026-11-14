@@ -154,3 +154,50 @@ test("Analytics has focused groups and keeps specialized tools accessible", () =
     assert.match(css, /\.analytics-collapsible\[hidden\]/);
     assert.match(js, /select\.append|select\.add/);
 });
+
+
+test("once a NASA tile format works, other tiles avoid duplicate format requests", () =>
+{
+    const original = globalThis.document;
+    const requested = [];
+    let image;
+
+    globalThis.document = {
+        createElement(name)
+        {
+            assert.equal(name, "img");
+            image = {
+                dataset: {},
+                style: {},
+                isConnected: true,
+                set src(value) { requested.push(value); },
+                get src() { return requested.at(-1); }
+            };
+            return image;
+        }
+    };
+
+    try
+    {
+        const map = Object.create(MarsMap.prototype);
+        map.layer = {
+            id: "ctx",
+            extensions: ["jpg", "png"],
+            url: "https://trek.nasa.gov/tiles/Mars/EQ/example/1.0.0"
+        };
+        map.tileTemplates = new Map();
+        map.preferredTileSuffix = new Map([["ctx", { matrixSet: "default028mm", extension: "jpg" }]]);
+        map.updateImageryStatus = () => {};
+        map.createTile(1, 1, 4, 0, 0);
+        assert.equal(requested.length, 1);
+        assert.match(requested[0], /default028mm\/4\/1\/1\.jpg$/);
+
+        image.onerror();
+        assert.equal(requested.length, 1);
+        assert.equal(image.dataset.state, "error");
+    }
+    finally
+    {
+        globalThis.document = original;
+    }
+});
