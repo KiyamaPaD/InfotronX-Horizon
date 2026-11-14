@@ -110,8 +110,9 @@ export function mountCloudWorkspace({ store, notify })
     get("#cloud-auth-form").addEventListener("submit", event =>
     {
         event.preventDefault();
-        const email = event.currentTarget.elements.email.value.trim();
-        const password = event.currentTarget.elements.password.value;
+        const form = event.currentTarget;
+        const email = form.elements.email.value.trim();
+        const password = form.elements.password.value;
         const createAccount = event.submitter?.value === "signup";
 
         run(async () =>
@@ -128,7 +129,7 @@ export function mountCloudWorkspace({ store, notify })
                 await updateLibrary();
             }
 
-            event.currentTarget.elements.password.value = "";
+            form.elements.password.value = "";
         });
     });
 

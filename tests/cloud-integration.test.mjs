@@ -25,7 +25,10 @@ test("cloud actions preserve manual mission ownership and RLS", () =>
     assert.match(client, /auth.signUp/);
     assert.match(client, /mars_missions/);
     assert.match(client, /mars_mission_members/);
-    assert.match(client, /eq\("revision", current.revision\)/);
+    assert.match(client, /eq\("revision", knownRevision\)/);
+    assert.match(client, /this.baseRevisions.set\(id, row.revision\)/);
+    assert.match(client, /knownRevision === undefined/);
+    assert.match(ui, /const form = event.currentTarget/);
     assert.match(store, /loadCloudMission\(candidate\)/);
     assert.match(main, /mountCloudWorkspace/);
 });

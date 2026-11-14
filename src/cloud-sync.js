@@ -20,6 +20,7 @@ export class MissionCloud
     {
         this.client = null;
         this.user = null;
+        this.baseRevisions = new Map();
         this.onUserChange = onUserChange;
     }
 
@@ -42,7 +43,14 @@ export class MissionCloud
         });
         this.client.auth.onAuthStateChange((_event, session) =>
         {
-            this.user = session?.user || null;
+            const nextUser = session?.user || null;
+
+            if (this.user?.id !== nextUser?.id)
+            {
+                this.baseRevisions.clear();
+            }
+
+            this.user = nextUser;
             this.onUserChange(this.user);
         });
         const response = await this.client.auth.getUser();
@@ -78,6 +86,7 @@ export class MissionCloud
     {
         assertResult(await this.client.auth.signOut());
         this.user = null;
+        this.baseRevisions.clear();
         this.onUserChange(null);
     }
 
@@ -99,7 +108,7 @@ export class MissionCloud
         }
 
         const row = assertResult(await this.client.from("mars_missions")
-            .select("payload").eq("id", id).single());
+            .select("payload,revision").eq("id", id).single());
         const mission = validateMission(row.payload);
 
         if (!mission || mission.id !== id)
@@ -107,6 +116,7 @@ export class MissionCloud
             throw new Error("The stored mission cannot be opened.");
         }
 
+        this.baseRevisions.set(id, row.revision);
         return mission;
     }
 
@@ -128,6 +138,18 @@ export class MissionCloud
 
         const current = assertResult(await this.client.from("mars_missions")
             .select("id,revision").eq("id", mission.id).maybeSingle());
+        const knownRevision = this.baseRevisions.get(mission.id);
+
+        if (current && (knownRevision === undefined || current.revision !== knownRevision))
+        {
+            throw new Error("This cloud mission has another revision. Export your local changes before reopening the cloud copy.");
+        }
+
+        if (!current && knownRevision !== undefined)
+        {
+            throw new Error("This mission was removed from the cloud. Export your local copy before trying again.");
+        }
+
         const values = {
             title: mission.title,
             description: mission.description || "",
@@ -145,7 +167,7 @@ export class MissionCloud
         {
             saved = assertResult(await this.client.from("mars_missions")
                 .update({ ...values, revision: current.revision + 1, updated_at: new Date().toISOString() })
-                .eq("id", mission.id).eq("revision", current.revision)
+                .eq("id", mission.id).eq("revision", knownRevision)
                 .select("id,revision").maybeSingle());
 
             if (!saved)
@@ -153,6 +175,8 @@ export class MissionCloud
                 throw new Error("This mission changed in the cloud. Open the latest copy before saving again.");
             }
         }
+
+        this.baseRevisions.set(saved.id, saved.revision);
 
         const snapshot = await this.client.from("mars_mission_versions").insert({
             mission_id: saved.id, editor_id: this.user.id,
