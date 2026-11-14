@@ -1,0 +1,735 @@
+/* Scenario and numeric DEM tools share the existing Mission Control typography. */
+.science-model-section
+{
+    border-left:3px solid #87c9ba;
+    background:linear-gradient(140deg,#16242c 0%,#111a24 70%);
+}
+
+.science-model-section .section-label
+{
+    margin:0;
+    font-size:12px;
+    letter-spacing:.085em;
+    color:#f2f6f9;
+}
+
+.science-model-section .section-help
+{
+    color:#bdcbd6;
+    font-size:13px;
+    line-height:1.65;
+}
+
+.eva-results,.terrain-report
+{
+    display:grid;
+    gap:13px;
+}
+
+.eva-readouts
+{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:8px;
+}
+
+.eva-readouts>div
+{
+    min-width:0;
+    padding:13px 9px;
+    background:#1e2c37;
+    border:1px solid #364b58;
+    border-radius:10px;
+}
+
+.eva-readouts span,.eva-readouts small
+{
+    display:block;
+    color:#c5d1d9;
+    font-size:10px;
+    line-height:1.5;
+}
+
+.eva-readouts strong
+{
+    display:block;
+    color:#f5f8fa;
+    font-size:clamp(15px,1.35vw,18px);
+    font-variant-numeric:tabular-nums;
+    margin:7px 0 4px;
+    overflow-wrap:anywhere;
+}
+
+.eva-budget
+{
+    padding:0 2px;
+}
+
+.eva-budget-heading
+{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    font-size:12px;
+}
+
+.eva-budget-heading strong
+{
+    color:#eaf4f3;
+    font-variant-numeric:tabular-nums;
+    text-align:right;
+}
+
+.eva-track
+{
+    height:9px;
+    border-radius:999px;
+    background:#344657;
+    overflow:hidden;
+    margin:7px 0 3px;
+}
+
+.eva-track span
+{
+    display:block;
+    height:100%;
+    border-radius:inherit;
+    background:linear-gradient(90deg,#5aaf9e,#95dcca);
+}
+
+.eva-over .eva-track span
+{
+    background:#ef9b85;
+}
+
+.eva-budget small,.science-footnote,.elevation-graph small
+{
+    font-size:11px;
+    color:#b1c0cd;
+    line-height:1.6;
+}
+
+.eva-warning,.eva-neutral,.eva-empty
+{
+    padding:11px 13px;
+    margin:0;
+    border-radius:9px;
+    line-height:1.55;
+    font-size:12px;
+}
+
+.eva-warning
+{
+    background:#432e2a;
+    color:#ffcfbf;
+    border:1px solid #925949;
+}
+
+.eva-neutral
+{
+    background:#213c39;
+    color:#c0e6db;
+    border:1px solid #406c61;
+}
+
+.eva-empty
+{
+    background:#1d2a35;
+    color:#ced8e0;
+    border:1px dashed #4c6170;
+}
+
+.science-details
+{
+    margin:17px 0;
+    padding:12px;
+    border:1px solid #3d5463;
+    border-radius:10px;
+    background:#1b2834;
+}
+
+.science-details summary
+{
+    cursor:pointer;
+    font-weight:700;
+    font-size:13px;
+    color:#f2f4f7;
+    padding:4px 2px;
+}
+
+.science-details[open] summary
+{
+    margin-bottom:14px;
+}
+
+.eva-form
+{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:11px;
+}
+
+.eva-form label
+{
+    min-width:0;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    color:#e6edf2;
+    font-weight:600;
+    font-size:12px;
+}
+
+.eva-form label small
+{
+    color:#bac9d6;
+    font-weight:400;
+}
+
+.eva-form input[type="number"]
+{
+    width:100%;
+    min-width:0;
+    min-height:43px;
+    padding:9px 11px;
+    background:#0c1721;
+    color:#f7fafb;
+    border:1px solid #4c6575;
+    border-radius:7px;
+    font-size:14px;
+    font-variant-numeric:tabular-nums;
+}
+
+.eva-form .eva-checkbox
+{
+    grid-column:1/-1;
+    flex-direction:row;
+    align-items:center;
+    gap:10px;
+    padding:6px 0;
+    line-height:1.35;
+}
+
+.eva-checkbox input
+{
+    width:20px;
+    height:20px;
+    accent-color:#91d4c1;
+}
+
+.eva-form button
+{
+    grid-column:1/-1;
+    min-height:43px;
+}
+
+.science-footnote
+{
+    margin:13px 0 0;
+    padding:11px;
+    border-left:2px solid #7a9aa4;
+    background:#182630;
+}
+
+.terrain-upload
+{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    min-height:44px;
+}
+
+.dem-status
+{
+    margin:13px 0;
+    padding:12px;
+    border:1px solid #496272;
+    border-radius:9px;
+    color:#d9e5eb;
+    background:#1b2d38;
+    font-size:12px;
+    line-height:1.5;
+}
+
+.dem-status strong,.dem-status small,.dem-candidate span,.dem-candidate small
+{
+    display:block;
+    line-height:1.65;
+}
+
+.dem-status small
+{
+    color:#bed0da;
+    margin-top:5px;
+    overflow-wrap:anywhere;
+}
+
+.dem-candidate
+{
+    padding:12px;
+    background:#1c3b37;
+    color:#d7f2eb;
+    border:1px solid #518b7d;
+    border-radius:9px;
+    font-size:12px;
+}
+
+.terrain-report
+{
+    margin-top:12px;
+    font-size:12px;
+    color:#d6e4e9;
+}
+
+.terrain-report p
+{
+    margin:0;
+    line-height:1.6;
+}
+
+.elevation-graph
+{
+    margin-top:15px;
+    border:1px solid #364d5b;
+    border-radius:10px;
+    background:#152632;
+    padding:12px;
+}
+
+.elevation-graph svg
+{
+    width:100%;
+    height:auto;
+    display:block;
+    overflow:visible;
+}
+
+.eva-profile-legend
+{
+    display:flex;
+    flex-wrap:wrap;
+    gap:4px 14px;
+    justify-content:space-between;
+    color:#c4d9d7;
+    font-size:11px;
+    margin:3px 0 9px;
+}
+
+.science-model-section button:disabled
+{
+    opacity:.55;
+    cursor:not-allowed;
+}
+
+@media(max-width:420px)
+{
+    .eva-readouts
+    {
+        grid-template-columns:repeat(2,minmax(0,1fr));
+    }
+
+    .eva-readouts>div:last-child
+    {
+        grid-column:1/-1;
+    }
+}
+
+@media(prefers-reduced-motion:reduce)
+{
+    .eva-track span
+    {
+        transition:none;
+    }
+}
+
+.science-label
+{
+    display:grid;
+    gap:7px;
+    margin:10px 0;
+    font-size:12px;
+    font-weight:600;
+    color:#d8e5ec;
+}
+
+.science-label small
+{
+    color:#b8cad3;
+    font-size:11px;
+    font-weight:400;
+}
+
+.science-select,.science-label input
+{
+    width:100%;
+    min-height:42px;
+    box-sizing:border-box;
+    color:#f0f8fa;
+    background:#142330;
+    border:1px solid #557182;
+    border-radius:9px;
+    padding:9px 11px;
+    font:inherit;
+}
+
+.science-select:focus-visible,.science-label input:focus-visible
+{
+    outline:2px solid #91d9c8;
+    outline-offset:2px;
+}
+
+.stress-results,.terrain-strategies
+{
+    display:grid;
+    gap:9px;
+    color:#d8e5ee;
+    font-size:12px;
+    line-height:1.55;
+}
+
+.stress-stat,.strategy-card
+{
+    background:#1c2c38;
+    border:1px solid #385364;
+    border-radius:10px;
+    padding:12px;
+}
+
+.stress-stat span,.strategy-card small
+{
+    display:block;
+    color:#bccfd9;
+    font-size:12px;
+    line-height:1.6;
+}
+
+.stress-stat strong,.strategy-card strong
+{
+    display:block;
+    margin-top:4px;
+    font-size:14px;
+    color:#f5fbfd;
+    overflow-wrap:anywhere;
+}
+
+.strategy-card small
+{
+    margin:6px 0;
+}
+
+.scenario-head
+{
+    font-size:12px;
+    color:#c5d5df;
+}
+
+@media (max-width:600px)
+{
+    .stress-stat,.strategy-card
+    {
+        padding:14px;
+    }
+}
+
+/* V7: terrain intelligence modules */
+.terrain-intelligence-section .intel-stack
+{
+    display: grid;
+    gap: 16px;
+}
+.terrain-intelligence-section .intel-tool
+{
+    border: 1px solid #314353;
+    border-radius: 12px;
+    background: rgba(19, 32, 43, .8);
+    padding: 15px;
+    min-width: 0;
+}
+.terrain-intelligence-section .intel-tool h3
+{
+    font-size: 15px;
+    color: #f0f5fa;
+    font-weight: 700;
+    line-height: 1.5;
+    margin: 0 0 6px;
+}
+.terrain-intelligence-section .intel-input-row
+{
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+    margin: 12px 0;
+}
+.terrain-intelligence-section .intel-input-row label
+{
+    display: grid;
+    gap: 6px;
+    font-size: 12px;
+    color: #d4e0ec;
+}
+.terrain-intelligence-section .intel-input-row input,
+.terrain-intelligence-section input[type="number"]
+{
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 44px;
+    border-radius: 8px;
+    padding: 8px 10px;
+    background: #0d1823;
+    border: 1px solid #526577;
+    color: #f8faff;
+    font: inherit;
+}
+.terrain-intelligence-section .intel-output
+{
+    background: #0c1620;
+    border: 1px solid #304455;
+    border-radius: 9px;
+    color: #d1deea;
+    font-size: 13px;
+    line-height: 1.55;
+    padding: 12px;
+    margin-top: 11px;
+    overflow-wrap: anywhere;
+}
+.terrain-intelligence-section .intel-output strong
+{
+    display: block;
+    color: #eef6fd;
+    font-size: 14px;
+    margin-bottom: 3px;
+}
+.terrain-intelligence-section .intel-output small
+{
+    display: block;
+    font-size: 12px;
+    line-height: 1.55;
+    color: #c2d1de;
+}
+.terrain-intelligence-section .intel-canvas-wrap
+{
+    margin-top: 13px;
+}
+.terrain-intelligence-section #intel-raster
+{
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 1px solid #3c5265;
+    border-radius: 9px;
+    background: #142230;
+    image-rendering: pixelated;
+}
+.terrain-intelligence-section .intel-raster-legend
+{
+    margin-top: 8px;
+    font-size: 12px;
+    line-height: 1.55;
+    color: #c2d1de;
+}
+
+/* Multi-resolution height-contrast table */
+.intel-haar-table { display: flex; flex-direction: column; gap: 0.45rem; margin: 0.75rem 0; }
+.intel-haar-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-bottom: 1px solid var(--line, #334155); padding: 0.45rem 0; font-variant-numeric: tabular-nums; }
+.intel-haar-row span { color: var(--muted, #b5c2d0); }
+
+/* V8 applied mathematics lab: spacious, legible, keyboard-accessible. */
+.advanced-math-section .intel-tool
+{
+    border:1px solid #3b5667;
+    border-radius:11px;
+    padding:14px;
+    background:#111f2b;
+}
+
+.advanced-math-section .intel-tool h3
+{
+    font-size:15px;
+    line-height:1.5;
+    margin:0 0 7px;
+}
+
+.advanced-math-section .science-label
+{
+    display:grid;
+    gap:8px;
+    font-size:14px;
+    margin:12px 0;
+}
+
+.advanced-math-section input[type="number"], .advanced-math-section select
+{
+    width:100%;
+    min-height:45px;
+    font-size:15px;
+    padding:9px 11px;
+    border:1px solid #5a7687;
+    color:#f0f7fa;
+    background:#101b28;
+    border-radius:8px;
+}
+
+.advanced-math-section button
+{
+    min-height:44px;
+}
+
+.advanced-math-section button:focus-visible, .advanced-math-section input:focus-visible, .advanced-math-section select:focus-visible
+{
+    outline:2px solid #91d9c8;
+    outline-offset:2px;
+}
+
+.math-band
+{
+    display:grid;
+    grid-template-columns:minmax(0, 1.25fr) minmax(52px, 1fr) 48px;
+    gap:9px;
+    align-items:center;
+    margin-top:9px;
+    font-size:12px;
+}
+
+.math-band span:first-child
+{
+    color:#d2e0ea;
+}
+
+.math-track
+{
+    height:11px;
+    border-radius:5px;
+    background:#243746;
+    overflow:hidden;
+}
+
+.math-track > span
+{
+    display:block;
+    height:100%;
+    border-radius:5px;
+    background:#85ceb9;
+}
+
+.math-map-wrap
+{
+    display:grid;
+    gap:8px;
+    margin-top:12px;
+}
+
+.math-map-wrap canvas
+{
+    width:100%;
+    max-height:360px;
+    object-fit:contain;
+    image-rendering:pixelated;
+    background:#0d1720;
+    border:1px solid #476173;
+    border-radius:8px;
+}
+
+.math-map-wrap small, .advanced-math-section .intel-output small
+{
+    display:block;
+    color:#c3d2dc;
+    font-size:12px;
+    line-height:1.5;
+}
+
+.math-risk-row
+{
+    display:grid;
+    gap:4px;
+    border-top:1px solid #395064;
+    padding:10px 0;
+}
+
+@media(max-width:680px)
+{
+    .math-band
+    {
+        grid-template-columns:minmax(0,1.25fr) minmax(40px,1fr) 42px;
+        font-size:11px;
+    }
+}
+
+/* Experimental mathematics controls: readable and touch-friendly on phones. */
+.math-research-v9 .intel-tool
+{
+    display:grid;
+    gap:10px;
+}
+
+.math-research-v9 .v9-actions, .math-research-v9 .v9-results
+{
+    display:grid;
+    gap:9px;
+}
+
+.math-research-v9 .v9-route-option
+{
+    padding:12px;
+    display:grid;
+    gap:7px;
+    border:1px solid #3c5567;
+    border-radius:10px;
+    background:#132332;
+}
+
+.math-research-v9 .v9-route-option small,
+.math-research-v9 .intel-output small
+{
+    color:#cad9e2;
+    font-size:12px;
+    line-height:1.5;
+    display:block;
+    overflow-wrap:anywhere;
+}
+
+.math-research-v9 .v9-parameter-grid
+{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:10px;
+}
+
+.math-research-v9 .v9-parameter-grid label
+{
+    display:grid;
+    gap:5px;
+    font-size:12px;
+    color:#d4e1e9;
+}
+
+.math-research-v9 .v9-parameter-grid input
+{
+    width:100%;
+    min-height:44px;
+    background:#111f2b;
+    color:#f5faff;
+    border:1px solid #547082;
+    border-radius:8px;
+    padding:8px;
+}
+
+.math-research-v9 button
+{
+    min-height:44px;
+}
+
+.math-research-v9 :is(button,input):focus-visible
+{
+    outline:2px solid #91d9c8;
+    outline-offset:2px;
+}
+
+@media(max-width:390px)
+{
+    .math-research-v9 .v9-parameter-grid
+    {
+        grid-template-columns:1fr;
+    }
+}

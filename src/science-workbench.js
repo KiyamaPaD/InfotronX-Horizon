@@ -1,0 +1,692 @@
+import { analyzeRoute, formatDistance } from "./geo.js";
+import { estimateMarswalk, DEFAULT_EVA_ASSUMPTIONS } from "./resources.js";
+import { planRouteOnDem, profileRouteOnDem, validateDem } from "./terrain.js";
+import { compareTerrainStrategies, estimateResourceEnvelope, measureRouteChange } from "./mission-scenarios.js";
+import { loadJezeroDem } from "./bundled-dem.js";
+import { mountTerrainIntelligence } from "./terrain-intelligence-ui.js";
+import { mountAdvancedMathematics } from "./advanced-math-ui.js";
+import { mountMissionResearch } from "./mission-research-ui.js";
+
+const escapeText = value => String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
+const formatHours = value => `${Math.floor(value)}h ${String(Math.round((value % 1) * 60)).padStart(2, "0")}m`;
+const formatNumber = (value, decimals = 1) => Number(value).toLocaleString("en-US", { maximumFractionDigits: decimals });
+
+function budgetMarkup(title, used, available, unit)
+{
+    const ratio = available > 0 ? used / available : 0;
+    const percent = Math.max(0, Math.min(100, ratio * 100));
+    const over = used > available;
+
+    return `<div class="eva-budget ${over ? "eva-over" : ""}"><div class="eva-budget-heading"><span>${escapeText(title)}</span><strong>${formatNumber(used, 2)} / ${formatNumber(available, 2)} ${unit}</strong></div><div class="eva-track" role="meter" aria-label="${escapeText(title)} budget used" aria-valuemin="0" aria-valuemax="${available}" aria-valuenow="${Math.min(used, available)}"><span style="width:${percent}%"></span></div><small>${over ? "Above the illustrative reserve-adjusted budget" : "Within the numerical scenario budget, not a safety assessment"}</small></div>`;
+}
+
+function plotElevation(profile)
+{
+    const known = profile.samples.filter(sample => sample.elevationMeters !== null);
+
+    if (!known.length)
+    {
+        return `<p class="eva-empty">No altitude samples overlap the active route.</p>`;
+    }
+
+    const min = known.reduce((lowest, item) => Math.min(lowest, item.elevationMeters), Infinity);
+    const max = known.reduce((highest, item) => Math.max(highest, item.elevationMeters), -Infinity);
+    const span = Math.max(1, max - min);
+    const total = Math.max(1, profile.samples.at(-1).distanceMeters);
+    const paths = [];
+    let command = "";
+
+    for (const sample of profile.samples)
+    {
+        if (sample.elevationMeters === null)
+        {
+            if (command)
+            {
+                paths.push(command);
+            }
+
+            command = "";
+            continue;
+        }
+
+        const x = 12 + sample.distanceMeters / total * 296;
+        const y = 120 - (sample.elevationMeters - min) / span * 96;
+        command += `${command ? " L" : "M"}${x.toFixed(2)} ${y.toFixed(2)}`;
+    }
+
+    if (command)
+    {
+        paths.push(command);
+    }
+
+    const lines = paths.map(path => `<path d="${path}" stroke="#93dac9" stroke-width="2.5" fill="none" stroke-linecap="round"/>`).join("");
+
+    return `<div class="elevation-graph"><svg viewBox="0 0 320 148" role="img" aria-label="Elevation profile from imported DEM, minimum ${formatNumber(min)} meters and maximum ${formatNumber(max)} meters"><line x1="12" x2="308" y1="120" y2="120" stroke="#456071"/><line x1="12" x2="12" y1="22" y2="120" stroke="#456071"/>${lines}</svg><div class="eva-profile-legend"><span>${formatNumber(min)}–${formatNumber(max)} m elevation</span><span>${formatDistance(total)} route</span></div><small>${profile.complete ? "DEM samples cover the route." : "Partial coverage: data gaps intentionally break the profile."} Measured from the selected numeric grid. Source provenance is shown in DEM Route Lab; not an EVA safety certification.</small></div>`;
+}
+
+export function initScienceWorkbench({ store, map, notify })
+{
+    const panel = document.querySelector("#analytics-panel");
+    const inspector = document.querySelector("#route-inspector")?.closest(".panel-section");
+
+    if (!panel || !inspector)
+    {
+        throw new Error("Science workspace host is missing.");
+    }
+
+    const resources = document.createElement("section");
+    resources.className = "panel-section science-model-section";
+    resources.setAttribute("aria-labelledby", "eva-model-heading");
+    resources.innerHTML = `
+        <div class="panel-title-row"><h2 id="eva-model-heading" class="section-label">MARSWALK RESOURCE MODEL</h2><span class="tiny-pill amber">SCENARIO</span></div>
+        <p class="section-help">Compare time, O₂ and energy using your own assumptions. These are <strong>not NASA suit telemetry</strong> or a safety approval.</p>
+        <div id="eva-results" class="eva-results" aria-live="polite"></div>
+        <details class="science-details" id="eva-assumptions"><summary>Adjust model assumptions</summary>
+            <form id="eva-form" class="eva-form">
+                <label>Walking speed <small>km/h</small><input name="speedKmh" type="number" min="0.1" max="12" step="0.1" required /></label>
+                <label>Science stops <small>minutes</small><input name="observationMinutes" type="number" min="0" max="720" step="1" required /></label>
+                <label>O₂ use <small>kg/hour</small><input name="oxygenKgPerHour" type="number" min="0.001" max="3" step="0.001" required /></label>
+                <label>O₂ available <small>kg</small><input name="oxygenAvailableKg" type="number" min="0.001" max="50" step="0.01" required /></label>
+                <label>Suit power <small>watts</small><input name="batteryWatts" type="number" min="1" max="5000" step="1" required /></label>
+                <label>Battery available <small>Wh</small><input name="batteryAvailableWh" type="number" min="1" max="30000" step="1" required /></label>
+                <label>Reserve <small>percent</small><input name="reservePercent" type="number" min="0" max="90" step="1" required /></label>
+                <label>Time allowance <small>hours</small><input name="maxDurationHours" type="number" min="0.1" max="48" step="0.1" required /></label>
+                <label class="eva-checkbox"><input name="retraceReturn" type="checkbox" /> Retrace the route to return to base</label>
+                <button type="submit" class="btn btn-accent wide">Calculate and save scenario</button>
+                <button type="button" class="btn btn-outline wide" data-eva-reset>Reset example assumptions</button>
+            </form>
+        </details>
+        <p class="science-footnote">Illustrative rates only. Walking time ignores vertical terrain, obstacles, rests and Earth/Mars physiological validation. Reserve applies to available oxygen, battery and time.</p>
+    `;
+
+    const stress = document.createElement("section");
+    stress.className = "panel-section science-model-section";
+    stress.setAttribute("aria-labelledby", "stress-heading");
+    stress.innerHTML = `
+        <div class="panel-title-row"><h2 id="stress-heading" class="section-label">MISSION STRESS LAB</h2><span class="tiny-pill">SENSITIVITY</span></div>
+        <p class="section-help">Explore how uncertain speed and resource-use assumptions change the outcome. The frequencies below are <strong>synthetic model results</strong>, not calibrated mission risks.</p>
+        <label class="science-label">Parameter variation <small>uniform, each parameter independent</small>
+            <select id="stress-variation" class="science-select"><option value="10">±10%</option><option value="20" selected>±20%</option><option value="35">±35%</option><option value="50">±50%</option></select>
+        </label>
+        <button type="button" class="btn btn-outline wide" id="stress-run">Run 500 repeatable scenarios</button>
+        <div id="stress-results" class="stress-results" aria-live="polite">Run the sensitivity model after setting your route and resource assumptions.</div>
+    `;
+
+    const terrain = document.createElement("section");
+    terrain.className = "panel-section science-model-section";
+    terrain.setAttribute("aria-labelledby", "terrain-model-heading");
+    terrain.innerHTML = `
+        <div class="panel-title-row"><h2 id="terrain-model-heading" class="section-label">DEM ROUTE LAB</h2><span class="tiny-pill">A* / GRAPH</span></div>
+        <p class="section-help">Import a <strong>numeric</strong> Jezero elevation-grid JSON. A* can then compare routes while avoiding NoData and steep links. Image colors are never treated as elevation.</p>
+        <button type="button" class="btn btn-accent wide" id="dem-load-official">◉ Load official Jezero CTX elevations</button>
+        <label class="btn btn-outline wide terrain-upload">↑ Import my numeric DEM (.json)<input id="dem-file" type="file" accept=".json,application/json" hidden /></label>
+        <div id="dem-status" class="dem-status" role="status">No numeric DEM loaded. Terrain routing unavailable until you import real elevation data.</div>
+        <details class="science-details"><summary>Terrain cost assumptions</summary>
+            <div class="eva-form terrain-options"><label>Max modeled grade <small>%</small><input id="terrain-grade" type="number" min="1" max="100" step="1" value="18" /></label>
+            <label>Slope penalty <small>weight</small><input id="terrain-penalty" type="number" min="0" max="40" step="1" value="6" /></label></div>
+            <p class="section-help">These thresholds are user-selected scenario parameters, not official NASA EVA or rover operating limits.</p>
+        </details>
+        <details class="science-details" id="scenario-exclusion"><summary>What-if: exclusion around a field note</summary>
+            <p class="section-help">Select an existing <strong>user observation</strong> to test a hypothetical no-go area. This does not certify the observation as a real hazard.</p>
+            <label class="science-label">Observation <select id="exclusion-note" class="science-select"><option value="">No exclusion area</option></select></label>
+            <label class="science-label">Exclusion radius <small>meters</small><input id="exclusion-radius" type="number" min="10" max="1000" step="10" value="80" /></label>
+            <p class="science-footnote">The shaded area is illustrative. A* cannot cross excluded cells or cut through excluded corners.</p>
+        </details>
+        <button class="btn btn-accent wide" id="terrain-plan" disabled>Generate a single A* candidate</button>
+        <button class="btn btn-outline wide" id="terrain-compare" disabled>Compare 3 route strategies</button>
+        <div id="terrain-strategies" class="terrain-strategies" aria-live="polite"></div>
+        <div id="terrain-report" class="terrain-report" aria-live="polite"></div>
+        <div id="terrain-profile"></div>
+        <p class="science-footnote">A* uses 8 neighboring grid cells; movement cost is distance × (1 + slope penalty × absolute grade). It prevents cutting diagonally through NoData corners. Imported DEM is session-only and is never silently called NASA-verified.</p>
+    `;
+
+    panel.insertBefore(resources, inspector);
+    panel.insertBefore(stress, inspector);
+    panel.insertBefore(terrain, inspector);
+
+    const evaResults = resources.querySelector("#eva-results");
+    const evaForm = resources.querySelector("#eva-form");
+    const demFile = terrain.querySelector("#dem-file");
+    const officialButton = terrain.querySelector("#dem-load-official");
+    const demStatus = terrain.querySelector("#dem-status");
+    const demReport = terrain.querySelector("#terrain-report");
+    const demButton = terrain.querySelector("#terrain-plan");
+    const compareButton = terrain.querySelector("#terrain-compare");
+    const strategiesPanel = terrain.querySelector("#terrain-strategies");
+    const exclusionSelect = terrain.querySelector("#exclusion-note");
+    const exclusionRadius = terrain.querySelector("#exclusion-radius");
+    const stressRun = stress.querySelector("#stress-run");
+    const stressOutput = stress.querySelector("#stress-results");
+    const stressVariation = stress.querySelector("#stress-variation");
+    let dem = null;
+    let officialLoading = null;
+    let datasetRequestId = 0;
+    let candidates = [];
+    let comparisonSource = null;
+    let sensitivitySignature = null;
+    let sensitivityReport = null;
+    let observationsSignature = null;
+    let terrainMessage = "";
+    let lastMissionId = null;
+    let lastScenarioSignature = null;
+    const intelligence = mountTerrainIntelligence({
+        panel, before: inspector, store,
+        readDem: () => dem,
+        readContext: () => ({
+            zones: scenarioZones(),
+            maxSlopePercent: Number(terrain.querySelector("#terrain-grade").value),
+            slopePenalty: Number(terrain.querySelector("#terrain-penalty").value),
+            speedKmh: (store.current.evaScenario || DEFAULT_EVA_ASSUMPTIONS).speedKmh
+        })
+    });
+
+    const mathematics = mountAdvancedMathematics({ panel, before: inspector, store, readDem: () => dem });
+    const advancedResearch = mountMissionResearch({ panel, before: inspector, store, map, notify, readDem: () => dem, readContext: () => ({ zones: scenarioZones(), maxSlopePercent: Number(terrain.querySelector("#terrain-grade").value), slopePenalty: Number(terrain.querySelector("#terrain-penalty").value) }) });
+
+    function applyAssumptions(assumptions)
+    {
+        for (const [key, value] of Object.entries(assumptions))
+        {
+            const input = evaForm.elements.namedItem(key);
+
+            if (input)
+            {
+                if (input.type === "checkbox")
+                {
+                    input.checked = value;
+                }
+                else
+                {
+                    input.value = String(value);
+                }
+            }
+        }
+    }
+
+    function scenarioZones()
+    {
+        const selected = store.current.observations.find(item => item.id === exclusionSelect.value);
+        const radiusMeters = Number(exclusionRadius.value);
+
+        if (!selected || !Number.isFinite(radiusMeters) || radiusMeters < 10 || radiusMeters > 1000)
+        {
+            return [];
+        }
+
+        return [{ id: selected.id, lat: selected.lat, lon: selected.lon, radiusMeters, title: selected.title }];
+    }
+
+    function syncObservationOptions()
+    {
+        const notes = store.current.observations;
+        const signature = `${store.current.id}:${notes.map(item => `${item.id}:${item.title}:${item.lat}:${item.lon}`).join("|")}`;
+
+        if (signature === observationsSignature)
+        {
+            return;
+        }
+
+        const previous = exclusionSelect.value;
+        exclusionSelect.replaceChildren(new Option("No exclusion area", ""));
+
+        for (const note of notes)
+        {
+            exclusionSelect.appendChild(new Option(note.title, note.id));
+        }
+
+        exclusionSelect.value = notes.some(note => note.id === previous) ? previous : "";
+        observationsSignature = signature;
+    }
+
+    function candidateProvenance(zones, maxSlopePercent, slopePenalty)
+    {
+        return {
+            model: "A* 8-neighbor numeric DEM scenario",
+            maxSlopePercent,
+            slopePenalty,
+            exclusionZones: zones.map(zone => ({ observationId: zone.id, title: zone.title, lat: zone.lat, lon: zone.lon, radiusMeters: zone.radiusMeters })),
+            verified: false
+        };
+    }
+
+    function clearComparison()
+    {
+        candidates = [];
+        comparisonSource = null;
+        strategiesPanel.replaceChildren();
+    }
+
+    function render()
+    {
+        const route = store.activeRoute;
+        const assumptions = store.current.evaScenario || DEFAULT_EVA_ASSUMPTIONS;
+        const distanceMeters = analyzeRoute(route.points).totalDistance;
+        const estimate = estimateMarswalk(distanceMeters, assumptions);
+
+        const signature = JSON.stringify(assumptions);
+        syncObservationOptions();
+        map.setScenarioZones(scenarioZones());
+        intelligence.refresh();
+        mathematics.refresh();
+        advancedResearch.refresh();
+
+        if (lastMissionId !== store.current.id || lastScenarioSignature !== signature)
+        {
+            applyAssumptions(assumptions);
+            lastMissionId = store.current.id;
+            lastScenarioSignature = signature;
+        }
+
+        if (route.points.length < 2)
+        {
+            evaResults.innerHTML = `<div class="eva-empty">Add two waypoints to estimate the selected route. You can still edit the model assumptions below.</div>`;
+        }
+        else
+        {
+            const warning = estimate.warnings.length ? `<p class="eva-warning">${estimate.warnings.map(escapeText).join(" ")}</p>` : `<p class="eva-neutral">No numerical scenario budget exceeded. This does not mean the route is safe or realistic.</p>`;
+            evaResults.innerHTML = `
+                <div class="eva-readouts"><div><span>TRAVEL + STOPS</span><strong>${formatHours(estimate.durationHours)}</strong><small>${formatDistance(estimate.travelDistanceMeters)} modeled movement</small></div><div><span>OXYGEN DEMAND</span><strong>${formatNumber(estimate.oxygenKg, 3)} kg</strong><small>Hypothetical consumption</small></div><div><span>BATTERY DEMAND</span><strong>${formatNumber(estimate.batteryWh, 0)} Wh</strong><small>Constant power scenario</small></div></div>
+                ${budgetMarkup("Oxygen", estimate.oxygenKg, estimate.usableOxygenKg, "kg")}
+                ${budgetMarkup("Battery", estimate.batteryWh, estimate.usableBatteryWh, "Wh")}
+                ${budgetMarkup("Time", estimate.durationHours, estimate.usableDurationHours, "h")}
+                ${warning}
+            `;
+        }
+
+        demButton.disabled = !dem || route.points.length < 2;
+        compareButton.disabled = !dem || route.points.length < 2;
+        stressRun.disabled = route.points.length < 2;
+        const currentSensitivity = `${store.current.id}:${route.id}:${distanceMeters}:${signature}:${stressVariation.value}`;
+
+        if (sensitivitySignature && sensitivitySignature !== currentSensitivity)
+        {
+            sensitivitySignature = null;
+            sensitivityReport = null;
+            stressOutput.textContent = "Route, mission, model or variation changed. Run sensitivity again for current inputs.";
+        }
+
+        if (comparisonSource && (comparisonSource.missionId !== store.current.id || comparisonSource.routeId !== route.id || comparisonSource.signature !== JSON.stringify(route.points) || comparisonSource.exclusions !== JSON.stringify(scenarioZones()) || comparisonSource.maxSlopePercent !== Number(terrain.querySelector("#terrain-grade").value)))
+        {
+            clearComparison();
+        }
+
+        if (dem)
+        {
+            const profile = profileRouteOnDem(dem, route.points);
+            terrain.querySelector("#terrain-profile").innerHTML = plotElevation(profile);
+        }
+        else
+        {
+            terrain.querySelector("#terrain-profile").replaceChildren();
+        }
+
+        if (route.terrainModel)
+        {
+            const t = route.terrainModel;
+            const whatIf = t.scenario?.exclusionZones?.length ? `<small>What-if exclusion: ${t.scenario.exclusionZones.map(zone => `${escapeText(zone.title)} (${formatNumber(zone.radiusMeters, 0)} m)`).join(", ")}. This is a user-defined assumption, not a mapped hazard.</small>` : "";
+            demReport.innerHTML = `<div class="dem-candidate"><strong>Active route derived from imported DEM</strong><span>Modeled distance ${formatDistance(t.stats.distanceMeters)} · ascent ${formatNumber(t.stats.ascentMeters)} m · max grade ${formatNumber(t.stats.maxGradePercent)}%</span>${whatIf}<small>Source: ${escapeText(t.source)} · User-imported / unverified · Not a safety certification</small></div>${terrainMessage ? `<p>${escapeText(terrainMessage)}</p>` : ""}`;
+        }
+        else
+        {
+            demReport.textContent = terrainMessage;
+        }
+    }
+
+    stressRun.addEventListener("click", () =>
+    {
+        try
+        {
+            const route = store.activeRoute;
+            const distance = analyzeRoute(route.points).totalDistance;
+            const assumptions = store.current.evaScenario || DEFAULT_EVA_ASSUMPTIONS;
+            const report = estimateResourceEnvelope(distance, assumptions, { variationPercent: Number(stressVariation.value), samples: 500, seed: 2026 });
+            sensitivityReport = report;
+            sensitivitySignature = `${store.current.id}:${route.id}:${distance}:${JSON.stringify(assumptions)}:${stressVariation.value}`;
+            const percentage = value => `${(value * 100).toFixed(1)}%`;
+            stressOutput.innerHTML = `
+                <div class="stress-stat"><span>Duration, 10th–90th percentile</span><strong>${formatHours(report.durationHours.p10)} – ${formatHours(report.durationHours.p90)}</strong></div>
+                <div class="stress-stat"><span>O₂ demand, 10th–90th percentile</span><strong>${formatNumber(report.oxygenKg.p10, 3)}–${formatNumber(report.oxygenKg.p90, 3)} kg</strong></div>
+                <div class="stress-stat"><span>Energy, 10th–90th percentile</span><strong>${formatNumber(report.batteryWh.p10)}–${formatNumber(report.batteryWh.p90)} Wh</strong></div>
+                <div class="stress-stat"><span>Runs exceeding any reserve-adjusted allowance</span><strong>${percentage(report.exceedanceFrequency.any)} · ${report.samples} artificial trials</strong></div>
+                <p class="science-footnote">${escapeText(report.disclaimer)} Fixed seed ${report.seed}; repeating identical inputs produces the same results.</p>
+            `;
+            notify("Scenario sensitivity analysis completed. Numbers are illustrative only.");
+        }
+        catch (error)
+        {
+            stressOutput.textContent = error.message;
+        }
+    });
+
+    stressVariation.addEventListener("change", () =>
+    {
+        sensitivitySignature = null;
+        sensitivityReport = null;
+        stressOutput.textContent = "Variation changed. Run the sensitivity model again.";
+    });
+
+    exclusionSelect.addEventListener("change", () =>
+    {
+        clearComparison();
+        terrainMessage = scenarioZones().length ? "Selected user observation is modeled as a hypothetical no-go area." : "Exclusion scenario cleared.";
+        render();
+    });
+
+    exclusionRadius.addEventListener("change", () =>
+    {
+        clearComparison();
+        terrainMessage = "Exclusion radius changed. Recompute an A* route to use it.";
+        render();
+    });
+
+    evaForm.addEventListener("submit", event =>
+    {
+        event.preventDefault();
+
+        try
+        {
+            const next = {};
+
+            for (const name of Object.keys(DEFAULT_EVA_ASSUMPTIONS))
+            {
+                const field = evaForm.elements.namedItem(name);
+                next[name] = name === "retraceReturn" ? field.checked : Number(field.value);
+            }
+
+            store.setEvaScenario(next);
+            applyAssumptions(store.current.evaScenario);
+            notify("Marswalk scenario assumptions saved in this mission.");
+        }
+        catch (error)
+        {
+            notify(error.message);
+        }
+    });
+
+    resources.querySelector("[data-eva-reset]").addEventListener("click", () =>
+    {
+        store.setEvaScenario(DEFAULT_EVA_ASSUMPTIONS);
+        applyAssumptions(DEFAULT_EVA_ASSUMPTIONS);
+        notify("Illustrative example parameters restored.");
+    });
+
+    async function loadBundledDem()
+    {
+        if (dem?.bundledSource)
+        {
+            return dem;
+        }
+
+        if (officialLoading)
+        {
+            return officialLoading;
+        }
+
+        const requestId = ++datasetRequestId;
+        officialButton.disabled = true;
+        demStatus.textContent = "Reading a real, numeric USGS/NASA CTX elevation clip for Jezero…";
+        officialLoading = loadJezeroDem().then(loaded =>
+        {
+            if (requestId !== datasetRequestId)
+            {
+                return null;
+            }
+
+            dem = loaded;
+            clearComparison();
+            terrainMessage = "Official USGS/NASA CTX elevation sample loaded. A* works within this small Jezero clip. No EVA safety certification.";
+            demStatus.innerHTML = `<strong>USGS CTX DTM · 20 m SOURCE · ${dem.width} × ${dem.height}</strong><small>${escapeText(dem.source)}</small><small>Real numeric elevations from a documented Mars raster; no-data, vertical datum and uncertainty matter. Study area: 18.438–18.470° N, 77.443–77.478° E.</small>`;
+            notify("Real numeric Jezero CTX elevations loaded. Set your route inside the documented coverage.");
+            render();
+            return dem;
+        }).catch(error =>
+        {
+            if (requestId !== datasetRequestId)
+            {
+                return null;
+            }
+
+            terrainMessage = `Jezero DEM unavailable: ${error.message}`;
+            demStatus.textContent = terrainMessage;
+            notify("Bundled elevation data did not load; importing a local DEM remains available.");
+            return null;
+        }).finally(() =>
+        {
+            if (requestId === datasetRequestId)
+            {
+                officialButton.disabled = false;
+            }
+
+            officialLoading = null;
+        });
+        return officialLoading;
+    }
+
+    officialButton.addEventListener("click", loadBundledDem);
+
+    demFile.addEventListener("change", async event =>
+    {
+        const file = event.target.files[0];
+
+        if (!file)
+        {
+            return;
+        }
+
+        try
+        {
+            if (file.size > 4500000)
+            {
+                throw new Error("DEM JSON exceeds 4.5 MB. Prepare a smaller clip.");
+            }
+
+            const imported = validateDem(JSON.parse(await file.text()));
+            datasetRequestId++;
+            officialButton.disabled = false;
+            dem = imported;
+            dem.bundledSource = false;
+            clearComparison();
+            terrainMessage = "Numeric DEM imported into this browser session. Adjust slope assumptions and request a route alternative.";
+            demStatus.innerHTML = `<strong>GRID LOADED · ${dem.width} × ${dem.height} cells</strong><small>${escapeText(dem.source)} · ${escapeText(dem.resolution)}</small><small>Reference: ${escapeText(dem.horizontalDatum)} / ${escapeText(dem.verticalDatum)}. Provenance supplied by the importer; not independently verified.</small>`;
+            notify("Numeric elevation grid imported; route planner enabled.");
+        }
+        catch (error)
+        {
+            terrainMessage = `DEM import rejected: ${error.message}`;
+            notify(terrainMessage);
+        }
+
+        demFile.value = "";
+        render();
+    });
+
+    demButton.addEventListener("click", () =>
+    {
+        if (!dem)
+        {
+            return;
+        }
+
+        const maxSlopePercent = Number(terrain.querySelector("#terrain-grade").value);
+        const slopePenalty = Number(terrain.querySelector("#terrain-penalty").value);
+
+        try
+        {
+            if (store.current.routes.length >= 15)
+            {
+                throw new Error("Mission route limit reached (15). Remove an unused route first.");
+            }
+
+            const zones = scenarioZones();
+            const planned = planRouteOnDem(dem, store.activeRoute.points, { maxSlopePercent, slopePenalty, exclusionZones: zones, maxWaypoints: 80 });
+
+            if (!planned.ok)
+            {
+                terrainMessage = planned.reason;
+                render();
+                notify("No terrain candidate created. Read the DEM Route Lab message.");
+                return;
+            }
+
+            const route = store.addRoute("A* terrain candidate · unverified");
+
+            if (!route)
+            {
+                throw new Error("Unable to create an alternative route.");
+            }
+
+            route.points = planned.points.map(point => ({ id: crypto.randomUUID(), lat: point.lat, lon: point.lon }));
+            route.terrainModel = { source: planned.source, stats: planned.stats, scenario: candidateProvenance(zones, maxSlopePercent, slopePenalty), unverified: true };
+            terrainMessage = `Created an editable A* candidate through ${planned.stats.cellCount} modeled grid cells${zones.length ? ", avoiding a hypothetical field-note exclusion" : ""}. Each manual waypoint remained an anchor. The DEM and scenario are not independently validated.`;
+            store.save();
+            map.focusRoute();
+            notify("A* terrain candidate added to this mission. It remains manually editable and unverified.");
+        }
+        catch (error)
+        {
+            terrainMessage = error.message;
+            render();
+            notify(error.message);
+        }
+    });
+
+    terrain.querySelector("#terrain-grade").addEventListener("change", () =>
+    {
+        clearComparison();
+        terrainMessage = "Slope threshold changed. Recompute alternatives with the updated assumption.";
+        render();
+    });
+
+    compareButton.addEventListener("click", () =>
+    {
+        if (!dem)
+        {
+            return;
+        }
+
+        const source = store.activeRoute;
+        const zones = scenarioZones();
+        const maxSlopePercent = Number(terrain.querySelector("#terrain-grade").value);
+
+        try
+        {
+            const results = compareTerrainStrategies(dem, source.points, { maxSlopePercent, exclusionZones: zones, maxWaypoints: 80 });
+            candidates = results;
+            comparisonSource = { missionId: store.current.id, routeId: source.id, signature: JSON.stringify(source.points), exclusions: JSON.stringify(zones), maxSlopePercent };
+            const header = `<div class="scenario-head">Three independent optimization preferences. All use the imported DEM, slope limit and any selected exclusion.</div>`;
+            strategiesPanel.innerHTML = header + results.map((item, index) =>
+            {
+                if (!item.ok)
+                {
+                    return `<div class="strategy-card"><strong>${escapeText(item.label)}</strong><p>${escapeText(item.reason)}</p></div>`;
+                }
+
+                const change = measureRouteChange(source.points, item.points);
+                const delta = change.differencePercent === null ? "No baseline" : `${change.differencePercent >= 0 ? "+" : ""}${formatNumber(change.differencePercent)}% vs manual`;
+                return `<div class="strategy-card"><strong>${escapeText(item.label)}</strong><small>${formatDistance(item.stats.distanceMeters)} grid path · +${formatNumber(item.stats.ascentMeters)} m ascent · ${formatNumber(item.stats.maxGradePercent)}% max grade</small><small>${delta} (waypoint geometry) · ${item.stats.visited} nodes visited</small><button class="btn btn-outline wide" type="button" data-use-strategy="${index}">Add editable candidate</button></div>`;
+            }).join("");
+            terrainMessage = "Route strategies computed from user-imported, unverified DEM. They are not calibrated safe routes.";
+            render();
+        }
+        catch (error)
+        {
+            terrainMessage = error.message;
+            clearComparison();
+            render();
+        }
+    });
+
+    strategiesPanel.addEventListener("click", event =>
+    {
+        const button = event.target.closest("[data-use-strategy]");
+
+        if (!button)
+        {
+            return;
+        }
+
+        const index = Number(button.dataset.useStrategy);
+        const candidate = candidates[index];
+
+        if (!candidate?.ok || !comparisonSource || store.activeRoute.id !== comparisonSource.routeId)
+        {
+            notify("This comparison is outdated. Run it again for the current route.");
+            return;
+        }
+
+        if (store.current.routes.length >= 15)
+        {
+            notify("Mission route limit reached (15). Remove a route first.");
+            return;
+        }
+
+        const sourceDetails = comparisonSource;
+        const zones = scenarioZones();
+        const route = store.addRoute(`${candidate.label} · imported DEM`);
+        route.points = candidate.points.map(point => ({ id: crypto.randomUUID(), lat: point.lat, lon: point.lon }));
+        route.terrainModel = { source: candidate.source, stats: candidate.stats, scenario: candidateProvenance(zones, sourceDetails.maxSlopePercent, candidate.slopePenalty), unverified: true };
+        terrainMessage = "Added a manually editable candidate. Numeric DEM and exclusion assumptions are user-supplied and unverified.";
+        clearComparison();
+        store.save();
+        map.focusRoute();
+        notify("A* strategy added as a new editable route.");
+    });
+
+    return {
+        render,
+        loadBundledDem,
+        getScenarioBrief()
+        {
+            const route = store.activeRoute;
+            const distance = analyzeRoute(route.points).totalDistance;
+            const report = estimateMarswalk(distance, store.current.evaScenario);
+            const lines = [
+                "## Illustrative Marswalk resource scenario",
+                `Travel mode: ${report.assumptions.retraceReturn ? "Out-and-back by retracing the route" : "One-way"}`,
+                `Walking speed assumption: ${report.assumptions.speedKmh} km/h`,
+                `Science stop allowance: ${report.assumptions.observationMinutes} minutes`,
+                `Modeled total duration: ${formatHours(report.durationHours)}`,
+                `Oxygen model: ${report.oxygenKg.toFixed(3)} kg at ${report.assumptions.oxygenKgPerHour} kg/hour`,
+                `Energy model: ${report.batteryWh.toFixed(1)} Wh at ${report.assumptions.batteryWatts} watts`,
+                `Reserve rule: ${report.assumptions.reservePercent}% held back`,
+                `Scenario flags: ${report.warnings.join(" ") || "No numerical allowance exceeded"}`,
+                "All rates are user-specified scenario assumptions, not measured NASA telemetry. Terrain-dependent effects are excluded."
+            ];
+            const activeSensitivity = `${store.current.id}:${route.id}:${distance}:${JSON.stringify(report.assumptions)}:${stressVariation.value}`;
+
+            if (sensitivityReport && sensitivitySignature === activeSensitivity)
+            {
+                lines.push("", "## Sensitivity envelope (illustrative)");
+                lines.push(`Artificial uniform input variation: ±${sensitivityReport.variationPercent}% over ${sensitivityReport.samples} deterministic seeded trials`);
+                lines.push(`Duration 10th–90th percentile: ${formatHours(sensitivityReport.durationHours.p10)} – ${formatHours(sensitivityReport.durationHours.p90)}`);
+                lines.push(`Oxygen 10th–90th percentile: ${formatNumber(sensitivityReport.oxygenKg.p10, 3)}–${formatNumber(sensitivityReport.oxygenKg.p90, 3)} kg`);
+                lines.push(`Energy 10th–90th percentile: ${formatNumber(sensitivityReport.batteryWh.p10)}–${formatNumber(sensitivityReport.batteryWh.p90)} Wh`);
+                lines.push(`Artificial trial frequency beyond any allowance: ${formatNumber(sensitivityReport.exceedanceFrequency.any * 100)}%`);
+                lines.push("Not calibrated NASA probabilities, measurements or safety certification.");
+            }
+
+            const researchBrief = advancedResearch.brief();
+
+            if (researchBrief)
+            {
+                lines.push(researchBrief);
+            }
+
+            const advancedBrief = mathematics.brief();
+
+            if (advancedBrief)
+            {
+                lines.push(advancedBrief);
+            }
+
+            const spatialBrief = intelligence.brief();
+
+            if (spatialBrief)
+            {
+                lines.push(spatialBrief);
+            }
+
+            return lines.join("\n");
+        }
+    };
+}

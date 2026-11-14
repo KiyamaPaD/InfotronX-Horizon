@@ -1,0 +1,12 @@
+{
+  "name": "mars-atlas",
+  "version": "1.9.0",
+  "private": true,
+  "type": "module",
+  "description": "Human-first Mars Atlas with NASA CTX DEM, incremental D* Lite, bounded Pareto and persistent terrain topology",
+  "scripts": {
+    "dev": "python3 -m http.server 4173",
+    "test": "node --test tests/*.test.mjs",
+    "check": "npm test"
+  }
+}
