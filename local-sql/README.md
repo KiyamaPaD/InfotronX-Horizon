@@ -6,7 +6,7 @@ This public folder is intended for InfotronX Horizon teammates and code reviewer
 
 1. Create a **new Supabase project named Mars Atlas**. Do not reuse MathHard or InfotronX Programming Atlas.
 2. In SQL Editor, execute **01_mars_cloud_schema.sql** once. Review it before rerunning.
-3. Execute **03_mission_email_sharing.sql** to add email-based sharing with verified accounts. Then execute **02_security_checks.sql**, verify RLS on all four public tables and no anonymous grants. Run the Database Security Advisor.
+3. Execute **03_mission_email_sharing.sql** to add email-based sharing with verified accounts. Apply **04_owner_insert_returning_rls_fix.sql** to existing deployments (also safe after a fresh install). Then execute **02_security_checks.sql**, verify RLS on all four public tables and no anonymous grants. Run the Database Security Advisor.
 4. Enable email/password sign-in with confirmation under Authentication. Set Site URL and Redirect URLs to the deployed site and the local test address.
 5. Copy only the public project URL and **publishable** API key into src/cloud-config.js. Publishable keys are permitted in browser code because RLS protects the data. Never paste a service_role/secret key.
 6. Test two real accounts: user A creates a mission; B cannot access it until A explicitly invites them; viewer can read but not edit; editor may update; only owner manages members and deletes missions.
@@ -39,3 +39,9 @@ The live Mars Atlas project has the email-sharing migration installed. The owner
 **This is account-based sharing, not outbound email delivery.** The app does not send invitation emails. Share the Mars Atlas website link separately with your teammate. An email-delivery integration would require a separately secured server-side mail provider and rate-limiting.
 
 Only project URLs and publishable keys are in browser code. No secrets or user email lists belong in the repository. Email addresses and pending invitations are protected by access checks; direct access to Auth users is not exposed.
+
+## Mission save security fix
+
+The policy update in `04_owner_insert_returning_rls_fix.sql` is already installed on the live Mars Atlas project. It fixes a PostgreSQL `INSERT ... RETURNING` rejection where a `STABLE` SELECT-policy helper could not see the new mission in the same SQL statement. The owner now matches directly on `owner_id = auth.uid()`, while teammates still require their existing explicit permissions.
+
+The original failure was reproduced as SQLSTATE `42501` using a synthetic authenticated user. After the update, a test transaction passed mission `INSERT ... RETURNING`, a version snapshot, owner UPDATE, and denied uninvited reads and owner spoofing. The transaction was rolled back, leaving no fake accounts or missions.

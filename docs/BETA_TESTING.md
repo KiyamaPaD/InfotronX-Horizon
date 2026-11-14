@@ -75,3 +75,7 @@ The top bar's **Mission Center** groups three areas: **On device** (saved missio
 - [ ] Create and restore a checkpoint from **On device**; check that its data survives a reload.
 - [ ] Export a JSON backup and create a shareable link from **Share & export**.
 - [ ] At CTX zoom 11, look for blank tiles, isolated one-color squares, seams and sharpness differences. Switch to MOLA and Viking, whose native imagery has lower resolution; verify the app avoids falsely implying zoomed-in detail.
+
+## RLS cloud save regression
+
+The live SQL SELECT policy was updated to permit owners to read a mission row during `INSERT ... RETURNING`. Sign in, open **Mission Center → Cloud library** and use **Save current mission**. The result must appear in the cloud dropdown and persist after reloading the page. A second, uninvited account must still be unable to see that mission. If a browser still displays an RLS error, report the complete error message and the step that triggered it; never share a password or access token.

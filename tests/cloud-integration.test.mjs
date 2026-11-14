@@ -49,3 +49,16 @@ test("SQL keeps all cloud objects under RLS, without anonymous grants", () =>
     assert.match(sql, /owner_id = \(select auth.uid\(\)\)/);
     assert.doesNotMatch(sql, /grant .* to anon\s*;/);
 });
+
+
+test("mission owners are readable on INSERT RETURNING without weakening RLS", () =>
+{
+    const fix = read("../local-sql/04_owner_insert_returning_rls_fix.sql");
+    assert.match(sql, /create policy mars_mission_select[\s\S]*?owner_id = \(select auth.uid\(\)\)[\s\S]*?mars_private\.can_read_mission\(id\)/);
+    assert.match(fix, /alter policy mars_mission_select on public\.mars_missions/);
+    assert.match(fix, /owner_id = \(select auth.uid\(\)\)/);
+    assert.match(fix, /or mars_private\.can_read_mission\(id\)/);
+    assert.match(sql, /create policy mars_mission_insert[\s\S]*?owner_id = \(select auth.uid\(\)\)/);
+    assert.doesNotMatch(fix, /disable row level security/i);
+    assert.doesNotMatch(fix, /using \(true\)/i);
+});

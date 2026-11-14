@@ -77,8 +77,13 @@ alter table public.mars_mission_members enable row level security;
 alter table public.mars_mission_versions enable row level security;
 
 drop policy if exists mars_mission_select on public.mars_missions;
+-- Owner must be checked directly against the new row for INSERT ... RETURNING.
+-- The stable membership helper cannot see a row inserted within the same statement.
 create policy mars_mission_select on public.mars_missions
-for select to authenticated using (mars_private.can_read_mission(id));
+for select to authenticated using (
+    owner_id = (select auth.uid())
+    or mars_private.can_read_mission(id)
+);
 drop policy if exists mars_mission_insert on public.mars_missions;
 create policy mars_mission_insert on public.mars_missions
 for insert to authenticated with check (owner_id = (select auth.uid()));
