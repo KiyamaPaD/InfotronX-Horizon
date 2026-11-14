@@ -8,6 +8,7 @@ import { inspectRoute } from "./inspector.js";
 import { initScienceWorkbench } from "./science-workbench.js";
 import { createJezeroReviewMission } from "./review-demo.js";
 import { setupAnalyticsNavigation } from "./workspace-ux.js";
+import { mountCloudWorkspace } from "./cloud-ui.js";
 
 const store = new MissionStore();
 const imported = readSharedMission();
@@ -112,6 +113,7 @@ const map = new MarsMap(get("#map-root"), store, {
 
 const scienceWorkbench = initScienceWorkbench({ store, map, notify });
 setupAnalyticsNavigation(get("#analytics-panel"));
+mountCloudWorkspace({ store, notify });
 
 function renderRoutes()
 {

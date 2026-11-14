@@ -289,6 +289,36 @@ export class MissionStore
         return true;
     }
 
+    loadCloudMission(candidate)
+    {
+        const mission = validateMission(candidate);
+
+        if (!mission)
+        {
+            return false;
+        }
+
+        const previous = this.missions.findIndex(item => item.id === mission.id);
+
+        if (previous < 0 && this.missions.length >= MAX_MISSIONS)
+        {
+            return false;
+        }
+
+        if (previous >= 0)
+        {
+            this.missions[previous] = mission;
+        }
+        else
+        {
+            this.missions.unshift(mission);
+        }
+
+        this.activeId = mission.id;
+        this.save(false);
+        return true;
+    }
+
     importMission(candidate)
     {
         const mission = validateMission(candidate);

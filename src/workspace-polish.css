@@ -396,3 +396,74 @@
         bottom:3px;
     }
 }
+
+
+/* Cloud account controls appear only after connecting a dedicated project. */
+.cloud-modal
+{
+    width:min(590px,calc(100vw - 24px));
+    max-height:calc(100dvh - 40px);
+    overflow-y:auto;
+}
+.cloud-auth-form,
+.cloud-share
+{
+    display:grid;
+    gap:13px;
+}
+.cloud-auth-form label,
+.cloud-share label,
+.cloud-label
+{
+    display:grid;
+    gap:7px;
+    font-weight:600;
+    font-size:12px;
+    color:#d7e5eb;
+}
+.cloud-auth-form input,
+.cloud-share input,
+.cloud-share select,
+.cloud-label select
+{
+    min-width:0;
+    min-height:43px;
+    padding:10px 12px;
+    border:1px solid #4a6575;
+    border-radius:9px;
+    background:#111f2b;
+    color:#f1f8fa;
+}
+.cloud-actions
+{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    margin:14px 0;
+}
+.cloud-actions .btn
+{
+    min-height:43px;
+    flex:1;
+}
+.cloud-share
+{
+    margin-top:26px;
+    padding-top:20px;
+    border-top:1px solid #445462;
+}
+.cloud-share h3
+{
+    margin:0;
+}
+.cloud-share p,
+.cloud-account-email
+{
+    margin:0;
+    color:#b6ccdb;
+    overflow-wrap:anywhere;
+}
+.header-cloud
+{
+    white-space:nowrap;
+}
