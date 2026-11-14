@@ -64,3 +64,14 @@ At least **one desktop Chrome/Edge run** and **one real phone run**, ideally wit
 ## Boundary and honesty
 
 Missions currently live in each person's browser (localStorage). Sharing a URL or exporting a file is not multi-user synchronization. Source DEM elevations and derived numerical models have different levels of certainty. Please report misleading scientific language as a bug.
+
+## Mission Center verification
+
+The top bar's **Mission Center** groups three areas: **On device** (saved missions and checkpoints), **Cloud library** (sign in, explicit save/open, role-based sharing), and **Share & export** (copy link, JSON, GeoJSON, brief). Do not confuse an automatic on-device save with an online save.
+
+- [ ] Confirm the current mission appears in **On device** after it is created.
+- [ ] Confirm **Cloud library** is empty before the first explicit cloud save, then click **Save current mission**, read the result and verify the mission appears in its dropdown.
+- [ ] Reload and sign in again to check the cloud mission can be opened from a separate session.
+- [ ] Create and restore a checkpoint from **On device**; check that its data survives a reload.
+- [ ] Export a JSON backup and create a shareable link from **Share & export**.
+- [ ] At CTX zoom 11, look for blank tiles, isolated one-color squares, seams and sharpness differences. Switch to MOLA and Viking, whose native imagery has lower resolution; verify the app avoids falsely implying zoomed-in detail.

@@ -19,11 +19,11 @@ A manual-first Mars mission-planning workspace developed by **InfotronX Horizon*
 - **Compare route alternatives:** inspect A*, D* Lite replanning, bounded multi-objective route searches, and user-defined hypothetical exclusion zones.
 - **Explore real terrain data:** study a limited-area USGS/NASA Mars Reconnaissance Orbiter CTX elevation clip near Jezero alongside NASA Mars Trek imagery layers.
 - **Analyze terrain:** elevation and slope profiles, local roughness, line of sight, reachability, contours, and experimental scientific models.
-- **Take your work with you:** on-device checkpoints, JSON/GeoJSON exports, mission links and an authenticated cloud library with sharing by teammate email.
+- **Take your work with you:** Mission Center groups on-device autosave, checkpoints, exports, mission links and an authenticated cloud library with sharing by teammate email.
 
 ## Explore and analyze
 
-The map loads NASA Mars Trek imagery with bounded tile caching and throttled wheel zoom. Science tools are organized into **Overview**, **Terrain**, **Models** and **Mission**, with quick access to individual calculations. Route geometry remains fully editable without an AI assistant.
+The map loads NASA Mars Trek imagery with bounded tile caching, throttled wheel zoom and checks that prevent undersized placeholder tiles from being enlarged. Science tools are organized into **Overview**, **Terrain**, **Models** and **Mission**, with quick access to individual calculations. Route geometry remains fully editable without an AI assistant.
 
 ## Current product status
 

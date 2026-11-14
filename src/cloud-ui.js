@@ -14,7 +14,7 @@ export function mountCloudWorkspace({ store, notify })
     dialog.className = "modal cloud-modal";
     dialog.setAttribute("aria-labelledby", "cloud-title");
     dialog.innerHTML = [
-        '<div class="modal-header"><span class="section-label">MARS ATLAS ACCOUNT</span><button class="modal-x" type="button" id="cloud-close" aria-label="Close account">×</button></div>',
+        '<div class="modal-header"><span class="section-label">MISSION CENTER</span><button class="modal-x" type="button" id="cloud-close" aria-label="Close account">×</button></div>',
         '<h2 id="cloud-title">Mission Center</h2>',
         '<p id="hub-status" role="status" aria-live="polite">Missions are saved automatically on this device.</p>',
         '<div class="mission-hub-tabs" role="tablist" aria-label="Mission Center sections">',
@@ -33,7 +33,7 @@ export function mountCloudWorkspace({ store, notify })
         '<button class="btn btn-outline" type="submit" value="signup">Create account</button></div></form>',
         '<div id="cloud-session" hidden>',
         '<p class="cloud-account-email" id="cloud-email"></p>',
-        '<p class="section-help">Save your current route to the cloud, or open a mission shared with you. Your on-device missions remain available separately.</p>',
+        '<p class="section-help">This list contains only missions saved to your online account. Changes on this device are not uploaded until you press Save current mission.</p>',
         '<div class="cloud-actions"><button id="cloud-save" type="button" class="btn btn-accent">Save current mission</button>',
         '<button id="cloud-refresh" type="button" class="btn btn-outline">Refresh library</button></div>',
         '<label class="cloud-label">Cloud missions<select id="cloud-missions" aria-label="Choose a cloud mission"></select></label>',
