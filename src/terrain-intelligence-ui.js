@@ -59,7 +59,7 @@ export function mountTerrainIntelligence({ panel, before, store, readDem, readCo
                 <label class="science-label">Show surface <select id="intel-surface-mode" class="science-select"><option value="grade">Local gradient (%)</option><option value="roughness">Plane residual RMS (m)</option><option value="reachability">Modeled travel time bands</option></select></label>
                 <button type="button" class="btn btn-outline wide" id="intel-run-surface">Analyze surface</button>
                 <div id="intel-surface-result" role="status" class="intel-output">Load a numeric DEM in DEM Route Lab first.</div>
-                <div class="intel-canvas-wrap"><canvas id="intel-raster" width="96" height="72" role="img" aria-label="Computed raster preview, north is up; darker cells indicate missing data or no modeled reachability"></canvas><div id="intel-raster-legend" class="intel-raster-legend">N ↑ · West ← → East · preview limited to imported DEM extent</div></div>
+                <div class="intel-canvas-wrap"><canvas id="intel-raster" width="96" height="72" role="img" aria-label="Computed terrain map, north is up; darker cells indicate missing data or no modeled reachability"></canvas><div id="intel-raster-legend" class="intel-raster-legend">N ↑ · West ← → East · available within the loaded elevation grid</div></div>
             </div>
             <div class="intel-tool"><h3>2 · Haar multi-scale terrain contrast</h3><p class="section-help">2 × 2 Haar decomposition of numeric elevations. Compare height differences across increasing spatial scales; this is not measured rock roughness or an obstacle map.</p>
                 <button type="button" class="btn btn-outline wide" id="intel-run-haar">Analyze 5 scales</button>

@@ -189,7 +189,7 @@ function render()
     renderSegmentChart(get("#segment-chart"), route);
     renderInspector();
     renderCheckpoints();
-    get("#storage-status").textContent = store.lastSaveSucceeded ? "AUTO-SAVED LOCALLY" : "SAVE FAILED · EXPORT A BACKUP";
+    get("#storage-status").textContent = store.lastSaveSucceeded ? "SAVED ON THIS DEVICE" : "SAVE FAILED · EXPORT A BACKUP";
     renderRouteComparison(get("#route-comparison"), mission.routes, mission.activeRouteId);
     renderRouteComparison(get("#route-comparison-mobile"), mission.routes, mission.activeRouteId);
     scienceWorkbench.render();

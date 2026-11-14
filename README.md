@@ -71,7 +71,7 @@ Start with [Contributing](CONTRIBUTING.md), [Team workflow](docs/TEAM_WORKFLOW.m
 | Automated tests | `tests/`, `.github/workflows/verify.yml` |
 | Data provenance and project credits | `NASA_DATA.md`, `SUBMISSION.md`, `docs/SCIENCE_VALIDATION.md` |
 
-Older V3–V9 reports remain for historical research and are **not** the live deployment instructions.
+Scientific methodology, data references and engineering notes are available in the documentation directory.
 
 ## Sources and acknowledgments
 

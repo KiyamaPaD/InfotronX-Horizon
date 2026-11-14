@@ -46,7 +46,7 @@ function drawContourMap(canvas, dem, elevationMeters, contour)
     }
 
     context.stroke();
-    canvas.setAttribute("aria-label", `Jezero numeric elevation preview with ${number(contour.segments.length, 0)} model contour segments at ${number(elevationMeters)} meters. North is up. Unknown DEM cells are dark. Not a hazard map.`);
+    canvas.setAttribute("aria-label", `Jezero elevation map with ${number(contour.segments.length, 0)} model contour segments at ${number(elevationMeters)} meters. North is up. Unknown DEM cells are dark. Not a hazard map.`);
 }
 
 export function mountAdvancedMathematics({ panel, before, store, readDem })

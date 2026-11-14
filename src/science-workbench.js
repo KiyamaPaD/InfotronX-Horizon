@@ -137,7 +137,7 @@ export function initScienceWorkbench({ store, map, notify })
         <div id="terrain-strategies" class="terrain-strategies" aria-live="polite"></div>
         <div id="terrain-report" class="terrain-report" aria-live="polite"></div>
         <div id="terrain-profile"></div>
-        <p class="science-footnote">A* uses 8 neighboring grid cells; movement cost is distance × (1 + slope penalty × absolute grade). It prevents cutting diagonally through NoData corners. Imported DEM is session-only and is never silently called NASA-verified.</p>
+        <p class="science-footnote">A* uses 8 neighboring grid cells; movement cost is distance × (1 + slope penalty × absolute grade). It prevents cutting diagonally through NoData corners. Imported DEM data must have documented provenance; user-provided grids are not automatically verified NASA data.</p>
     `;
 
     panel.insertBefore(resources, inspector);

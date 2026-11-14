@@ -431,7 +431,7 @@ export function mountMissionResearch({ panel, before, store, map, readDem, readC
         refresh,
         brief()
         {
-            return reportRecords.length && reportSignature === contextSignature() ? `\n## Research algorithms (experimental)\n${reportRecords.join("\n")}\nAll results are mathematical models on finite DEM samples; uncertainty and safe traversability are not certified.` : "";
+            return reportRecords.length && reportSignature === contextSignature() ? `\n## Research algorithms\n${reportRecords.join("\n")}\nAll results are mathematical models on finite DEM samples; uncertainty and safe traversability are not certified.` : "";
         }
     };
 }
