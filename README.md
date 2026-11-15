@@ -19,6 +19,7 @@ A manual-first Mars mission-planning workspace developed by **InfotronX Horizon*
 - **Waypoint & Mission Editor V2:** edit point names, categories, notes, shapes, colors and precise coordinates; use map context actions and mission-scoped Undo/Redo. [Editing guide](docs/WAYPOINT_EDITOR_V2.md).
 - **Compare route alternatives:** inspect A*, D* Lite replanning, bounded multi-objective route searches, and user-defined hypothetical exclusion zones.
 - **Explore real terrain data:** study a limited-area USGS/NASA Mars Reconnaissance Orbiter CTX elevation clip near Jezero alongside NASA Mars Trek imagery layers.
+- **Terrain Intelligence V2:** inspect an interactive elevation profile, compare waypoint altitude and mean segment grade, and locate numeric DEM samples directly on the map. [Terrain profile guide](docs/TERRAIN_INTELLIGENCE_V2.md).
 - **Analyze terrain:** elevation and slope profiles, local roughness, line of sight, reachability, contours, and experimental scientific models.
 - **Take your work with you:** Mission Center groups on-device autosave, checkpoints, exports, mission links and an authenticated cloud library with sharing by verified teammate email (no automatic email delivery).
 
