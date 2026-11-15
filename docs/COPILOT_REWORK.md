@@ -22,3 +22,12 @@ The static site and Supabase Edge Function must be released together to include 
 The header's Copilot shortcut opens the right tab, analytics category and expanded assistant together, including on mobile. Planning controls, map layers and route comparison can be folded without rebuilding their contents. Advanced science panels start closed, while the DEM lab, telemetry, waypoint list and Copilot remain immediately accessible. Route color, duplication and destructive actions live in Route options. Repeated mission objectives, a second route-summary panel and the redundant Last point action were removed from the UI. A hint identifies an empty active route when another route already contains data. The DEM context refreshes after terrain loads.
 
 The reported live AI_NOT_CONFIGURED response maps to the function's missing OPENAI_API_KEY branch. No administrative Supabase binding or provider key is available in this machine; activation could not be completed here. The project owner must configure the key securely in Supabase Edge Function Secrets and then verify an authenticated model response. Never put that key in the static frontend or chat.
+
+
+## No-payment default
+
+Copilot starts in free local mode. The primary question form dispatches supported route, terrain, comparison, resource and safety questions to deterministic functions over the current facts. It makes no request to the AI endpoint and does not require sign-in, consent or an API key in this mode. Unsupported prompts receive a clear capability message; this is not a local language model. English and common Romanian topic keywords are recognized.
+
+External generation is disabled by default behind Optional external AI. It requires an explicit mode switch, fresh consent, authentication and separately configured API billing. No free OpenAI API quota is assumed. The existing DEM preview and manually accepted candidates work independently of the external model.
+
+Unit tests verify local numerical output, no-data handling and exclusion of empty route alternatives. The browser regression checks the default question flow generates no AI backend request; the optional external mode retains its consent, sign-in, stale-response and error checks.

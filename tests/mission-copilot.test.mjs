@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createJezeroReviewMission } from "../src/review-demo.js";
-import { buildMissionFacts, localMissionExplanation, normalizeCopilotQuestion } from "../src/mission-copilot.js";
+import { buildMissionFacts, localMissionExplanation, localMissionAnswer, normalizeCopilotQuestion } from "../src/mission-copilot.js";
 import { decodeBundledDem } from "../src/bundled-dem.js";
 
 const mission = createJezeroReviewMission();
@@ -81,4 +81,39 @@ test("an empty active route does not hide the existence of populated alternative
     assert.equal(facts.horizontalDistanceMeters,0);
     assert.match(localMissionExplanation(facts),/Another saved route has data/);
     assert.equal(facts.alternatives[0].waypointCount,2);
+});
+
+
+test("free local questions use calculated route, terrain and resource evidence", () =>
+{
+    const facts = buildMissionFacts(mission,dem);
+    assert.match(localMissionAnswer(facts,"Explain terrain"),/2\/2 waypoint/);
+    assert.match(localMissionAnswer(facts,"Estimeaza timpul si oxigenul"),/kg O₂/);
+    assert.match(localMissionAnswer(facts,"Este ruta sigură?"),/cannot establish safe traversability/);
+    assert.match(localMissionAnswer(facts,"Explain route"),/DETERMINISTIC/);
+    assert.match(localMissionAnswer(facts,"Write a poem"),/supported|question categories|Try “Compare routes”/);
+});
+
+test("local comparisons exclude empty routes from shortest-distance ranking", () =>
+{
+    const copy = structuredClone(mission);
+    copy.routes.push({id:"empty",points:[]});
+    const facts = buildMissionFacts(copy);
+    assert.match(localMissionAnswer(facts,"Compare routes"),/At least two routes/);
+    copy.routes.push({id:"other",points:[{lat:18.44,lon:77.44},{lat:18.45,lon:77.45}]});
+    const answer = localMissionAnswer(buildMissionFacts(copy),"Compare routes");
+    assert.match(answer,/Route 1:/);
+    assert.match(answer,/Route 3:/);
+    assert.doesNotMatch(answer,/Route 2:/);
+});
+
+test("resource answers decline empty routes and apply saved return assumptions", () =>
+{
+    const copy = structuredClone(mission);
+    copy.evaScenario={speedKmh:1.5,retraceReturn:false};
+    const facts=buildMissionFacts(copy);
+    const answer=localMissionAnswer(facts,"Estimate resources");
+    assert.match(answer,/1.5 km\/h; one-way travel/);
+    copy.routes[0].points=[];
+    assert.match(localMissionAnswer(buildMissionFacts(copy),"Estimate resources"),/at least two waypoints/);
 });

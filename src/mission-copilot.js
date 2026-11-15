@@ -100,3 +100,56 @@ export function normalizeCopilotQuestion(value)
 
     return text;
 }
+
+// Supported mission questions are answered from calculated facts, without a model or network.
+export function localMissionAnswer(facts, question)
+{
+    const text = normalizeCopilotQuestion(question).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const label = 'LOCAL ANALYSIS · No AI model or external request\n\n';
+
+    if (/\b(safe|safety|sigur|sigura|siguranta|pericol)\b/.test(text))
+    {
+        return label + 'These data cannot establish safe traversability. DEM models omit soil strength, rocks, wheel slip and current hazards. Exclusions are user assumptions. Inspect terrain evidence and model constraints before comparing candidates.';
+    }
+
+    if (/compar|alternativ|shortest|scurt/.test(text))
+    {
+        const routes = facts.alternatives.filter(item => item.waypointCount >= 2).sort((a,b) => a.distanceMeters - b.distanceMeters);
+        if (routes.length < 2)
+        {
+            return label + 'At least two routes with two waypoints each are needed for a distance comparison. Create another route manually, or use Preview DEM route options. Empty routes are excluded.';
+        }
+        return label + routes.map(item => 'Route ' + item.index + ': ' + item.distanceMeters.toFixed(2) + ' m · ' + item.waypointCount + ' waypoints').join('\n') +
+            '\n\nShortest waypoint polyline: route ' + routes[0].index + ' (ties may exist). This ranks spherical distance only. DEM-grid costs and physical traversability are separate questions.';
+    }
+
+    if (/terrain|elevation|slope|dem|teren|altitud|panta|pante/.test(text))
+    {
+        if (!facts.hasNumericDem)
+        {
+            return label + 'Load the numeric Jezero DEM in Terrain first. Satellite imagery supplies visual context; its colors do not provide numeric elevation. The bundled DEM covers a limited study area.';
+        }
+        return label + 'Elevation source: ' + facts.demSource + '.\n' + facts.demCoveredWaypoints + '/' + facts.waypointCount + ' waypoint positions have DEM samples. Coverage at the waypoints does not establish continuous coverage between them.\n' +
+            (facts.modeledMaxGradePercent === null ? 'No saved routing-grade result is available for the active route. Open Terrain to inspect its profile or preview route options.' : 'Saved maximum adjacent-cell grade: ' + facts.modeledMaxGradePercent.toFixed(2) + '%. This stored model is unverified and does not certify safety.');
+    }
+
+    if (/resource|oxygen|oxigen|battery|bater|energy|energie|duration|durat|time|timp/.test(text))
+    {
+        if (facts.waypointCount < 2)
+        {
+            return label + 'Select a route with at least two waypoints before estimating travel resources. An empty route is not a completed zero-cost mission.';
+        }
+        const scenario = facts.resourceScenario;
+        const minutes = Math.round(scenario.durationHours * 60);
+        return label + 'Using your saved resource assumptions:\n' + Math.floor(minutes / 60) + 'h ' + minutes % 60 + 'm total · ' + scenario.oxygenKg.toFixed(3) + ' kg O₂ · ' + Math.round(scenario.batteryWh) + ' Wh.\n' +
+            'Walking speed: ' + scenario.speedKmh + ' km/h; ' + (scenario.retraceReturn ? 'includes retracing the route to return.' : 'one-way travel.') +
+            '\nThese are illustrative scenario estimates. They exclude terrain-dependent walking effects and are not measured suit telemetry.';
+    }
+
+    if (/route|mission|summar|overview|distance|ruta|rute|misiun|rezum|distanta/.test(text))
+    {
+        return localMissionExplanation(facts);
+    }
+
+    return label + 'I can explain route distance, compare alternatives, summarize terrain coverage and estimate resource scenarios. Try “Compare routes”, “Explain terrain” or “Estimate resources”. Free-form conversation requires a separate language model; this assistant uses local calculations.';
+}

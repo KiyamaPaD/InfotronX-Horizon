@@ -1,41 +1,44 @@
-import { buildMissionFacts, localMissionExplanation, normalizeCopilotQuestion } from "./mission-copilot.js";
+import { buildMissionFacts, localMissionExplanation, localMissionAnswer, normalizeCopilotQuestion } from "./mission-copilot.js";
 
 export function mountMissionCopilot({ panel, before, store, getDem, getCloud, notify })
 {
     const section = document.createElement("section");
     section.className = "panel-section science-model-section copilot-section";
     section.innerHTML = `
-        <div class="panel-title-row"><h2 class="section-label">MISSION COPILOT</h2><span class="tiny-pill">ASSISTANT</span></div>
-        <p class="section-help copilot-intro">Understand your route, compare alternatives and explore terrain evidence.</p>
+        <div class="panel-title-row"><h2 class="section-label">MISSION COPILOT</h2><span class="tiny-pill">FREE · LOCAL</span></div>
+        <p class="section-help copilot-intro">Answers from your mission data. Free local calculations, without login or an API key.</p>
         <div class="copilot-context" aria-live="polite"></div>
         <div class="copilot-prompts" aria-label="Suggested questions">
             <button type="button" data-copilot-prompt="Explain this route and its limitations.">Explain route</button>
             <button type="button" data-copilot-prompt="What can the loaded DEM tell us, and what data are missing?">Read terrain</button>
             <button type="button" data-copilot-prompt="How should I compare alternative routes without assuming the shortest is safest?">Compare</button>
+            <button type="button" data-copilot-prompt="Estimate resources for this route.">Resources</button>
         </div>
         <form id="copilot-ai-form" class="copilot-ai-form">
             <label for="copilot-question">Your question</label>
             <textarea id="copilot-question" maxlength="240" rows="3" placeholder="What should I look at in this mission?"></textarea>
-            <label class="copilot-consent"><input id="copilot-consent" type="checkbox"/> Allow this question and aggregate mission metrics to be sent to the AI provider.</label>
-            <button type="submit" class="btn btn-accent wide" id="copilot-ask">Ask Copilot <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M4 4h8v8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            <label class="copilot-consent" hidden><input id="copilot-consent" type="checkbox"/> Allow this question and aggregate mission metrics to be sent to the AI provider.</label>
+            <button type="submit" class="btn btn-accent wide" id="copilot-ask">Ask locally <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M4 4h8v8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         </form>
         <div id="copilot-notice" class="copilot-notice" role="status" hidden></div>
-        <div id="copilot-output" class="copilot-output" role="status" aria-live="polite">Choose a question to start. Local calculations are available without an AI account.</div>
+        <div id="copilot-output" class="copilot-output" role="status" aria-live="polite">Choose a question to start. This assistant calculates supported answers locally; it is not a generative AI model.</div>
         <div class="copilot-local-actions">
             <button type="button" id="copilot-local" class="btn btn-outline wide">Calculate local summary</button>
             <button type="button" id="copilot-propose" class="btn btn-outline wide">Preview DEM route options</button>
         </div>
-        <details class="copilot-settings"><summary>Service & privacy</summary>
+        <details class="copilot-settings"><summary>Optional external AI</summary>
+            <label class="copilot-consent"><input id="copilot-use-ai" type="checkbox"/> Use an external model instead. Requires separate API billing, sign-in and consent.</label>
             <p>AI explanations require sign-in and a configured backend. Mission titles, raw coordinates, notes, chat messages and photos are excluded from the automatic context. Your question and the DEM source label are sent as written.</p>
             <button type="button" id="copilot-health" class="btn btn-outline wide">Check AI service status</button>
             <div id="copilot-owner-help" hidden><p>The backend reports a missing provider key. Project owners can set <code>OPENAI_API_KEY</code> in Supabase Edge Function Secrets, then check the service again.</p><a href="https://supabase.com/dashboard/project/yuvdrjptwumbfzjsimoe/functions/secrets" target="_blank" rel="noopener noreferrer">Open server settings ↗</a></div>
         </details>
-        <p class="science-footnote">AI explains the supplied evidence. DEM proposals are computed locally and added only when you choose them.</p>`;
+        <p class="science-footnote">Local answers use supported question categories and calculated evidence. DEM proposals are added only when you choose them.</p>`;
     panel.insertBefore(section,before);
     const output = section.querySelector("#copilot-output");
     const form = section.querySelector("#copilot-ai-form");
     const question = section.querySelector("#copilot-question");
     const consent = section.querySelector("#copilot-consent");
+    const useAi = section.querySelector("#copilot-use-ai");
     const send = section.querySelector("#copilot-ask");
     const status = section.querySelector("#copilot-health");
     const notice = section.querySelector("#copilot-notice");
@@ -70,9 +73,22 @@ export function mountMissionCopilot({ panel, before, store, getDem, getCloud, no
 
     let requestVersion = 0;
     const missionSignature = () => JSON.stringify(store.current);
+    useAi.addEventListener('change', () =>
+    {
+        requestVersion++;
+        send.disabled = false;
+        consent.checked = false;
+        consent.closest('label').hidden = !useAi.checked;
+        send.textContent = useAi.checked ? 'Ask external AI' : 'Ask locally';
+        clearNotice();
+        output.textContent = useAi.checked
+            ? 'External AI selected. API billing, sign-in and consent are required. No request has been sent.'
+            : 'Local mode selected. No question or mission metrics will be sent to an AI provider.';
+    });
     store.subscribe(() =>
     {
         requestVersion++;
+        send.disabled = false;
         updateContext();
         clearNotice();
         output.textContent = "Mission updated. Run analysis again to use the current route and assumptions.";
@@ -191,6 +207,7 @@ export function mountMissionCopilot({ panel, before, store, getDem, getCloud, no
         try
         {
             requestVersion++;
+            send.disabled = false;
             clearNotice();
             updateContext();
             output.textContent = localMissionExplanation(buildMissionFacts(store.current,getDem()));
@@ -204,6 +221,23 @@ export function mountMissionCopilot({ panel, before, store, getDem, getCloud, no
     form.addEventListener("submit",async event =>
     {
         event.preventDefault();
+
+        if (!useAi.checked)
+        {
+            requestVersion++;
+            send.disabled = false;
+            clearNotice();
+            updateContext();
+            try
+            {
+                output.textContent = localMissionAnswer(buildMissionFacts(store.current,getDem()),question.value);
+            }
+            catch (error)
+            {
+                output.textContent = error.message;
+            }
+            return;
+        }
 
         if (!consent.checked)
         {
@@ -261,7 +295,7 @@ export function mountMissionCopilot({ panel, before, store, getDem, getCloud, no
         }
         finally
         {
-            send.disabled = false;
+            if (version === requestVersion) send.disabled = false;
         }
     });
 

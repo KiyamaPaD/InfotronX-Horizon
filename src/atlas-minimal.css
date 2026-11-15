@@ -148,3 +148,5 @@ body { background:var(--bg); }
 .route-options .route-actions { margin-top:8px; grid-template-columns:1fr 1fr; }
 .route-options .route-color-setting { font-size:10px; letter-spacing:.6px; }
 .header-copilot svg,.copilot-ai-form .btn svg { width:12px; height:12px; vertical-align:middle; margin-left:5px; }
+.copilot-consent[hidden] { display:none; }
+.copilot-settings > .copilot-consent { margin-top:12px; }
