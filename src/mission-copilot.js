@@ -1,4 +1,5 @@
 import { analyzeRoute } from "./geo.js";
+import { estimateMarswalk } from "./resources.js";
 import { sampleElevation } from "./terrain.js";
 
 export function buildMissionFacts(mission, dem = null)
@@ -31,56 +32,51 @@ export function buildMissionFacts(mission, dem = null)
             Math.round(terrain.stats.distanceMeters * 100) / 100 : null,
         modeledMaxGradePercent: Number.isFinite(terrain?.stats?.maxGradePercent) ?
             Math.round(terrain.stats.maxGradePercent * 100) / 100 : null,
+        alternatives: mission.routes.slice(0,15).map((item, index) => ({
+            index:index + 1,
+            waypointCount:item.points.length,
+            distanceMeters:Math.round(analyzeRoute(item.points).totalDistance * 100) / 100
+        })),
+        resourceScenario: (() =>
+        {
+            const estimate = estimateMarswalk(summary.totalDistance, mission.evaScenario || {});
+            return { durationHours:estimate.durationHours, oxygenKg:estimate.oxygenKg,
+                batteryWh:estimate.batteryWh, retraceReturn:estimate.assumptions.retraceReturn,
+                speedKmh:estimate.assumptions.speedKmh, illustrative:true };
+        })(),
         terrainModelUnverified: true
     };
 }
 
-export function localMissionExplanation(facts)
+export function buildAssistantView(facts, topic = "overview")
 {
-    const lines = [
-        "DETERMINISTIC MISSION ANALYSIS — not generative AI",
-        "",
-        "Routes: " + facts.routeCount + " · Active waypoints: " + facts.waypointCount +
-            " · User notes: " + facts.observationCount,
-        "Manual spherical route distance: " + facts.horizontalDistanceMeters.toFixed(2) + " m."
-    ];
-
-    if (facts.waypointCount < 2)
+    const distance = value => value >= 1000 ? (value / 1000).toFixed(2) + ' km' : Math.round(value) + ' m';
+    if (topic === 'terrain')
     {
-        lines.push("Add at least two manually controlled waypoints before comparing routes.");
+        return facts.hasNumericDem ? {
+            metrics:[{label:'Waypoints sampled',value:facts.demCoveredWaypoints + '/' + facts.waypointCount},
+                {label:'Saved max. grade',value:facts.modeledMaxGradePercent === null ? '—' : facts.modeledMaxGradePercent.toFixed(1) + '%'}],
+            source:facts.demSource,
+            note:'Samples cover waypoint positions. Check the elevation profile for gaps along the route.'
+        } : { metrics:[], note:'Load Jezero elevation data in Terrain to inspect this route.' };
     }
-
-    if (!facts.hasNumericDem)
+    if (topic === 'compare')
     {
-        lines.push("Numeric DEM not loaded. Altitudes, slopes and terrain safety cannot be derived from the imagery.");
+        const routes = facts.alternatives.filter(route => route.waypointCount >= 2).sort((a,b) => a.distanceMeters - b.distanceMeters);
+        return { metrics:[], routes:routes.map(route => ({index:route.index,value:distance(route.distanceMeters)})),
+            note:routes.length < 2 ? 'Add another route with two waypoints to compare distances.' : 'Ordered by waypoint distance. Terrain cost and traversability may differ.' };
     }
-    else
+    if (topic === 'resources')
     {
-        lines.push("Numeric DEM source: " + facts.demSource + ". " +
-            facts.demCoveredWaypoints + "/" + facts.waypointCount + " waypoint positions have valid DEM samples.");
+        if (facts.waypointCount < 2) return { metrics:[], note:'Add two waypoints to estimate travel resources.' };
+        const s = facts.resourceScenario;
+        const minutes = Math.round(s.durationHours * 60);
+        return { metrics:[{label:'Duration',value:Math.floor(minutes / 60) + 'h ' + minutes % 60 + 'm'},
+            {label:'Oxygen',value:s.oxygenKg.toFixed(3) + ' kg'}, {label:'Energy',value:Math.round(s.batteryWh) + ' Wh'}],
+            note:'Scenario at ' + s.speedKmh + ' km/h, ' + (s.retraceReturn ? 'including return.' : 'one way.') + ' Estimates exclude terrain effects.' };
     }
-
-    if (facts.modeledGridDistanceMeters !== null)
-    {
-        lines.push("Saved A* grid route length: " + facts.modeledGridDistanceMeters.toFixed(2) +
-            " m; maximum adjacent-cell grade: " +
-            (facts.modeledMaxGradePercent === null ? "not recorded" : facts.modeledMaxGradePercent.toFixed(2) + "%") + ".");
-        lines.push("This is a stored model result, not a revalidation after edits.");
-    }
-
-    lines.push("An optimal cost inside a DEM grid does not prove physical rover or astronaut safety.");
-    lines.push("All edits, sharing and exporting remain under manual user control.");
-    return lines.join("\n");
-}
-
-export function normalizeCopilotQuestion(value)
-{
-    const text = String(value || "").trim();
-
-    if (!text || text.length > 240)
-    {
-        throw new Error("Write a question between 1 and 240 characters.");
-    }
-
-    return text;
+    return { metrics:[{label:'Distance',value:distance(facts.horizontalDistanceMeters)},
+        {label:'Waypoints',value:String(facts.waypointCount)}, {label:'Routes',value:String(facts.routeCount)},
+        {label:'Field notes',value:String(facts.observationCount)}],
+        note:facts.waypointCount < 2 ? 'Choose at least two waypoints to start your route.' : 'Distances follow your waypoints on a spherical Mars model.' };
 }

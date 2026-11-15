@@ -24,8 +24,7 @@ export function mountCloudWorkspace({ store, notify })
         '<button type="button" data-hub-tab="cloud" role="tab" aria-selected="false">Cloud library</button>',
         '<button type="button" data-hub-tab="crew" role="tab" aria-selected="false">Crew profile</button>',
         '<button type="button" data-hub-tab="export" role="tab" aria-selected="false">Share &amp; export</button></div>',
-        '<section class="mission-hub-panel" id="hub-device" data-hub-panel="device"><h3>Saved on this device</h3>',
-        '<p>Your routes are saved automatically while you work. Create checkpoints to return to an earlier plan.</p>',
+        '<section class="mission-hub-panel" id="hub-device" data-hub-panel="device"><h3>Your missions</h3>',
         '<div id="hub-device-list"></div><div id="hub-checkpoints"></div></section>',
         '<section class="mission-hub-panel" id="hub-cloud" data-hub-panel="cloud" hidden>',
         '<p id="cloud-status" role="status" aria-live="polite">Sign in to access your cloud missions.</p>',
@@ -36,21 +35,21 @@ export function mountCloudWorkspace({ store, notify })
         '<button class="btn btn-outline" type="submit" value="signup">Create account</button></div></form>',
         '<div id="cloud-session" hidden>',
         '<p class="cloud-account-email" id="cloud-email"></p>',
-        '<p class="section-help">This list contains only missions saved to your online account. Changes on this device are not uploaded until you press Save current mission.</p>',
+        '<p class="section-help">Save explicitly to upload your latest changes.</p>',
         '<div class="cloud-actions"><button id="cloud-save" type="button" class="btn btn-accent">Save current mission</button>',
         '<button id="cloud-refresh" type="button" class="btn btn-outline">Refresh library</button></div>',
         '<label class="cloud-label">Cloud missions<select id="cloud-missions" aria-label="Choose a cloud mission"></select></label>',
         '<div class="cloud-actions"><button id="cloud-open" type="button" class="btn btn-outline">Open selected mission</button>',
         '<button id="cloud-signout" type="button" class="btn btn-muted">Sign out</button></div>',
         '<div class="cloud-share" id="cloud-share" hidden><h3>Share selected mission</h3>',
-        '<p>Enter the exact email used for your teammate\'s Mars Atlas account. Access activates immediately for confirmed accounts; otherwise it remains pending until that address is registered and confirmed. No invitation email is sent.</p>',
+        '<p>Use your teammate\'s account email. Access stays pending until their email is confirmed. No invitation email is sent.</p>',
         '<label>Teammate email<input id="cloud-member-email" type="email" maxlength="254" placeholder="teammate@example.com" autocomplete="off" /></label>',
         '<label>Access<select id="cloud-member-access"><option value="viewer">Can view</option><option value="editor">Can edit</option></select></label>',
         '<button id="cloud-invite" type="button" class="btn btn-outline">Share by email</button>',
         '<div id="cloud-members" class="cloud-members" aria-live="polite"></div>',
         '<div id="cloud-pending" class="cloud-members" aria-live="polite"></div></div></div></section>',
         '<section class="mission-hub-panel" id="hub-crew" data-hub-panel="crew" hidden>',
-        '<div id="crew-profile-login" class="crew-profile-login"><p>Create your private Mars Atlas crew profile after signing in to your cloud account. No NASA affiliation is implied.</p><button type="button" id="crew-go-login" class="btn btn-outline">Sign in to build your profile</button></div>',
+        '<div id="crew-profile-login" class="crew-profile-login"><p>Sign in to create your crew profile.</p><button type="button" id="crew-go-login" class="btn btn-outline">Sign in to build your profile</button></div>',
         '<div id="crew-profile-content" hidden>',
         '<div class="crew-profile-hero"><div class="crew-avatar"><img id="crew-photo" alt="Your uploaded profile photo" hidden/><span id="crew-avatar-fallback">MA</span></div><div class="crew-preview"><span>PERSONAL MISSION PROFILE</span><strong id="crew-preview-name">Mars Explorer</strong><small id="crew-preview-role">Mission Planner</small></div></div>',
         '<div class="crew-stats"><div><strong id="crew-stat-missions">0</strong><small>Local missions</small></div><div><strong id="crew-stat-points">0</strong><small>Saved waypoints</small></div><div><strong id="crew-stat-notes">0</strong><small>Observations</small></div></div>',
@@ -62,7 +61,7 @@ export function mountCloudWorkspace({ store, notify })
         '<label class="crew-bio">Crew biography<textarea name="biography" maxlength="600" rows="4" placeholder="Your skills, projects, science interests and objectives."></textarea></label>',
         '<label class="crew-upload">Profile photo (PNG, JPEG, WebP; 2 MB max)<input id="crew-avatar-upload" type="file" accept="image/png,image/jpeg,image/webp"/></label>',
         '<div class="crew-profile-actions"><button type="button" class="btn btn-outline" id="crew-avatar-remove" disabled>Remove photo</button><button class="btn btn-accent" type="submit">Save crew profile</button></div></form>',
-        '<p class="science-footnote">This is a self-described Mars Atlas team profile, not an astronaut certification, employment record or NASA affiliation. Your profile and image are private to your signed-in account.</p>',
+        '<p class="science-footnote">Your profile and image are private to your account.</p>',
         '</div><p id="crew-message" role="status" aria-live="polite">Sign in to use your crew profile.</p></section>',
         '<section class="mission-hub-panel" id="hub-export" data-hub-panel="export" hidden>',
         '<h3>Share and export</h3><p>Share a copy by link, or download a backup and route data.</p>',
@@ -138,6 +137,8 @@ export function mountCloudWorkspace({ store, notify })
         for (const panel of dialog.querySelectorAll("[data-hub-panel]"))
         {
             panel.hidden = panel.dataset.hubPanel !== name;
+            panel.setAttribute('role','tabpanel');
+            panel.setAttribute('aria-labelledby','hub-tab-' + panel.dataset.hubPanel);
         }
 
         for (const button of dialog.querySelectorAll("[data-hub-tab]"))
@@ -145,8 +146,25 @@ export function mountCloudWorkspace({ store, notify })
             const selected = button.dataset.hubTab === name;
             button.classList.toggle("active", selected);
             button.setAttribute("aria-selected", String(selected));
+            button.id = 'hub-tab-' + button.dataset.hubTab;
+            button.setAttribute('aria-controls','hub-' + button.dataset.hubTab);
+            button.tabIndex = selected ? 0 : -1;
         }
     }
+
+    dialog.querySelector('.mission-hub-tabs').addEventListener('keydown', event =>
+    {
+        const current = event.target.closest('[data-hub-tab]');
+        const keys = ['ArrowLeft','ArrowRight','Home','End'];
+        if (!current || !keys.includes(event.key)) return;
+        event.preventDefault();
+        const tabs = [...dialog.querySelectorAll('[data-hub-tab]')];
+        const index = tabs.indexOf(current);
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 :
+            (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+        tabs[next].click();
+        tabs[next].focus();
+    });
 
     dialog.querySelectorAll("[data-hub-tab]").forEach(button =>
     {

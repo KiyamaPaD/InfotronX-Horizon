@@ -5,7 +5,7 @@ import { loadJezeroDem } from "./bundled-dem.js";
 import { profileRouteOnDem } from "./terrain.js";
 import { summarizeTerrainProfile } from "./terrain-profile-v2.js";
 import { animateNumber, prefersReducedMotion } from "./motion.js";
-import { buildMissionFacts, localMissionExplanation, normalizeCopilotQuestion } from "./mission-copilot.js";
+import { buildMissionFacts } from "./mission-copilot.js";
 import { askCopilot } from "./copilot-client.js";
 
 const escapeText = value => String(value).replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
@@ -185,7 +185,7 @@ export function mountAnalyzeDashboard({ shell, store, getCloud, getDem })
             return lastSentences.size + " " + lastSentences.legs;
         }
 
-        return localMissionExplanation(facts);
+        return lastSentences.size + " " + lastSentences.height + " Ask about distance, slope, comparison or resources for a more specific answer.";
     }
 
     function paintChat()
@@ -215,7 +215,9 @@ export function mountAnalyzeDashboard({ shell, store, getCloud, getDem })
 
         try
         {
-            text = normalizeCopilotQuestion(question);
+            text = String(question || "").trim();
+
+            if (!text || text.length > 240) throw new Error("Write a question between 1 and 240 characters.");
         }
         catch (error)
         {

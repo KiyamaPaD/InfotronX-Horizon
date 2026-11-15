@@ -34,7 +34,7 @@ The "All tools" view keeps the full science, math and resource workspace.
 - **Create a private Crew Profile:** signed-in Mars Atlas accounts can save a callsign, mission role, interests, biography and an optional private profile image. Roles are user-supplied, not NASA credentials. [Crew profile documentation](docs/CREW_PROFILES.md).
 - **Team chat for shared missions:** owner/viewer/editor collaboration conversations in Mission Center with Supabase RLS, anti-spam, block, report and message deletion. **Global chat remains off** until staffed moderation is ready.
 - **Interactive numeric 3D terrain:** WebGL rendering of valid DEM mesh triangles, with user-controlled orientation, zoom and vertical exaggeration. NoData cells remain blank and the original 2D terrain tools still work without WebGL.
-- **Optional Mission Copilot:** deterministic local analysis without authentication, plus a consent-based read-only AI explanation endpoint. The AI model needs a **server-side** API key configured by the project owner; no external AI answer is assumed live yet. [Collaboration, AI and 3D instructions](docs/COLLAB_AI_3D_V2.md).
+- **Route insights:** compact distance, terrain coverage, comparison and resource cards calculated from the current mission. No account or language model is required.
 
 ## Explore and analyze
 
@@ -53,7 +53,7 @@ The map uses the NASA Viking global color mosaic as its default (zoom 3–7). In
 | Live simultaneous editing | **Not implemented** — cloud snapshots are opened and saved explicitly. Team chat uses Realtime independently of document editing |
 | Mission chat | RLS-protected conversations for cloud mission members; real two-account production test pending |
 | Global chat | Disabled until moderation and abuse response are staffed |
-| AI Copilot | Deterministic local report works now; external LLM requires a server-side `OPENAI_API_KEY` |
+| Route insights | Local metric cards, terrain coverage and resource scenarios; no language model |
 | WebGL 3D terrain | Implemented numeric mesh; degraded 2D mode remains when WebGL is unsupported |
 | Rover/astronaut safety certification | **Not provided** |
 
@@ -75,7 +75,7 @@ Open `http://localhost:4173` in your browser. In another terminal:
 npm test
 ```
 
-The website uses native browser JavaScript modules and does not need an npm build step.
+Local development uses native browser JavaScript modules without compilation. For Netlify, run `npm run build`: the static site is written to `dist/`, excluding internal documentation, SQL, tests and server functions. Deploy only that folder. The ready-to-upload archive is [releases/mars-atlas-netlify.zip](releases/mars-atlas-netlify.zip); extract it and upload the folder containing `index.html` to the existing Netlify site.
 
 ## Contribute
 

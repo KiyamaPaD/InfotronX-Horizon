@@ -16,7 +16,6 @@ test("scientific tools explain when DEM, routes and waypoints are required", () 
     assert.match(nav, /data-ready-item="dem"/);
     assert.match(nav, /data-ready-item="alternative"/);
     assert.match(nav, /onLoadDem/);
-    assert.match(nav, /const expanded = !groupsSeen\.has\(group\)/);
     assert.match(main, /analyticsNavigation\.refresh\(\)/);
     assert.match(science, /get isDemReady\(\)/);
     assert.match(css, /\.analytics-ready-item/);

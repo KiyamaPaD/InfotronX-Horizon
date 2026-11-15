@@ -1,5 +1,5 @@
 // Map-integrated 3D view with two honest data scales, loaded only when opened:
-// - "crater": the whole Jezero crater on NASA MOLA heights (~1.3 km grid, interpolated) under Viking colour and HiRISE where it exists;
+// - "crater": a qualitative 3D shape from 8-bit MOLA grayscale tiles, not verified metric elevations, under NASA imagery;
 // - "delta": the 2 km delta-front clip on USGS CTX heights (20 m grid) under HiRISE at ~1.2 m/pixel.
 import { loadJezeroDem } from "./bundled-dem.js";
 import { MAP_LAYERS, JEZERO_CTX_CONTEXT } from "./constants.js";
@@ -11,8 +11,10 @@ const CONTROLS_URL = "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/co
 const TREK = "https://trek.nasa.gov/tiles/Mars/EQ/";
 const MOLA_URL = TREK + "Mars_MGS_MOLA_DEM_mosaic_global_463m_8/1.0.0/default/default028mm/";
 const MOLA_ZOOM = 5;
-// The 8-bit MOLA mosaic stretches the global range (-8201 m Hellas to +21229 m Olympus Mons) over 0-255,
-// about 115.4 m per grey level. Checked against the USGS CTX clip: grey 49 at the Jezero floor gives -2546 m.
+// The conversion below assumes a linear 8-bit intensity stretch. Its calibration has NOT
+// been verified against the Mars Trek rendering transfer function; one CTX sample cannot
+// validate the whole image. Use this only to shape a qualitative crater preview, never
+// to report quantitative elevations or slopes. The CTX numeric DEM is the metered source.
 const MOLA_MIN_METERS = -8201;
 const MOLA_METERS_PER_LEVEL = 29430 / 255;
 const CRATER_BOUNDS = { north: 18.9, south: 18.0, west: 77.0, east: 77.9 };
@@ -235,7 +237,7 @@ function sampleGrid(grid, point)
 }
 
 const COPY = {
-    crater: { title: "Jezero Crater", eyebrow: "3D VIEW · WHOLE CRATER", text: "Whole crater on NASA MOLA heights (~1.3 km grid, smoothed; about 115 m height steps) with Viking colour and HiRISE where it exists. Approximate relief, not exact elevations. Curvature is exaggerated.", switchLabel: "Delta detail · 20 m" },
+    crater: { title: "Jezero Crater", eyebrow: "3D VIEW · WHOLE CRATER", text: "Whole-crater visualization from NASA MOLA 8-bit grayscale imagery and Viking/HiRISE context. Vertical mapping is illustrative and not calibrated in meters. Use Delta detail for a documented numeric DEM.", switchLabel: "Delta detail · 20 m" },
     delta: { title: "Delta front", eyebrow: "3D VIEW · DETAIL", text: "USGS CTX heights (20 m grid) with NASA HiRISE imagery (~1.2 m/pixel). Height and curvature are exaggerated for readability.", switchLabel: "Whole crater" }
 };
 
@@ -745,7 +747,7 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
             };
 
             flyIn();
-            const sizeLabel = which === "crater" ? `${(spanX / 1000).toFixed(0)} × ${(spanY / 1000).toFixed(0)} km · ~${Math.round((maxZ - minZ) / 10) * 10} m relief (MOLA)` : `${Math.round(spanX)} × ${Math.round(spanY)} m · ${Math.round(maxZ - minZ)} m relief (CTX)`;
+            const sizeLabel = which === "crater" ? `${(spanX / 1000).toFixed(0)} × ${(spanY / 1000).toFixed(0)} km · illustrative MOLA relief (not meter-calibrated)` : `${Math.round(spanX)} × ${Math.round(spanY)} m · ${Math.round(maxZ - minZ)} m relief (CTX)`;
             status.textContent = sizeLabel + " · loading imagery…";
             const loader = which === "crater" ? craterTexture(THREE, renderer.capabilities.maxTextureSize, renderer.capabilities.getMaxAnisotropy(), done => { if (id === session && !disposed) status.textContent = `${sizeLabel} · imagery ${done} tiles`; })
                 : deltaTexture(THREE, bounds, renderer.capabilities.maxTextureSize, renderer.capabilities.getMaxAnisotropy(), done => { if (id === session && !disposed) status.textContent = `${sizeLabel} · HiRISE ${done} tiles`; });

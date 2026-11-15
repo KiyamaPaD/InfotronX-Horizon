@@ -41,7 +41,7 @@ export function initScienceWorkbench({ store, map, notify, onTerrainChange = () 
     resources.setAttribute("aria-labelledby", "eva-model-heading");
     resources.innerHTML = `
         <div class="panel-title-row"><h2 id="eva-model-heading" class="section-label">MARSWALK RESOURCE MODEL</h2><span class="tiny-pill amber">SCENARIO</span></div>
-        <p class="section-help">Compare time, O₂ and energy using your own assumptions. These are <strong>not NASA suit telemetry</strong> or a safety approval.</p>
+        <p class="section-help">Estimate time, oxygen and energy using your mission assumptions.</p>
         <div id="eva-results" class="eva-results" aria-live="polite"></div>
         <details class="science-details" id="eva-assumptions"><summary>Adjust model assumptions</summary>
             <form id="eva-form" class="eva-form">
@@ -66,7 +66,7 @@ export function initScienceWorkbench({ store, map, notify, onTerrainChange = () 
     stress.setAttribute("aria-labelledby", "stress-heading");
     stress.innerHTML = `
         <div class="panel-title-row"><h2 id="stress-heading" class="section-label">MISSION STRESS LAB</h2><span class="tiny-pill">SENSITIVITY</span></div>
-        <p class="section-help">Explore how uncertain speed and resource-use assumptions change the outcome. The frequencies below are <strong>synthetic model results</strong>, not calibrated mission risks.</p>
+        <p class="section-help">Explore how changes in speed and resource use affect this scenario. Frequencies describe the model, not measured mission risk.</p>
         <label class="science-label">Parameter variation <small>uniform, each parameter independent</small>
             <select id="stress-variation" class="science-select"><option value="10">±10%</option><option value="20" selected>±20%</option><option value="35">±35%</option><option value="50">±50%</option></select>
         </label>
@@ -98,8 +98,8 @@ export function initScienceWorkbench({ store, map, notify, onTerrainChange = () 
         <button class="btn btn-outline wide" id="terrain-compare" disabled>Compare 3 route strategies</button>
         <div id="terrain-strategies" class="terrain-strategies" aria-live="polite"></div>
         <section class="terrain-why" id="terrain-why" aria-label="Explainable route selection">
-            <div class="terrain-why-title"><strong>WHY THIS ROUTE?</strong><span>EXPLAINABLE A* · NO AI SCORING</span></div>
-            <p class="section-help">Understand exactly why a route is preferred under a chosen cost function. Change the preference to recompute scores without changing any saved waypoints.</p>
+            <div class="terrain-why-title"><strong>WHY THIS ROUTE?</strong><span>ROUTE COST</span></div>
+            <p class="section-help">Change your preference to compare route costs. Saved waypoints stay unchanged.</p>
             <label class="science-label">Evaluation preference
                 <select id="terrain-why-preference" class="science-select" disabled>
                     <option value="distance">Shortest modeled (λ = 0)</option>
@@ -107,7 +107,7 @@ export function initScienceWorkbench({ store, map, notify, onTerrainChange = () 
                     <option value="gentle">Slope-conscious (λ = 24)</option>
                 </select>
             </label>
-            <div id="terrain-why-report" aria-live="polite" class="terrain-why-report"><p class="why-empty">Load a numeric DEM, add two waypoints and choose Compare 3 route strategies to see an evidence-based explanation.</p></div>
+            <div id="terrain-why-report" aria-live="polite" class="terrain-why-report"><p class="why-empty">Load terrain data and compare routes to see the cost breakdown.</p></div>
             <button type="button" id="terrain-evidence-export" class="btn btn-outline wide" disabled>↓ Export scientific comparison (.md)</button>
             <p class="science-footnote">Exports exact modeled assumptions and candidate metrics. No private account or photo data are included.</p>
         </section>
@@ -360,7 +360,7 @@ export function initScienceWorkbench({ store, map, notify, onTerrainChange = () 
         {
             const t = route.terrainModel;
             const whatIf = t.scenario?.exclusionZones?.length ? `<small>What-if exclusion: ${t.scenario.exclusionZones.map(zone => `${escapeText(zone.title)} (${formatNumber(zone.radiusMeters, 0)} m)`).join(", ")}. This is a user-defined assumption, not a mapped hazard.</small>` : "";
-            demReport.innerHTML = `<div class="dem-candidate"><strong>Active route derived from imported DEM</strong><span>Modeled distance ${formatDistance(t.stats.distanceMeters)} · ascent ${formatNumber(t.stats.ascentMeters)} m · max grade ${formatNumber(t.stats.maxGradePercent)}%</span>${whatIf}<small>Source: ${escapeText(t.source)} · User-imported / unverified · Not a safety certification</small></div>${terrainMessage ? `<p>${escapeText(terrainMessage)}</p>` : ""}`;
+            demReport.innerHTML = `<div class="dem-candidate"><strong>Terrain route model</strong><span>Modeled distance ${formatDistance(t.stats.distanceMeters)} · ascent ${formatNumber(t.stats.ascentMeters)} m · max grade ${formatNumber(t.stats.maxGradePercent)}%</span>${whatIf}<small>Source: ${escapeText(t.source)} · Model estimate · Traversability unverified</small></div>${terrainMessage ? `<p>${escapeText(terrainMessage)}</p>` : ""}`;
         }
         else
         {
@@ -470,9 +470,9 @@ export function initScienceWorkbench({ store, map, notify, onTerrainChange = () 
 
             dem = loaded;
             clearComparison();
-            terrainMessage = "Official USGS/NASA CTX elevation sample loaded. A* works within this small Jezero clip. No EVA safety certification.";
-            demStatus.innerHTML = `<strong>USGS CTX DTM · 20 m SOURCE · ${dem.width} × ${dem.height}</strong><small>${escapeText(dem.source)}</small><small>Real numeric elevations from a documented Mars raster; no-data, vertical datum and uncertainty matter. Study area: 18.438–18.470° N, 77.443–77.478° E.</small>`;
-            notify("Real numeric Jezero CTX elevations loaded. Set your route inside the documented coverage.");
+            terrainMessage = "Jezero CTX data loaded. Route calculations are limited to its study area.";
+            demStatus.innerHTML = `<strong>USGS CTX DTM · 20 m SOURCE · ${dem.width} × ${dem.height}</strong><details class="dataset-details"><summary>Source & coverage</summary><small>${escapeText(dem.source)}</small><small>20 m source posting. Study area: 18.438–18.470° N, 77.443–77.478° E. Missing data and datum uncertainty affect calculations.</small></details>`;
+            notify("Jezero elevation data loaded.");
             render();
             onTerrainChange?.();
             return dem;
@@ -524,7 +524,7 @@ export function initScienceWorkbench({ store, map, notify, onTerrainChange = () 
             dem.bundledSource = false;
             clearComparison();
             terrainMessage = "Numeric DEM imported into this browser session. Adjust slope assumptions and request a route alternative.";
-            demStatus.innerHTML = `<strong>GRID LOADED · ${dem.width} × ${dem.height} cells</strong><small>${escapeText(dem.source)} · ${escapeText(dem.resolution)}</small><small>Reference: ${escapeText(dem.horizontalDatum)} / ${escapeText(dem.verticalDatum)}. Provenance supplied by the importer; not independently verified.</small>`;
+            demStatus.innerHTML = `<strong>GRID LOADED · ${dem.width} × ${dem.height} cells</strong><details class="dataset-details"><summary>Source & reference</summary><small>${escapeText(dem.source)} · ${escapeText(dem.resolution)}</small><small>${escapeText(dem.horizontalDatum)} / ${escapeText(dem.verticalDatum)}. Importer-supplied provenance, not independently verified.</small></details>`;
             notify("Numeric elevation grid imported; route planner enabled.");
         }
         catch (error)

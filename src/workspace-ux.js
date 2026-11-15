@@ -128,7 +128,6 @@ export function setupAnalyticsNavigation(panel, options = {})
 
         if (toggle)
         {
-            toggle.textContent = expanded ? "−" : "+";
             toggle.setAttribute("aria-expanded", String(expanded));
         }
     }
@@ -136,6 +135,7 @@ export function setupAnalyticsNavigation(panel, options = {})
     function showGroup(group)
     {
         activeGroup = group;
+        readiness.hidden = group !== "overview";
         select.replaceChildren();
         select.add(new Option("Choose a tool…", ""));
 
@@ -173,8 +173,6 @@ export function setupAnalyticsNavigation(panel, options = {})
         categories.append(button);
     }
 
-    const groupsSeen = new Set();
-
     sections.forEach((section, index) =>
     {
         const heading = section.querySelector(".panel-title-row .section-label");
@@ -187,13 +185,17 @@ export function setupAnalyticsNavigation(panel, options = {})
 
         const title = heading.textContent.trim().replace(/\s+/g, " ");
         const group = groupDefinitions.find(definition => definition.items.includes(title))?.id || "models";
-        // Calm by default: only the first tool of each group is open, the rest are one click away.
-        const expanded = !groupsSeen.has(group);
-        groupsSeen.add(group);
+        const expanded = ["MISSION TELEMETRY", "WAYPOINT COORDINATES", "DEM ROUTE LAB", "MISSION COPILOT"].includes(title);
         const id = "analytics-section-" + index;
         section.id = id;
         section.dataset.analyticsGroup = group;
-        section.dataset.analyticsTitle = title.toLowerCase().replace(/\b\w/g, letter => letter.toUpperCase());
+        const labels = {
+            "MISSION TELEMETRY":"Mission overview", "DEM ROUTE LAB":"Terrain routes",
+            "MARSWALK RESOURCE MODEL":"Resource estimates", "MISSION STRESS LAB":"Scenario sensitivity",
+            "MISSION COPILOT":"Route insights", "ADVANCED ALGORITHMS":"Routing algorithms",
+            "ADVANCED MATHEMATICS LAB":"Advanced mathematics"
+        };
+        section.dataset.analyticsTitle = labels[title] || title.toLowerCase().replace(/\b\w/g, letter => letter.toUpperCase());
         section.classList.add("analytics-collapsible");
         section.classList.toggle("analytics-collapsed", !expanded);
         groups.set(id, section);
@@ -203,8 +205,10 @@ export function setupAnalyticsNavigation(panel, options = {})
         toggle.type = "button";
         toggle.setAttribute("aria-label", "Toggle " + title.toLowerCase());
         toggle.setAttribute("aria-expanded", String(expanded));
-        toggle.textContent = expanded ? "−" : "+";
-        header.append(toggle);
+        toggle.textContent = section.dataset.analyticsTitle;
+        heading.textContent = "";
+        heading.append(toggle);
+
 
         toggle.addEventListener("click", () =>
         {
@@ -245,5 +249,19 @@ export function setupAnalyticsNavigation(panel, options = {})
     showGroup(activeGroup);
     refresh();
 
-    return { refresh };
+    return {
+        refresh,
+        openSection(section)
+        {
+            if (!sections.includes(section)) return;
+            showGroup(section.dataset.analyticsGroup);
+            setExpanded(section, true);
+            updateToggleAll();
+            requestAnimationFrame(() =>
+            {
+                section.style.scrollMarginTop = (quickbar.getBoundingClientRect().height + 12) + 'px';
+                section.scrollIntoView({ block:"start", behavior:"smooth" });
+            });
+        }
+    };
 }

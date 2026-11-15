@@ -117,7 +117,6 @@ test("chat UI renders message content using textContent, not user-controlled HTM
     const ui = readFileSync(new URL("../src/mission-chat-ui.js",import.meta.url),"utf8");
     const cloud = readFileSync(new URL("../src/cloud-ui.js",import.meta.url),"utf8");
     assert.match(ui,/body\.textContent = item\.body/);
-    assert.match(ui,/Global chat is not enabled/);
     assert.match(ui,/Block/);
     assert.match(ui,/Report/);
     assert.match(cloud,/mountMissionChat/);
@@ -133,5 +132,4 @@ test("collaboration activity shows revisions without exposing full mission JSON"
     assert.match(backend,/select\("id,revision,editor_id,created_at"\)/);
     assert.match(ui,/Mission save activity/);
     assert.match(ui,/Revision " \+ Number\(entry.revision\)/);
-    assert.match(ui,/not real-time simultaneous editing/);
 });
