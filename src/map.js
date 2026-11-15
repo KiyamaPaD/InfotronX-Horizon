@@ -1,6 +1,6 @@
 import { JEZERO, JEZERO_CTX_CONTEXT, MAP_LAYERS } from "./constants.js";
 import { clamp, formatCoordinate, project, unproject } from "./geo.js";
-import { normalizeMarkerIcon } from "./marker-icons.js";
+import { markerRadiusForZoom, normalizeMarkerIcon } from "./marker-icons.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -1428,7 +1428,7 @@ export class MarsMap
                     const point = route.points[index];
                     const actual = coordinates[index];
 
-                    const radius = Math.max(3, Math.min(7, 3 + (this.zoom - 3) * 0.5));
+                    const radius = markerRadiusForZoom(this.zoom);
                     const halo = svgElement("circle", { cx: position.x, cy: position.y, r: radius + 3, fill: route.color, opacity: 0.16 });
                     const marker = markerShape(position, point.icon, route.color, { class: "route-node", "data-point": point.id });
                     marker.setAttribute("transform", `translate(${position.x} ${position.y}) scale(${radius / 7}) translate(${-position.x} ${-position.y})`);
@@ -1443,7 +1443,7 @@ export class MarsMap
         for (const observation of this.store.current.observations)
         {
             const position = this.geoToScreen(observation);
-            const radius = Math.max(3, Math.min(7, 3 + (this.zoom - 3) * 0.5));
+            const radius = markerRadiusForZoom(this.zoom);
             const halo = svgElement("circle", { cx: position.x, cy: position.y, r: radius + 3, fill: "#7ed4c5", opacity: 0.15 });
             const marker = markerShape(position, observation.icon || "diamond", "#8fe5d8");
             marker.setAttribute("transform", `translate(${position.x} ${position.y}) scale(${radius / 7}) translate(${-position.x} ${-position.y})`);
