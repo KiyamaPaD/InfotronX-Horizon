@@ -322,18 +322,18 @@ test("native useful zoom limits avoid enlarging regional relief imagery", () =>
 });
 
 
-test("HiRISE stops at zoom 10 without requesting unsupported level 11", () =>
+test("HiRISE stops at native zoom 11 without requesting unsupported level 12", () =>
 {
     const hirise = MAP_LAYERS.find(layer => layer.id === "hirise");
-    assert.equal(hirise.maxUsefulZoom, 10);
+    assert.equal(hirise.maxUsefulZoom, 11);
     const map = Object.create(MarsMap.prototype);
-    map.zoom = 10;
+    map.zoom = 11;
     map.layerMaxZoom = hirise.maxUsefulZoom;
     let renders = 0;
     map.render = () => renders++;
     map.options = { onViewChange() { throw new Error("Unexpected map update"); } };
     map.changeZoom(1);
-    assert.equal(map.zoom, 10);
+    assert.equal(map.zoom, 11);
     assert.equal(renders, 0);
 });
 
@@ -418,6 +418,7 @@ test("HiRISE is shown only inside the controlled Jezero mosaic footprint", () =>
     assert.equal(map.getImageryLayer(8).id, "viking");
     assert.equal(map.getImageryLayer(9).id, "hirise");
     assert.equal(map.getImageryLayer(10).id, "hirise");
+    assert.equal(map.getImageryLayer(11).id, "hirise");
 
     const x = Math.floor((JEZERO.lon + 180) / 360 * 2 ** 11);
     const y = Math.floor((90 - JEZERO.lat) / 180 * 2 ** 10);
@@ -573,4 +574,58 @@ test("verified NASA HiRISE and MOLA layers begin loading without waiting for met
         assert.equal(capabilitiesRequests, 1);
         assert.equal(map.capabilitiesTimer, null);
     }
+});
+
+
+test("zoom 11 requests genuine NASA HiRISE PNGs rather than enlarged zoom 10 tiles", () =>
+{
+    withFakeTiles(requests =>
+    {
+        const map = testMap();
+        map.layer = MAP_LAYERS.find(layer => layer.id === "hirise");
+        map.center = { ...JEZERO };
+        const zoom = 11;
+        const x = Math.floor((JEZERO.lon + 180) / 360 * 2 ** (zoom + 1));
+        const y = Math.floor((90 - JEZERO.lat) / 180 * 2 ** zoom);
+        const tile = map.createTile(x, y, zoom, 0, 0);
+        const [preview, detail] = tile.children;
+        tile.startLoading();
+
+        assert.equal(tile.dataset.source, "hirise");
+        assert.equal(tile.dataset.lowDetail, "false");
+        assert.match(detail.src, /JEZ_hirise_soc_006_orthoMosaic_25cm/);
+        assert.match(detail.src, /\/11\/\d+\/\d+\.png$/);
+        assert.equal(detail.style.width, undefined);
+        assert.match(preview.src, /Mars_Viking_MDIM21_ClrMosaic_global_232m/);
+        assert.match(preview.src, /\/8\/\d+\/\d+\.jpg$/);
+        assert.equal(preview.style.width, "2048px");
+        assert.equal(preview.style.left, -((x % 8) * 256) + "px");
+        assert.equal(preview.style.top, -((y % 8) * 256) + "px");
+
+        detail.onload();
+        preview.onload();
+        assert.equal(detail.style.opacity, "1");
+        assert.equal(preview.style.opacity, "1", "Transparent HiRISE pixels retain Viking context");
+        tile.dispose();
+        assert.ok(requests.length >= 2);
+    });
+});
+
+test("zoom 11 outside HiRISE coverage uses Viking context without 404 requests", () =>
+{
+    withFakeTiles(requests =>
+    {
+        const map = testMap();
+        map.layer = MAP_LAYERS.find(layer => layer.id === "hirise");
+        map.center = { lat: 15, lon: 70 };
+        const tile = map.createTile(2000, 604, 11, 0, 0);
+        tile.startLoading();
+
+        assert.equal(tile.dataset.source, "viking");
+        assert.equal(tile.dataset.lowDetail, "true");
+        assert.equal(requests.length, 1);
+        assert.match(requests[0].url, /Mars_Viking_MDIM21_ClrMosaic_global_232m/);
+        assert.match(requests[0].url, /\/8\/75\/250\.jpg$/);
+        tile.dispose();
+    });
 });

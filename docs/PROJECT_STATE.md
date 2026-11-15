@@ -50,3 +50,7 @@ NASA WMTS GetCapabilities is consulted before initial tile requests, with a shor
 ## Basemap source replacement
 
 Removed the old CTX beta01 image mosaic from the map. The default is now NASA Viking Global (native maximum zoom 8). HiRISE Jezero is offered as a local high-detail mode (zoom up to 10) with published geographic coverage and a Viking fallback for out-of-coverage map tiles. MOLA Relief remains separate. Mission routes, location calculations and the bundled numeric CTX DEM do not depend on which visual map layer is selected. Real-browser validation of HiRISE tile availability and appearance is still required.
+
+## HiRISE level 11
+
+Verified NASA HiRISE Jezero zoom 11 tile with HTTP 200 and native 256×256 PNG. Enabled zoom 11 on the dedicated HiRISE selection while preserving previous Viking and MOLA native zoom limits. Tested source URL and parent-grid crop math; still requires manual visual check on the live website.

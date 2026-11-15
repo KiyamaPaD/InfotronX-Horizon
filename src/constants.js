@@ -23,11 +23,11 @@ export const MAP_LAYERS = [
         short: "HIRISE",
         agency: "NASA / MRO",
         dataset: "JEZ_hirise_soc_006_orthoMosaic_25cm_Eqc_latTs0_lon0_first_dd",
-        description: "Grayscale HiRISE Jezero imagery with transparent gaps over grayscale Viking context.",
+        description: "Grayscale HiRISE Jezero imagery through zoom 11, with transparent gaps over grayscale Viking context.",
         url: "https://trek.nasa.gov/tiles/Mars/EQ/JEZ_hirise_soc_006_orthoMosaic_25cm_Eqc_latTs0_lon0_first_dd/1.0.0",
         extensions: ["png"],
         coverage: { south: 18.3067994, north: 18.669315, west: 77.2229331, east: 77.583964 },
-        maxUsefulZoom: 10
+        maxUsefulZoom: 11
     },
     {
         id: "mola",
