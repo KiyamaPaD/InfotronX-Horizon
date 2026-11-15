@@ -200,7 +200,7 @@ const scienceWorkbench = initScienceWorkbench({ store, map, notify,
         missionCopilot?.refresh();
     }
 });
-mountCloudWorkspace({ store, notify });
+const cloudWorkspace = mountCloudWorkspace({ store, notify });
 missionCopilot = mountMissionCopilot({
     panel: get("#analytics-panel"),
     before: get("#analytics-panel").firstElementChild,
