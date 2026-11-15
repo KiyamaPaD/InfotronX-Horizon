@@ -152,8 +152,17 @@ export function paretoTerrainRoutes(dem, waypoints, options = {})
         return { ok: false, reason: "No modeled Pareto route found within the label budget and exclusion/grade constraints.", expanded, truncated };
     }
 
-    const maxResults = Math.min(6, options.maxResults ?? 5);
-    const selected = nondominated.length <= maxResults ? nondominated : Array.from({ length: maxResults }, (_, i) => nondominated[Math.round(i * (nondominated.length - 1) / (maxResults - 1))]);
+    const requestedResults = options.maxResults ?? 5;
+
+    if (!Number.isInteger(requestedResults) || requestedResults < 1)
+    {
+        throw new Error("Pareto output count must be a positive integer.");
+    }
+
+    const maxResults = Math.min(6, requestedResults);
+    const selected = nondominated.length <= maxResults ? nondominated
+        : maxResults === 1 ? [nondominated[0]]
+            : Array.from({ length: maxResults }, (_, i) => nondominated[Math.round(i * (nondominated.length - 1) / (maxResults - 1))]);
 
     return {
         ok: true,

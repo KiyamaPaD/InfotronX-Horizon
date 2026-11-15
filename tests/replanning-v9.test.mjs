@@ -176,3 +176,37 @@ test("D* Lite matches full A* on 40 seeded graph updates including NoData", () =
 
     assert.equal(checks, 40);
 });
+
+
+test("Pareto supports one selected route even when several nondominated alternatives exist", () =>
+{
+    const d = dem(9, 7, (r, c) => Math.abs(c - 4) * 0.6 + r * 0.1);
+    const from = p(d, 3, 0);
+    const to = p(d, 3, 8);
+    const full = paretoTerrainRoutes(d, [from, to], { maxExpansions: 15000 });
+    const single = paretoTerrainRoutes(d, [from, to], { maxResults: 1, maxExpansions: 15000 });
+
+    assert.equal(full.ok, true);
+    assert.ok(full.allGoalLabels > 1);
+    assert.equal(single.ok, true);
+    assert.equal(single.routes.length, 1);
+    assert.equal(single.allGoalLabels, full.allGoalLabels);
+    assert.ok(Number.isFinite(single.routes[0].distanceMeters));
+    assert.deepEqual(single.routes[0].cells, full.routes[0].cells);
+});
+
+test("Pareto rejects invalid output counts instead of returning an empty successful result", () =>
+{
+    const d = dem(5, 5);
+    const from = p(d, 0, 0);
+    const to = p(d, 4, 4);
+
+    for (const value of [0, -1, 1.25, NaN, Infinity, "2"])
+    {
+        assert.throws(() => paretoTerrainRoutes(d, [from, to], { maxResults: value }), /positive integer/);
+    }
+
+    const capped = paretoTerrainRoutes(d, [from, to], { maxResults: 12 });
+    assert.equal(capped.ok, true);
+    assert.ok(capped.routes.length >= 1 && capped.routes.length <= 6);
+});

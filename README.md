@@ -76,7 +76,7 @@ Start with [Contributing](CONTRIBUTING.md), [Team workflow](docs/TEAM_WORKFLOW.m
 | Automated tests | `tests/`, `.github/workflows/verify.yml` |
 | Data provenance and project credits | `NASA_DATA.md`, `SUBMISSION.md`, `docs/SCIENCE_VALIDATION.md` |
 
-Scientific methodology, data references and engineering notes are available in the documentation directory. The active map architecture, NASA source URLs and Chromium tests are documented in [Map engine](docs/MAP_ENGINE.md).
+Scientific methodology, data references and engineering notes are available in the documentation directory. The active map architecture, NASA source URLs and Chromium tests are documented in [Map engine](docs/MAP_ENGINE.md). Independent A*, D* Lite and Pareto verification is described in [Route validation](docs/ROUTING_VALIDATION.md).
 
 ## Sources and acknowledgments
 
