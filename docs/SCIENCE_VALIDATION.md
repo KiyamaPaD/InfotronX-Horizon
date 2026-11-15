@@ -23,3 +23,5 @@ python scripts/prepare_dem.py JEZ_ctx_B_soc_008_DTM_MOLAtopography_DeltaGeoid_20
 ```
 
 Manual file import remains available. The built-in DEM is a **small study region**, not a global numeric Mars layer.
+
+**Real DEM integration test (15 November 2026):** [JEZERO_NUMERIC_AUDIT.md](JEZERO_NUMERIC_AUDIT.md) includes checks of the committed numeric payload, independently verified route costs and explicit outside-coverage behavior. Its decoded-byte SHA256 is a local integrity fingerprint, not a new independent validation of the source GeoTIFF.

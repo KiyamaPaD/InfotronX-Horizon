@@ -40,3 +40,7 @@ The built-in numerical CTX DEM covers only a small area near Jezero. Image clari
 Future work: use reference optimizers against the bundled real DEM clip, benchmark graph cost and memory use, and provide scientific provenance and uncertainty directly in mission briefing outputs.
 
 Source file: src/terrain.js; incremental planner: src/dstar-lite.js; Pareto: src/pareto-routes.js.
+
+## Real-DEM verification
+
+The shipped USGS-derived Jezero numerical clip is independently checked for data integrity, routing, planning with scenario exclusions, Pareto results and out-of-coverage behavior. See [JEZERO_NUMERIC_AUDIT.md](JEZERO_NUMERIC_AUDIT.md) for the observed numbers, checksums, performance notes and limitations.

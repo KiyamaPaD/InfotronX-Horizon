@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { performance } from "node:perf_hooks";
-import { decodeBundledDem, JEZERO_DEM_RASTER_SHA256 } from "../src/bundled-dem.js";
+import { decodeBundledDem, loadJezeroDem, JEZERO_DEM_RASTER_SHA256 } from "../src/bundled-dem.js";
 import { marsDistance } from "../src/geo.js";
 import { gridCellForPoint, gridCoordinate, findTerrainPath, planRouteOnDem, profileRouteOnDem, sampleElevation, validateDem } from "../src/terrain.js";
 import { compareTerrainStrategies } from "../src/mission-scenarios.js";
@@ -173,6 +173,7 @@ test("the committed Jezero USGS CTX DEM is genuinely numeric, complete and geo-r
     const horizontal = marsDistance(gridCoordinate(dem, 60, 20), gridCoordinate(dem, 60, 21));
     const vertical = marsDistance(gridCoordinate(dem, 60, 20), gridCoordinate(dem, 61, 20));
     const bufferDigest = createHash("sha256").update(Buffer.from(raw.elevationsBase64, "base64")).digest("hex");
+    assert.equal(bufferDigest, "57ec47f619a26a0732335000c30a3238103969b52a6d150919ab6f9fe84cf1fb", "The committed numeric DEM changed; re-audit its provenance and update the snapshot checksum deliberately.");
 
     assert.ok(minimum > -2700 && minimum < -2600);
     assert.ok(maximum > -2600 && maximum < -2500);
@@ -338,4 +339,25 @@ test("bounded Pareto paths on real Jezero heights respect distance and uphill as
         returned: result.routes.length, frontierLabels: result.allGoalLabels,
         expanded: result.expanded, truncated: result.truncated
     }));
+});
+
+
+test("Jezero DEM browser loader decodes the original bundle and handles HTTP failure", async () =>
+{
+    let observedUrl = null;
+    const loaded = await loadJezeroDem(async url =>
+    {
+        observedUrl = url;
+        return { ok: true, status: 200, json: async () => raw };
+    });
+
+    assert.match(observedUrl.pathname, /jezero_ctx_trn_dem_20m_clip\.json$/);
+    assert.equal(loaded.bundledSource, true);
+    assert.deepEqual(loaded.elevations, dem.elevations);
+    assert.equal(loaded.source, dem.source);
+
+    await assert.rejects(
+        () => loadJezeroDem(async () => ({ ok: false, status: 503 })),
+        /HTTP 503/
+    );
 });
