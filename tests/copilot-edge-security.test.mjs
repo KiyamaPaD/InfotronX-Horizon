@@ -21,7 +21,7 @@ test("AI endpoint explicitly limits origin and question size", () =>
     assert.match(source,/ALLOWED_ORIGINS/);
     assert.match(source,/USER_LIMIT = 240/);
     assert.match(source,/max_output_tokens:450/);
-    assert.match(source,/Request quota reached/);
+    assert.match(source,/AI_RATE_LIMIT/);
 });
 
 test("AI backend supports modern Supabase publishable key defaults and authenticated health checks", () =>
