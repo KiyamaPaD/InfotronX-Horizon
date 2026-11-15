@@ -379,7 +379,17 @@ export class MarsMap
         tile.remove?.();
     }
 
-    tileCandidates(x, y, zoom, layer = this.layer)
+    getImageryLayer(zoom = this.zoom)
+    {
+        if (this.layer.id === "ctx" && zoom <= 4)
+        {
+            return MAP_LAYERS.find(layer => layer.id === "viking") || this.layer;
+        }
+
+        return this.layer;
+    }
+
+    tileCandidates(x, y, zoom, layer = this.getImageryLayer(zoom))
     {
         const capabilities = this.tileTemplates.get(layer.id);
         const dimensions = String(2 ** (zoom + 1)) + "-" + String(2 ** zoom);
@@ -409,7 +419,8 @@ export class MarsMap
 
     createTile(x, y, zoom, left, top)
     {
-        const layer = this.layer;
+        const selectedLayerId = this.layer.id;
+        const layer = this.getImageryLayer(zoom);
         const tile = document.createElement("div");
         tile.className = "map-tile";
         tile.dataset.state = "loading";
@@ -439,7 +450,10 @@ export class MarsMap
         let previewCandidates = [];
         let disposed = false;
 
-        const isCurrent = () => !disposed && layer.id === this.layer.id && tile.isConnected;
+        const isCurrent = () => !disposed
+            && selectedLayerId === this.layer.id
+            && layer.id === this.getImageryLayer(zoom).id
+            && tile.isConnected;
 
         const report = () =>
         {
@@ -627,6 +641,7 @@ export class MarsMap
         const maxY = Math.floor((center.y + height / 2) / 256);
         const maxTileX = 2 ** (this.zoom + 1);
         const maxTileY = 2 ** this.zoom;
+        const source = this.getImageryLayer(this.zoom);
         const active = new Set();
 
         for (let y = minY; y <= maxY; y++)
@@ -638,7 +653,7 @@ export class MarsMap
                     continue;
                 }
 
-                const key = this.layer.id + "-" + this.zoom + "-" + x + "-" + y;
+                const key = source.id + "-" + this.zoom + "-" + x + "-" + y;
                 active.add(key);
                 const left = x * 256 - center.x + width / 2;
                 const top = y * 256 - center.y + height / 2;

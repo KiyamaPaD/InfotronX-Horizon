@@ -213,7 +213,7 @@ test("working NASA tile format is preferred but alternate paths remain available
 {
     const map = testMap();
     map.preferredTileSuffix.set("ctx:4", { matrixSet: "default028mm", extension: "jpg" });
-    const candidates = map.tileCandidates(1, 1, 4);
+    const candidates = map.tileCandidates(1, 1, 4, map.layer);
 
     assert.match(candidates[0], /default028mm\/4\/1\/1\.jpg$/);
     assert.ok(candidates.some(url => url.endsWith(".png")));
@@ -392,4 +392,41 @@ test("partially available NASA map data is reported without disguising missing a
     assert.equal(classes.get("map-preview-notice"), true);
     assert.equal(map.notice.hidden, false);
     assert.match(map.notice.textContent, /unavailable/);
+});
+
+
+test("CTX uses clean Viking global imagery at zooms 3-4 instead of CTX beta gaps", () =>
+{
+    const map = testMap();
+    map.layer = MAP_LAYERS.find(layer => layer.id === "ctx");
+
+    assert.equal(map.getImageryLayer(3).id, "viking");
+    assert.equal(map.getImageryLayer(4).id, "viking");
+    assert.equal(map.getImageryLayer(5).id, "ctx");
+    assert.equal(map.getImageryLayer(10).id, "ctx");
+    assert.match(map.tileCandidates(9, 3, 3)[0], /Mars_Viking_MDIM21_ClrMosaic_global_232m/);
+
+    map.layer = MAP_LAYERS.find(layer => layer.id === "mola");
+    assert.equal(map.getImageryLayer(3).id, "mola");
+});
+
+test("the actual tile source follows the current zoom and map selection", () =>
+{
+    withFakeTiles(requests =>
+    {
+        const map = testMap();
+        map.layer = MAP_LAYERS.find(layer => layer.id === "ctx");
+        const tile = map.createTile(9, 3, 3, 0, 0);
+        tile.startLoading();
+
+        assert.equal(requests.length, 1);
+        assert.match(requests[0].url, /Mars_Viking_MDIM21_ClrMosaic_global_232m/);
+        assert.equal(tile.dataset.state, "loading");
+        tile.dispose();
+
+        const next = map.createTile(9, 3, 5, 0, 0);
+        next.startLoading();
+        assert.match(requests.at(-2).url, /CTX_beta01_uncontrolled_5m_Caltech/);
+        next.dispose();
+    });
 });

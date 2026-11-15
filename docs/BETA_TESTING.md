@@ -93,3 +93,7 @@ For the current public CTX basemap, the maximum supported zoom is **10**. Level 
 - [ ] With network throttling (or intermittent connectivity), verify that a missing detail tile retains a correctly cropped lower-zoom preview and its resolution is clearly disclosed.
 - [ ] Switch to MOLA and Viking; inspect positions, attribution, mobile map controls and gaps.
 - [ ] Report any persistent tile holes with layer, zoom, latitude/longitude from the map, browser and screenshot. NASA data gaps cannot be filled with invented imagery.
+
+## Global overview imagery
+
+The legacy CTX beta01 global mosaic contains genuine no-data strips that are visible at planet-scale zoom. To keep the map readable, **CTX selection uses NASA Viking global mosaic at zoom 3–4**, with the image-source badge identifying **Viking Overview**. CTX returns at zoom 5–10. MOLA and explicit Viking selection remain unchanged. Verify that transitioning zoom 4 ↔ 5 changes source cleanly without shifting coordinates or route overlays. Neither source represents a certified terrain-hazard map.
