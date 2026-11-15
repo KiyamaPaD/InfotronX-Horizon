@@ -302,7 +302,7 @@ const COPY = {
     delta: { title: "Delta front", eyebrow: "3D VIEW · DETAIL", text: "USGS CTX heights (20 m grid) with NASA HiRISE imagery (~1.2 m/pixel). Height and curvature are exaggerated for readability.", switchLabel: "Whole planet" }
 };
 
-export async function openMap3d({ host, points = [], getPoints, getRoutes, getObservations, subscribe, getMode, setMode, onAddWaypoint, onMovePoint, onSelectWaypoint, onSelectObservation, onObserve, canUndo, canRedo, onUndo, onRedo, routeControls, routeColor = "#ff9a6b", mode = "planet", onFocusArea, onClose })
+export async function openMap3d({ host, points = [], getPoints, getRoutes, getObservations, getLinks, onNodeClick, subscribe, getMode, setMode, onAddWaypoint, onMovePoint, onSelectWaypoint, onSelectObservation, onObserve, canUndo, canRedo, onUndo, onRedo, routeControls, routeColor = "#ff9a6b", mode = "planet", onFocusArea, onClose })
 {
     const layer = document.createElement("section");
     layer.className = "map-3d-layer";
@@ -831,6 +831,20 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
                     addLabel(String(point.name || "").trim().slice(0, 18) || String(index + 1), position, size);
                 });
 
+                // Extra connections between waypoints.
+                for (const [first, second] of getLinks ? getLinks() : [])
+                {
+                    const a = valid.findIndex(point => point.id === first), b = valid.findIndex(point => point.id === second);
+
+                    if (a < 0 || b < 0) continue;
+
+                    const path = densify([vectors[a], vectors[b]], lift);
+
+                    if (path.length < 2) continue;
+
+                    route.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(path), path.length, tube * 0.7, 6, false), new THREE.MeshBasicMaterial({ color: colour, transparent: true, opacity: 0.8 * look.opacity })));
+                }
+
                 if (dense.length < 2) return;
 
                 const curve = new THREE.CatmullRomCurve3(dense);
@@ -1121,7 +1135,7 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
                 downAt = null;
                 const waypoint = hitAt(event, waypointTargets)?.userData.waypointId;
 
-                if (waypoint) { onSelectWaypoint?.(waypoint); return; }
+                if (waypoint) { if (modeNow() === "draw" && onNodeClick) onNodeClick(waypoint); else onSelectWaypoint?.(waypoint); return; }
 
                 const note = hitAt(event, noteTargets)?.userData.observationId;
 

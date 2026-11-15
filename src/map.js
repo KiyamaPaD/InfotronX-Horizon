@@ -633,6 +633,12 @@ export class MarsMap
             return;
         }
 
+        if (drag.selectedPointId && this.mode === "draw")
+        {
+            this.options.onNodeClick?.(drag.selectedPointId);
+            return;
+        }
+
         if (drag.targetRoute && this.mode === "pan")
         {
             this.store.selectRoute(drag.targetRoute);
@@ -1811,6 +1817,13 @@ export class MarsMap
         this.updateNetworkNotice();
     }
 
+    // The waypoint that is waiting to be joined to another one (Draw mode).
+    setLinkSource(id)
+    {
+        this.linkSource = id;
+        this.renderOverlays();
+    }
+
     renderOverlays()
     {
         const width = this.container.clientWidth;
@@ -1849,6 +1862,22 @@ export class MarsMap
                 this.overlay.append(path);
             }
 
+            if (active && route.links?.length)
+            {
+                // Extra connections between waypoints, drawn thinner and dashed.
+                const look = getLineStyle();
+
+                for (const [first, second] of route.links)
+                {
+                    const from = route.points.find(point => point.id === first), to = route.points.find(point => point.id === second);
+
+                    if (!from || !to) continue;
+
+                    const a = this.geoToScreen(from), b = this.geoToScreen(to);
+                    this.overlay.append(svgElement("polyline", { points: `${a.x},${a.y} ${b.x},${b.y}`, fill: "none", stroke: route.color, "stroke-width": 3 * look.width, "stroke-opacity": look.opacity * 0.9, "stroke-dasharray": "3 7", "stroke-linecap": "round", class: "route-link" }));
+                }
+            }
+
             if (active)
             {
                 displayed.forEach((position, index) =>
@@ -1856,7 +1885,8 @@ export class MarsMap
                     const point = route.points[index];
                     const radius = markerRadiusForZoom(this.zoom) * getLineStyle().markerSize;
                     const markerColor = point.color || route.color;
-                    const halo = svgElement("circle", { cx: position.x, cy: position.y, r: radius + 3, fill: markerColor, opacity: 0.2 });
+                    const picked = point.id === this.linkSource;
+                    const halo = svgElement("circle", { cx: position.x, cy: position.y, r: radius + (picked ? 9 : 3), fill: markerColor, opacity: picked ? 0.55 : 0.2 });
                     const marker = markerShape(position, point.icon, markerColor, { class: "route-node", "data-point": point.id });
                     marker.setAttribute("transform", `translate(${position.x} ${position.y}) scale(${radius / 7}) translate(${-position.x} ${-position.y})`);
                     const title = svgElement("title", {});

@@ -147,6 +147,7 @@ const map = new MarsMap(get("#map-root"), store, {
         get("[data-action='zoom-out']").disabled = zoom <= 3;
     },
     onWaypointSelect: id => openWaypointEditor(id),
+    onNodeClick: id => connectNodes(id),
     onObservationSelect: id => openObservationEditor(id),
     onContextMenu: details => showMapContextMenu(details),
     onMapClick: (point, mode) =>
@@ -405,8 +406,56 @@ function render()
     map.render();
 }
 
+// In Draw mode: click a waypoint, then another one, and the two are joined by a line. Esc or any other tool cancels.
+let linkFrom = null;
+
+function cancelLink()
+{
+    if (linkFrom === null) return;
+
+    linkFrom = null;
+    map.setLinkSource(null);
+}
+
+function connectNodes(id)
+{
+    const points = store.activeRoute.points;
+    const name = pointId => { const index = points.findIndex(point => point.id === pointId); return index < 0 ? "waypoint" : waypointLabel(points[index], index); };
+
+    if (linkFrom === null)
+    {
+        linkFrom = id;
+        map.setLinkSource(id);
+        notify(`${name(id)} selected. Click the waypoint you want to connect it to. Esc cancels.`);
+        return;
+    }
+
+    if (linkFrom === id)
+    {
+        cancelLink();
+        return;
+    }
+
+    const first = linkFrom;
+    cancelLink();
+    const result = store.linkPoints(first, id);
+
+    if (result === "linked")
+    {
+        const a = points.find(point => point.id === first), b = points.find(point => point.id === id);
+        notify(`Connected ${name(first)} and ${name(id)}, ${formatDistance(analyzeRoute([a, b]).totalDistance)} apart.`);
+    }
+    else
+    {
+        notify(result === "exists" ? "Those two waypoints are already connected." : "They could not be connected.");
+    }
+}
+
+window.addEventListener("keydown", pressed => { if (pressed.key === "Escape") cancelLink(); });
+
 function setMode(mode)
 {
+    if (mode !== "draw") cancelLink();
     currentMode = mode;
     map.setMode(mode);
     window.dispatchEvent(new CustomEvent("mars-mode", { detail: mode }));
@@ -819,6 +868,8 @@ document.addEventListener("click", event =>
                     getPoints: () => store.activeRoute.points,
                     getRoutes: () => store.current.routes.map(item => ({ id: item.id, name: item.name, color: item.color, active: item.id === store.current.activeRouteId, points: item.points })),
                     getObservations: () => store.current.observations,
+                    getLinks: () => store.activeRoute.links || [],
+                    onNodeClick: id => connectNodes(id),
                     getMode: () => currentMode,
                     setMode: mode => setMode(mode),
                     onMovePoint: (id, coordinate, persist) => store.movePoint(id, coordinate, persist),
