@@ -5,6 +5,8 @@ import { loadJezeroDem } from "./bundled-dem.js";
 import { profileRouteOnDem } from "./terrain.js";
 import { summarizeTerrainProfile } from "./terrain-profile-v2.js";
 import { animateNumber, prefersReducedMotion } from "./motion.js";
+import { buildMissionFacts, localMissionExplanation, normalizeCopilotQuestion } from "./mission-copilot.js";
+import { askCopilot } from "./copilot-client.js";
 
 const escapeText = value => String(value).replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
 const CHART = { width: 640, height: 230, left: 46, right: 14, top: 14, bottom: 30 };
@@ -124,7 +126,9 @@ function routeStage(points, color)
     </svg></div></div>`;
 }
 
-export function mountAnalyzeDashboard({ shell, store })
+const SUGGESTIONS = ["How long is my route?", "Is the steepest slope a problem?", "How does it compare with my other route?", "How much oxygen would I need?"];
+
+export function mountAnalyzeDashboard({ shell, store, getCloud, getDem })
 {
     const host = shell.querySelector(".center-column");
     const mapWrap = shell.querySelector(".map-wrap");
@@ -140,8 +144,120 @@ export function mountAnalyzeDashboard({ shell, store })
     dashboard.hidden = true;
     host.appendChild(dashboard);
     let token = 0;
+    let lastSentences = null;
+    let draft = "";
+    let useAi = false;
+    let busy = false;
+    const chat = [];
 
     const visible = () => shell.dataset.step === "analyze";
+
+    // Local answers only reuse numbers the app has already calculated. No account or network is needed.
+    function localAnswer(question, facts)
+    {
+        const q = question.toLowerCase();
+        const has = (...words) => words.some(word => q.includes(word));
+
+        if (facts.waypointCount < 2 || !lastSentences)
+        {
+            return "Add at least two waypoints to your route first, then I can answer from its numbers.";
+        }
+
+        if (has("oxygen", "battery", "energy", "duration", "take", "hour", "resource", "time"))
+        {
+            const r = facts.resourceScenario;
+            const minutes = Math.round(r.durationHours * 60);
+            return `In the illustrative scenario at ${r.speedKmh} km/h (${r.retraceReturn ? "with the return trip" : "one way"}) this route takes about ${Math.floor(minutes / 60)} h ${minutes % 60} min, using roughly ${r.oxygenKg.toFixed(2)} kg of oxygen and ${Math.round(r.batteryWh)} Wh of energy. These are scenario estimates, not telemetry, and they ignore the terrain.`;
+        }
+
+        if (has("slope", "steep", "grade", "climb", "height", "elev", "terrain", "hill", "dem"))
+        {
+            return lastSentences.height;
+        }
+
+        if (has("compare", "shorter", "alternative", "better", "best", "which route", "other route"))
+        {
+            return lastSentences.compare;
+        }
+
+        if (has("long", "far", "distance", "km", "metre", "meter", "leg", "size"))
+        {
+            return lastSentences.size + " " + lastSentences.legs;
+        }
+
+        return localMissionExplanation(facts);
+    }
+
+    function paintChat()
+    {
+        const log = dashboard.querySelector(".ad-chat");
+
+        if (!log) return;
+
+        log.replaceChildren(...chat.map(item =>
+        {
+            const bubble = document.createElement("div");
+            bubble.className = "ad-bubble ad-bubble-" + item.role + (item.error ? " is-error" : "");
+            const tag = document.createElement("span");
+            tag.textContent = item.role === "user" ? "YOU" : item.mode === "ai" ? "AI · UNVERIFIED EXPLANATION" : "FROM YOUR NUMBERS";
+            const text = document.createElement("p");
+            text.textContent = item.text;
+            bubble.append(tag, text);
+            return bubble;
+        }));
+        log.scrollTop = log.scrollHeight;
+    }
+
+    async function ask(question, wantsAi)
+    {
+        const status = dashboard.querySelector(".ad-ask-status");
+        let text;
+
+        try
+        {
+            text = normalizeCopilotQuestion(question);
+        }
+        catch (error)
+        {
+            if (status) status.textContent = error.message;
+            return;
+        }
+
+        busy = true;
+        chat.push({ role: "user", text });
+        draft = "";
+        paintChat();
+        const input = dashboard.querySelector(".ad-ask-form textarea");
+        if (input) input.value = "";
+        if (status) status.textContent = wantsAi ? "Asking the AI…" : "";
+
+        try
+        {
+            const dem = getDem?.() || await loadDem();
+            const facts = buildMissionFacts(store.current, dem);
+
+            if (wantsAi)
+            {
+                const answer = await askCopilot(getCloud?.(), { question: text, facts });
+                chat.push({ role: "bot", mode: "ai", text: answer });
+            }
+            else
+            {
+                chat.push({ role: "bot", mode: "local", text: localAnswer(text, facts) });
+            }
+        }
+        catch (error)
+        {
+            chat.push({ role: "bot", mode: "local", error: true, text: error.message });
+
+            if (error.code === "SIGN_IN_REQUIRED") shell.querySelector(".header-cloud")?.click();
+        }
+
+        busy = false;
+        paintChat();
+        const after = dashboard.querySelector(".ad-ask-status");
+        if (after) after.textContent = "";
+    }
 
     function place()
     {
@@ -197,6 +313,7 @@ export function mountAnalyzeDashboard({ shell, store })
                 : "You have one route so far. Duplicate it or simulate a detour to have something to compare.",
             threeD: "Open the 3D terrain to check what the numbers cannot show: hills, crater rims and where your route crosses them."
         };
+        lastSentences = sentences;
         const checks = [
             [points.length >= 2, "The route has at least two waypoints"],
             [hasHeights && coverage === 100, hasHeights ? `Height data covers the whole route (${coverage}%)` : "Height data covers the route"],
@@ -205,8 +322,8 @@ export function mountAnalyzeDashboard({ shell, store })
         ];
         const passed = checks.filter(item => item[0]).length;
         const stepHead = (number, title, help) => `<div class="ad-step-head"><span class="ad-step-no">${number}</span><div><h3>${title}</h3><p>${help}</p></div></div>`;
-        const stepFoot = (number, sentence) => `<div class="ad-result"><span>IN YOUR CASE</span><p>${sentence}</p></div>${number < 6 ? `<button class="ad-next" type="button" data-ad-go="${number + 1}">Next step →</button>` : ""}`;
-        const chips = [["1", "Size"], ["2", "Height"], ["3", "Legs"], ["4", "Compare"], ["5", "3D"], ["6", "Decide"]].map(([n, label]) => `<button type="button" class="ad-chip" data-ad-go="${n}"><b>${n}</b> ${label}</button>`).join("");
+        const stepFoot = (number, sentence) => `<div class="ad-result"><span>IN YOUR CASE</span><p>${sentence}</p></div>${number < 7 ? `<button class="ad-next" type="button" data-ad-go="${number + 1}">Next step →</button>` : ""}`;
+        const chips = [["1", "Size"], ["2", "Height"], ["3", "Legs"], ["4", "Compare"], ["5", "3D"], ["6", "Decide"], ["7", "Ask"]].map(([n, label]) => `<button type="button" class="ad-chip" data-ad-go="${n}"><b>${n}</b> ${label}</button>`).join("");
 
         dashboard.innerHTML = `
             <header class="ad-head">
@@ -255,7 +372,26 @@ export function mountAnalyzeDashboard({ shell, store })
                 ${stepHead(6, "Can I decide?", "A quick checklist built from the numbers above. It helps you choose; the decision stays yours.")}
                 <div class="ad-card"><ul class="ad-checks">${checks.map(([ok, text]) => `<li class="${ok ? "is-ok" : "is-open"}"><span aria-hidden="true">${ok ? "✓" : "○"}</span>${text}</li>`).join("")}</ul></div>
                 <div class="ad-result"><span>IN YOUR CASE</span><p>${passed === checks.length ? "Every check passes, so this is a reasonable candidate among the routes you calculated." : `${passed} of ${checks.length} checks pass. Open items are things to look at before you decide.`} Planning aid only, not a safety or navigation approval.</p></div>
+            </section>
+            <section class="ad-step" id="ad-step-7">
+                ${stepHead(7, "Ask a question", "Ask about this route in your own words. Answers come from your own numbers and work offline. Tick the box to get an AI explanation instead.")}
+                <div class="ad-card ad-ask">
+                    <div class="ad-chat" aria-live="polite"></div>
+                    <div class="ad-suggest" role="group" aria-label="Suggested questions">${SUGGESTIONS.map(text => `<button type="button" class="ad-suggestion" data-ad-q="${text}">${text}</button>`).join("")}</div>
+                    <form class="ad-ask-form">
+                        <textarea maxlength="240" rows="2" placeholder="For example: Is the steepest slope a problem?" aria-label="Your question"></textarea>
+                        <label class="ad-consent"><input type="checkbox" data-ad-ai> Use the AI assistant (needs sign-in). This sends route totals and my question, never coordinates, titles or notes.</label>
+                        <div class="ad-ask-row"><button class="btn btn-accent" type="submit">Ask</button><small class="ad-ask-status" role="status"></small></div>
+                    </form>
+                </div>
+                <div class="ad-result"><span>GOOD TO KNOW</span><p>AI answers are unverified explanations, not NASA measurements. The assistant cannot change, save or share your route. Limit: five AI questions every ten minutes.</p></div>
             </section>`;
+
+        paintChat();
+        const askBox = dashboard.querySelector(".ad-ask-form textarea");
+        if (askBox) askBox.value = draft;
+        const aiBox = dashboard.querySelector("[data-ad-ai]");
+        if (aiBox) aiBox.checked = useAi;
 
         for (const element of dashboard.querySelectorAll("[data-count]"))
         {
@@ -268,8 +404,32 @@ export function mountAnalyzeDashboard({ shell, store })
         if (hasHeights) wireScrubber(dashboard, profile.samples, summary);
     }
 
+    dashboard.addEventListener("submit", event =>
+    {
+        event.preventDefault();
+        const box = dashboard.querySelector(".ad-ask-form textarea");
+
+        if (!busy && box) ask(box.value, useAi);
+    });
+    dashboard.addEventListener("input", event =>
+    {
+        if (event.target.matches(".ad-ask-form textarea")) draft = event.target.value;
+    });
+    dashboard.addEventListener("change", event =>
+    {
+        if (event.target.matches("[data-ad-ai]")) useAi = event.target.checked;
+    });
+
     dashboard.addEventListener("click", event =>
     {
+        const suggestion = event.target.closest("[data-ad-q]")?.dataset.adQ;
+
+        if (suggestion)
+        {
+            if (!busy) ask(suggestion, useAi);
+            return;
+        }
+
         const go = event.target.closest("[data-ad-go]")?.dataset.adGo;
 
         if (go)

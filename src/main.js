@@ -1193,4 +1193,4 @@ if (imported)
     notify("Shared mission imported into your local library.");
 }
 
-mountAnalyzeDashboard({ shell: get("#mars-shell"), store });
+mountAnalyzeDashboard({ shell: get("#mars-shell"), store, getCloud: () => cloudWorkspace.cloud, getDem: () => scienceWorkbench.numericDem });
