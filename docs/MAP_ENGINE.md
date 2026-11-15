@@ -40,7 +40,7 @@ Main implementation: src/map.js, src/constants.js, src/workspace-polish.css.
 1. Browser animation frames coalesce map renders. Wheel input is batched.
 2. Native Viking and MOLA modes use their ordinary tile rendering path.
 3. HiRISE mode uses three independent DOM layers in draw order: map-background-tiles (Viking), map-context-tiles (controlled Jezero CTX grayscale + alpha) and map-tiles (native HiRISE + alpha).
-4. At zoom 3–7 the HiRISE selector shows only Viking; at zoom 8 it adds the controlled CTX mosaic; at zoom 9–11 it adds HiRISE on top. Viewport and tile-footprint intersection prevent requests outside each real mosaic coverage.
+4. At zoom 3–8 the HiRISE selector uses continuous Viking only; from zoom 9 it overlays NASA CTX and HiRISE imagery with geographic coverage feathering. At zoom 8 the native CTX footprint formerly appeared as a distinct rectangular patch, so the continuous overview takes priority over isolated high resolution. Viewport and tile-footprint intersection prevent requests outside each real mosaic coverage.
 5. Cache limits are 24 Viking background tiles, 84 controlled CTX context tiles and 72 foreground HiRISE tiles. All three are cached independently and reused when revisiting zooms or panning.
 6. Known NASA tile URL variants are tried on failure, and errored visible tiles may be retried after about 16 seconds, not on every mouse event.
 7. WMTS capability responses no longer discard requests still downloading.
@@ -76,6 +76,12 @@ Zoom 11 uses real CTX and HiRISE tile pixels and preserves transparent coverage 
 
 ## Marker readability and photographic seams (November 15, 2026)
 
-- When route markers collide at coarse zoom, their *icons* are fanned apart on screen and linked to true map coordinates. Geographic coordinates, measured lengths and exported routes are unchanged. Dragging a shifted icon moves the true point by the pointer's displacement, without snapping at drag start.
+- Superseded by the November 15 zoom fix below: fanning was removed after it caused a misleading ring of waypoints.
 - Waypoint and observation shapes (circle, diamond, square, triangle, star) are configurable. Their identifiers are stored in mission, backups, cloud snapshots and checkpoints, without altering scientific data.
 - The controlled CTX mosaic uses feathered masks at outer loaded tile edges, preserving adjacent loaded tile edges; the zoom-8 tonal adjustment makes CTX less abrupt against lower-resolution Viking context. This only changes display styling, not source pixels or missing data coverage.
+
+## Visual QA: waypoint and map mosaic corrections
+
+- Waypoint icons stay centered on actual latitude/longitude. Their SVG marker size decreases when zooming out instead of radiating into an artificial circle. Manual movement updates real coordinates, not visual offsets.
+- New missions start empty. Only a precisely matched, untouched legacy four-point sample plus its one sample observation is removed during local library load; customized missions and saved checkpoints are preserved. For other old data, the user has a confirmation-gated Clear route action.
+- Zoom 8 remains a consistent Viking global overview without the high-detail CTX rectangle. CTX and HiRISE display from zoom 9 upward and are feathered together across their geographic coverage bounds. These changes improve display consistency but do not create missing NASA source detail or guarantee that every internal mosaic seam is invisible.
