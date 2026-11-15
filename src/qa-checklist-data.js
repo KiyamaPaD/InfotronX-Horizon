@@ -52,7 +52,7 @@ export const PHASES = [
             { id: "3.6", built: "partly", test: "Some blocks have a turning light on their edge (Analyze step 1, the welcome cards) and a faint robot drifts across the Analyze background. More blocks can get it.", text: "Animated outlines on some labels and blocks, and robots in some backgrounds." },
             { id: "3.7", built: "yes", test: "The header has a navigation row: Start, Planet 3D, Map 2D, Plan, Analyze, All tools, Sources, Legal, Settings (wide screens).", text: "A heading at the top to navigate the site more easily." },
             { id: "3.8", built: "yes", test: "Fold the legend, the Lines box, the 3D panel, the profile or an Analyze step, then reload: they stay as you left them. Settings has Reset folded blocks.", text: "Preferences (collapsed blocks, settings) saved and kept everywhere, with a control panel." },
-            { id: "3.9", built: "no", text: "All tools, right tab: simpler, more interactive, nicer to read, with advanced mathematics kept and correct." },
+            { id: "3.9", built: "partly", text: "All tools, right tab: simpler, more interactive, nicer to read, with advanced mathematics kept and correct (search across all tools and a tool count per group added; the maths is untouched).", test: "Open All tools, type \"slope\" or \"oxygen\" in the search box: matching tools open. Clear it to return to the groups." },
             { id: "3.10", built: "yes", text: "'Help' and the tutorial merged; the start page one click away from the step bar.", test: "The header has one 'Help & tour' button; step 0 · Start reopens the welcome page." }
         ]
     },

@@ -244,7 +244,44 @@ export function setupAnalyticsNavigation(panel, options = {})
         window.dispatchEvent(new Event("resize"));
     });
 
-    quickbar.append(categories, label, select, toggleAll);
+    const search = document.createElement("input");
+    search.type = "search";
+    search.className = "analytics-search";
+    search.placeholder = "Search every tool (slope, oxygen, route…)";
+    search.setAttribute("aria-label", "Search every science tool");
+
+    search.addEventListener("input", () =>
+    {
+        const query = search.value.trim().toLowerCase();
+
+        if (!query)
+        {
+            categories.hidden = false;
+            showGroup(activeGroup);
+            return;
+        }
+
+        categories.hidden = true;
+        readiness.hidden = true;
+
+        for (const section of sections)
+        {
+            const match = (section.dataset.analyticsTitle + " " + section.textContent).toLowerCase().includes(query);
+            section.hidden = !match;
+
+            if (match) setExpanded(section, true);
+        }
+
+        window.dispatchEvent(new Event("resize"));
+    });
+
+    for (const button of categories.querySelectorAll("button"))
+    {
+        const total = sections.filter(section => section.dataset.analyticsGroup === button.dataset.group).length;
+        button.append(Object.assign(document.createElement("small"), { className: "analytics-count", textContent: " " + total }));
+    }
+
+    quickbar.append(search, categories, label, select, toggleAll);
     panel.prepend(quickbar, readiness);
     showGroup(activeGroup);
     refresh();

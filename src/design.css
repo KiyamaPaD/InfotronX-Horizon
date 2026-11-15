@@ -2281,6 +2281,10 @@ a:not(.source-link):hover
 .analytics-categories button { padding: 10px 12px; border-radius: 12px; font-weight: 700; text-align: center; transition: transform .2s, border-color .2s, background .2s; }
 .analytics-categories button:hover { transform: translateY(-2px); }
 .analytics-quickbar { gap: 10px; }
+.analytics-search { width: 100%; padding: 10px 14px; border-radius: 999px; border: 1px solid #3c4d5c; background: #0b121b; color: #eef3f8; font: inherit; }
+.analytics-search:focus-visible { outline: 2px solid #75d1c8; outline-offset: 1px; }
+.analytics-count { margin-left: 4px; padding: 1px 7px; border-radius: 999px; background: #ffffff1a; font-size: 11px; }
+.analytics-categories button.active .analytics-count { background: #e3916555; }
 .analytics-collapsible { border-radius: 14px; }
 .analytics-readiness details { border-radius: 14px; }
 
