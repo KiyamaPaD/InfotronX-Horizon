@@ -103,4 +103,20 @@ for (const layer of MAP_LAYERS)
     }
 }
 
+for (const [name, dataset, extension] of [
+    ["mola-gray", "Mars_MGS_MOLA_DEM_mosaic_global_463m_8", "png"],
+    ["mola-shaded", "Mars_MOLA_blend200ppx_HRSC_Shade_clon0dd_200mpp_lzw", "jpg"],
+    ["hrsc-color", "Mars_MOLA_blend200ppx_HRSC_ClrShade_clon0dd_200mpp_lzw", "jpg"]
+])
+{
+    const url = "https://trek.nasa.gov/tiles/Mars/EQ/" + dataset + "/1.0.0";
+    requests.push(probe(name + ":capabilities", url + "/WMTSCapabilities.xml"));
+
+    for (const zoom of [5, 7])
+    {
+        const { x, y } = coords(zoom);
+        requests.push(probe(name + ":" + zoom, url + "/default/default028mm/" + zoom + "/" + y + "/" + x + "." + extension, true));
+    }
+}
+
 await Promise.all(requests);
