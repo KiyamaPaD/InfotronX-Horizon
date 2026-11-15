@@ -22,3 +22,6 @@ jobs:
         run: |
           for file in src/*.js; do node --check "$file"; done
           npm test
+      - name: Diagnose NASA imagery availability (non-blocking)
+        continue-on-error: true
+        run: node scripts/probe-nasa-tiles.mjs
