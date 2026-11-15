@@ -798,3 +798,52 @@
 {
     flex:1 1 185px;
 }
+
+
+/* Progressive NASA imagery. Missing detailed tiles use genuine lower-zoom context. */
+.map-tiles .map-tile
+{
+    position:absolute;
+    display:block;
+    width:256px;
+    height:256px;
+    overflow:hidden;
+    pointer-events:none;
+    background:#1b252e;
+}
+
+.map-tiles .map-tile img
+{
+    position:absolute;
+    display:block;
+    max-width:none;
+    pointer-events:none;
+    image-rendering:auto;
+}
+
+.map-tiles .map-tile-detail
+{
+    inset:0;
+    width:256px;
+    height:256px;
+}
+
+.map-tiles .map-tile-preview
+{
+    filter:blur(.55px);
+}
+
+.map-root .map-load-notice.map-preview-notice
+{
+    top:auto;
+    bottom:61px;
+    left:50%;
+    max-width:min(370px,calc(100% - 40px));
+    transform:translateX(-50%);
+    padding:7px 11px;
+    border-radius:7px;
+    font-size:10px;
+    line-height:1.4;
+    background:#14212ddd;
+    color:#c1d5de;
+}
