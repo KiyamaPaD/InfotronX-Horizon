@@ -4,8 +4,21 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#080d15" />
-    <meta name="description" content="Mars Atlas by InfotronX Horizon — interactive Jezero mission planning and NASA terrain analysis." />
-    <title>Mars Atlas | InfotronX Horizon</title>
+    <meta name="description" content="Mars Atlas is a free Mars mission-planning workspace: draw routes on a 3D Mars built on NASA's own model and on NASA Mars Trek maps, read slope and height from USGS data, compare routes and plan oxygen, battery and radio." />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="keywords" content="Mars, Mars map, Mars 3D, Jezero crater, Mars route planner, NASA Mars Trek, MOLA, HiRISE, CTX, Mars mission planning, Marswalk, NASA Space Apps" />
+    <meta name="author" content="InfotronX Horizon" />
+    <link rel="canonical" href="https://mars-atlas-mu.vercel.app/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Mars Atlas" />
+    <meta property="og:title" content="Mars Atlas: plan a route on Mars, in 3D" />
+    <meta property="og:description" content="Draw routes on a 3D Mars and on NASA imagery, see slope and height from USGS data, and understand why one route beats another." />
+    <meta property="og:url" content="https://mars-atlas-mu.vercel.app/" />
+    <meta property="og:locale" content="en_US" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Mars Atlas: plan a route on Mars, in 3D" />
+    <meta name="twitter:description" content="A free Mars mission-planning workspace built on NASA and USGS data." />
+    <title>Mars Atlas: Mars 3D Map and Route Planner with NASA Data</title>
     <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://trek.nasa.gov" crossorigin />
     <link rel="stylesheet" href="./src/styles.css" />
@@ -14,11 +27,21 @@
     <link rel="stylesheet" href="./src/workspace-polish.css" />
     <link rel="stylesheet" href="./src/atlas-minimal.css" />
     <link rel="stylesheet" href="./src/home.css" />
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Mars Atlas","url":"https://mars-atlas-mu.vercel.app/","description":"Mars Atlas is a free Mars mission-planning workspace: draw routes on a 3D Mars built on NASA's own model and on NASA Mars Trek maps, read slope and height from USGS data, compare routes and plan oxygen, battery and radio.","applicationCategory":"EducationalApplication","operatingSystem":"Any (web browser)","browserRequirements":"Requires JavaScript and WebGL","inLanguage":"en","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"creator":{"@type":"Organization","name":"InfotronX Horizon"},"license":"https://opensource.org/licenses/MIT"}</script>
 </head>
 <body>
 
 
         <div id="app"></div>
+        <noscript>
+            <main style="max-width:720px;margin:40px auto;padding:0 16px;font-family:system-ui,sans-serif;color:#e7eef4;line-height:1.6">
+                <h1>Mars Atlas</h1>
+                <p>Mars Atlas is a free, in-browser Mars mission-planning workspace. It needs JavaScript. With it you can draw routes on a 3D Mars built on NASA's own model and on NASA Mars Trek imagery, read slope and height from USGS CTX data near Jezero crater, compare routes by distance and relief, and run 25 small planning models for oxygen, battery, radio relay and more.</p>
+                <p>It is an independent educational project, a planning aid and not a navigation tool, and it is not endorsed by NASA.</p>
+                <p><a href="./legal.html" style="color:#f3a480">Terms, privacy, cookies and credits</a> · <a href="https://github.com/mari0-th/InfotronX-Horizon" style="color:#f3a480">Source code</a></p>
+            </main>
+        </noscript>
+
     <div id="tutorial-overlay" class="tutorial-overlay" hidden>
         <div id="tutorial-box" class="tutorial-box">
             <div class="tutorial-content">

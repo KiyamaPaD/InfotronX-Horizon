@@ -4,7 +4,7 @@ const out = new URL('dist/',root);
 // Explicit deployment allowlist: internal reports, SQL, tests and server functions stay out.
 await rm(out,{recursive:true,force:true});
 await mkdir(out,{recursive:true});
-for (const path of ['index.html','404.html','legal.html','LICENSE','src','assets'])
+for (const path of ['index.html','404.html','legal.html','robots.txt','sitemap.xml','LICENSE','src','assets'])
 {
     await cp(new URL(path,root),new URL(path,out),{recursive:true});
 }
