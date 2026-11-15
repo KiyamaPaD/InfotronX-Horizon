@@ -738,6 +738,60 @@ try
     await page.locator("#terrain-v2-clear").click();
     assert.equal(await page.locator(".map-overlays .terrain-probe-marker").count(), 0);
 
+    // Analytics usability audit: the V2 waypoint list must not squeeze names into vertical letters.
+    await page.locator('.analytics-categories [data-group="overview"]').click();
+    const layout = await page.locator('[data-waypoint-row]').first().evaluate(row =>
+    {
+        const info = row.querySelector(".waypoint-coordinates");
+        const title = info.querySelector("strong");
+        const actions = row.querySelector(".waypoint-actions");
+        const list = row.closest("#waypoint-list");
+        const infoRect = info.getBoundingClientRect();
+        const actionsRect = actions.getBoundingClientRect();
+        const rowRect = row.getBoundingClientRect();
+        const listRect = list.getBoundingClientRect();
+
+        return {
+            infoWidth: infoRect.width,
+            titleWhitespace: getComputedStyle(title).whiteSpace,
+            buttonCount: actions.querySelectorAll("button").length,
+            actionsWithinRow: actionsRect.right <= rowRect.right + 2,
+            rowWithinPanel: rowRect.right <= listRect.right + 2,
+            stacked: actionsRect.top >= infoRect.bottom - 2
+        };
+    });
+    console.log(JSON.stringify({ label: "Waypoint layout 1480px", ...layout }));
+    assert.ok(layout.infoWidth >= 130, "Waypoint names need a full-width text row");
+    assert.equal(layout.titleWhitespace, "nowrap");
+    assert.equal(layout.actionsWithinRow, true);
+    assert.equal(layout.rowWithinPanel, true);
+    assert.equal(layout.stacked, true);
+    await page.locator("#waypoint-list").screenshot({ path: "browser-map-evidence/waypoint-layout-v3.png" });
+
+    assert.equal(await page.locator('[data-ready-item="route"]').getAttribute("data-ready"), "true");
+    assert.equal(await page.locator('[data-ready-item="dem"]').getAttribute("data-ready"), "true");
+    assert.equal(await page.locator('[data-ready-item="alternative"]').getAttribute("data-ready"), "false");
+    assert.ok(await page.locator("#route-connectivity-graph svg line").count() > 0,
+        "Waypoint graph must show real segment edges");
+
+    // Crew Profile requires authentication; private profile data are never exposed signed-out.
+    await page.locator("#mission-hub-open").click();
+    await page.locator('[data-hub-tab="crew"]').click();
+    assert.equal(await page.locator("#hub-crew").isVisible(), true);
+    assert.equal(await page.locator("#crew-profile-login").isVisible(), true);
+    assert.equal(await page.locator("#crew-profile-content").isVisible(), false);
+    await page.locator("#crew-go-login").click();
+    assert.equal(await page.locator("#hub-cloud").isVisible(), true);
+    await page.locator("#cloud-close").click();
+
+    // Guided actions are explicit and do not insert an unrequested example.
+    const beforeGuide = await page.locator('[data-waypoint-row]').count();
+    await page.locator('[data-ready-action="alternative"]').click();
+    assert.equal(await page.locator('[data-ready-item="alternative"]').getAttribute("data-ready"), "true");
+    assert.equal(await page.locator('[data-waypoint-row]').count(), 0,
+        "New alternative routes start empty, never with random example points");
+    assert.equal(beforeGuide, 2);
+
     const unique = new Set(network);
     console.log(JSON.stringify({
         browser: "Chromium", totalNasaRequests: network.length,
