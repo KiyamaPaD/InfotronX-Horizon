@@ -56,8 +56,10 @@ await check("DEM_AND_WEBGL_3D",async () =>
     await page.locator('[data-action="load-review-demo"]').click();
     await page.locator('.analytics-categories [data-group="terrain"]').click();
     await page.locator("#dem-load-official").click();
-    await page.waitForFunction(() => /loaded|samples|valid/i.test(
+    await page.waitForFunction(() => /USGS CTX DTM|GRID LOADED|could not load/i.test(
         document.querySelector("#dem-status")?.textContent || ""),null,{timeout:25000});
+    const demLabel = await page.locator("#dem-status").textContent();
+    assert.match(demLabel,/USGS CTX DTM|GRID LOADED/, "The public DEM failed: " + demLabel);
     await page.locator("#terrain-3d-open").evaluate(element => { element.open=true; });
     await page.waitForFunction(() => /valid samples|WebGL unavailable/.test(
         document.querySelector("#terrain-3d-info")?.textContent || ""),null,{timeout:15000});
