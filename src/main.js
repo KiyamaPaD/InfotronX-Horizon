@@ -24,6 +24,7 @@ import { mountAnalyzeDashboard } from "./analyze-dashboard.js";
 import { mountAccount } from "./account.js";
 import { benchmarkMissionData } from "./benchmark.js";
 import { mountSettings, rememberDetails, getPref, setPref } from "./settings.js";
+import { mountLab } from "./lab-panel.js";
 import { shrinkPhoto, MAX_PHOTOS_PER_MISSION } from "./photo.js";
 import { mountLineControls } from "./line-style.js";
 import { mountQuickWaypoint, quickWaypointEnabled } from "./quick-waypoint.js";
@@ -51,7 +52,7 @@ app.innerHTML = `
         <header class="header" role="banner">
             <div class="brand"><div class="brand-symbol"><span></span></div><div><div class="brand-wordmark">MARS <strong>ATLAS</strong></div><div class="brand-subline">INFOTRONX HORIZON</div></div></div>
             <div class="header-center"><span class="header-center-title">Jezero Crater <span class="header-divider"></span> Mars</span></div>
-            <nav class="header-nav" aria-label="Site"><button type="button" data-action="open-home">Start</button><button type="button" data-action="go-planet">Planet 3D</button><button type="button" data-action="go-map">Map 2D</button><button type="button" data-go="plan">Plan</button><button type="button" data-go="analyze">Analyze</button><button type="button" data-go="all">All tools</button><a href="./legal.html#credits">Sources</a><a href="./legal.html">Legal</a><button type="button" data-action="open-settings">Settings</button></nav><div class="header-actions"><button class="btn btn-outline compact" id="start-tutorial" title="A step-by-step tour of every part of the app, plus keyboard shortcuts">Help & tour</button><button class="btn btn-outline compact header-copilot" data-action="open-copilot">Insights <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M4 4h8v8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="edition-pill">NASA SPACE APPS · 2026</span><button class="btn btn-accent compact header-share" data-action="share">Share mission <span aria-hidden="true">↗</span></button></div>
+            <nav class="header-nav" aria-label="Site"><button type="button" data-action="open-home">Start</button><button type="button" data-action="go-planet">Planet 3D</button><button type="button" data-action="go-map">Map 2D</button><button type="button" data-go="plan">Plan</button><button type="button" data-go="analyze">Analyze</button><button type="button" data-go="all">All tools</button><a href="./legal.html#credits">Sources</a><a href="./legal.html">Legal</a><button type="button" data-action="open-lab">Lab</button><button type="button" data-action="open-settings">Settings</button></nav><div class="header-actions"><button class="btn btn-outline compact" id="start-tutorial" title="A step-by-step tour of every part of the app, plus keyboard shortcuts">Help & tour</button><button class="btn btn-outline compact header-copilot" data-action="open-copilot">Insights <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M4 4h8v8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="edition-pill">NASA SPACE APPS · 2026</span><button class="btn btn-accent compact header-share" data-action="share">Share mission <span aria-hidden="true">↗</span></button></div>
         </header>
         <div class="workspace">
                         <aside class="sidebar sidebar-left" id="left-sidebar">
@@ -882,6 +883,7 @@ document.addEventListener("click", event =>
         case "go-planet": get("[data-action='open-3d']")?.click(); break;
         case "go-map": get(".map-3d-close")?.click(); break;
         case "open-settings": settings.open(); break;
+        case "open-lab": planningLab.open(); break;
         case "toggle-left": togglePanel("left"); break;
         case "toggle-right": togglePanel("right"); break;
         case "open-3d":
@@ -1237,6 +1239,7 @@ let tourRequested = false;
 let pendingGround = null;
 const takePendingGround = () => { const place = pendingGround; pendingGround = null; return place; };
 const settings = mountSettings({ notify: message => notify(message) });
+const planningLab = mountLab({ getRoute: () => store.activeRoute?.points, notify: message => notify(message) });
 const homeCallbacks = {
     onStart: () => get('.workflow-step[data-step="plan"]')?.click(),
     onDemo: () => get('[data-action="load-review-demo"]')?.click(),
