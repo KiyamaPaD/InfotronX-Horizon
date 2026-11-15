@@ -245,7 +245,7 @@ try
     await page.locator("#latitude-input").fill("18.4446");
     await page.locator("#longitude-input").fill("77.4509");
     await page.locator('#coordinate-form button[type="submit"]').click();
-    await page.locator("#waypoint-list [data-edit-point]").first().click();
+    await page.locator(".map-overlays .route-node").first().click();
     await page.locator("#waypoint-name-input").fill("Delta science site");
     await page.locator("#waypoint-description-input").fill("User-proposed geological sampling stop");
     await page.locator("#waypoint-category-input").selectOption("science");
