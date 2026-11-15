@@ -54,3 +54,7 @@ Removed the old CTX beta01 image mosaic from the map. The default is now NASA Vi
 ## HiRISE level 11
 
 Verified NASA HiRISE Jezero zoom 11 tile with HTTP 200 and native 256×256 PNG. Enabled zoom 11 on the dedicated HiRISE selection while preserving previous Viking and MOLA native zoom limits. Tested source URL and parent-grid crop math; still requires manual visual check on the live website.
+
+## Confirmed map bug and fix
+
+Real Chromium network trace revealed the source of the zoom 8–11 failures: Viking tiles requested at zoom 8 returned HTTP 404 across the Jezero viewport, whereas zoom-7 tiles were HTTP 200. The previous implementation assumed native Viking max 8 and magnified/retried those missing images in multiple places. Viking's verified native max is now set to 7. Shared lower-resolution Viking background tiles are cached once and never repeatedly requested per HiRISE tile; HiRISE zoom 9–11 remains available for real detailed coverage.

@@ -23,7 +23,7 @@ A manual-first Mars mission-planning workspace developed by **InfotronX Horizon*
 
 ## Explore and analyze
 
-The map uses the NASA Viking global color mosaic as its default (zoom 3–8), with optional controlled HiRISE imagery near Jezero (zoom 9–11) and MOLA relief as a separate basemap. The legacy CTX beta imagery was retired from the map because its original strips and color seams persisted at all zoom levels. NASA WMTS metadata, caching and progressive tile previews remain supported. Outside HiRISE's mapped footprint, Viking imagery appears as clearly identified lower-resolution context; enlarged imagery is not a new observation. Science tools are organized into **Overview**, **Terrain**, **Models** and **Mission**, with quick access to individual calculations. Route geometry remains fully editable without an AI assistant.
+The map uses the NASA Viking global color mosaic as its default (zoom 3–7), with optional controlled HiRISE imagery near Jezero (zoom 9–11) and MOLA relief as a separate basemap. The legacy CTX beta imagery was retired from the map because its original strips and color seams persisted at all zoom levels. NASA WMTS metadata, caching and progressive tile previews remain supported. Outside HiRISE's mapped footprint, Viking imagery appears as clearly identified lower-resolution context; enlarged imagery is not a new observation. Science tools are organized into **Overview**, **Terrain**, **Models** and **Mission**, with quick access to individual calculations. Route geometry remains fully editable without an AI assistant.
 
 ## Current product status
 
@@ -87,3 +87,5 @@ The numeric terrain clip derives from the **USGS Astrogeology / NASA MRO CTX Mar
 ## Imagery consistency
 
 The Viking global basemap remains the default. HiRISE Jezero imagery is grayscale PNG with transparency, so Viking context is retained below its transparent pixels and tinted consistently in the HiRISE view. The MOLA Relief option now uses NASA's monochrome MOLA/HRSC hillshade blend rather than the older colored elevation shading. The correct image formats are used to avoid unnecessary failed requests. These map layers are visual context, not certified terrain safety maps.
+
+The background renderer never requests Viking zoom 8: a real Chromium network check found HTTP 404 at that level over Jezero, while level 7 returned real NASA imagery. HiRISE zoom 8–11 keeps a separate continuous Viking level-7 background, with genuine HiRISE overlays at 9–11. This avoids repeated enlarged parent tiles and unnecessary network retries.

@@ -22,7 +22,7 @@ export class MarsMap
         this.container = container;
         this.store = store;
         this.options = options;
-        this.zoom = 8;
+        this.zoom = 7;
         this.center = { ...JEZERO };
         this.layer = MAP_LAYERS[0];
         this.layerMaxZoom = Math.min(11, this.layer.maxUsefulZoom || 13);

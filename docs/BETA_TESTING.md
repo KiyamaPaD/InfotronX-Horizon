@@ -74,7 +74,7 @@ The top bar's **Mission Center** groups three areas: **On device** (saved missio
 - [ ] Reload and sign in again to check the cloud mission can be opened from a separate session.
 - [ ] Create and restore a checkpoint from **On device**; check that its data survives a reload.
 - [ ] Export a JSON backup and create a shareable link from **Share & export**.
-- [ ] At Viking zoom 3–8, verify continuous global imagery. Switch to HiRISE Jezero and zoom to 9–11 near the crater; outside its footprint, confirm Viking fallback is labelled and not presented as HiRISE detail.
+- [ ] At Viking zoom 3–7, verify continuous global imagery. Switch to HiRISE Jezero and zoom to 9–11 near the crater; outside its footprint, confirm Viking fallback is labelled and not presented as HiRISE detail.
 
 ## RLS cloud save regression
 
@@ -84,11 +84,11 @@ The live SQL SELECT policy was updated to permit owners to read a mission row du
 
 Email sharing matches the exact confirmed email of a **Mars Atlas account**. An invitation to an address without a confirmed account appears as pending, even if someone is signed into a different address. It does **not** send an actual email; the owner can use **Copy invite** and deliver the instructions to the intended teammate, or cancel an incorrect pending address.
 
-The default Viking Global layer supports zoom 3–8. The HiRISE Jezero layer supports zoom 9–11 within its mapped footprint (approximately 77.223–77.584° E, 18.307–18.669° N); Viking remains visible where HiRISE has no imagery. NASA basemap tile coverage varies; never present resampled lower-resolution context as new surface detail. MOLA and Viking retain their lower useful zoom limits.
+The default Viking Global layer supports zoom 3–7. The HiRISE Jezero layer supports zoom 9–11 within its mapped footprint (approximately 77.223–77.584° E, 18.307–18.669° N); Viking remains visible where HiRISE has no imagery. NASA basemap tile coverage varies; never present resampled lower-resolution context as new surface detail. MOLA and Viking retain their lower useful zoom limits.
 
 ## Mars map loading stress test
 
-- [ ] Hard-refresh the site on a clean browser profile. At initial Viking zoom 8, no black CTX strips or permanently empty tiles should appear.
+- [ ] Hard-refresh the site on a clean browser profile. At initial Viking zoom 7, no black CTX strips or permanently empty tiles should appear.
 - [ ] Select HiRISE Jezero, then repeatedly zoom 8 → 9 → 10 → 9 while panning around Jezero. Images may temporarily use authentic lower-resolution Viking previews. Check that the route overlays stay aligned and no blank gaps persist where parent tiles exist.
 - [ ] With network throttling (or intermittent connectivity), verify that a missing detail tile retains a correctly cropped lower-zoom preview and its resolution is clearly disclosed.
 - [ ] Switch to Viking Global and MOLA Relief; inspect positions, attribution, mobile map controls and gaps.
@@ -96,7 +96,7 @@ The default Viking Global layer supports zoom 3–8. The HiRISE Jezero layer sup
 
 ## NASA basemap provenance and coverage
 
-- **Viking Global:** consistent color context for planet-wide exploration, default zoom 3–8
+- **Viking Global:** consistent color context for planet-wide exploration, default zoom 3–7
 - **HiRISE Jezero:** controlled Mars 2020 ortho mosaic (25 cm/pixel source), limited to its published geographic bounds; zoom 9–11 shows detail only where genuinely available
 - **MOLA Relief:** regional color hillshade, a separate visualization and not a substitute for numeric DEM measurements
 
@@ -115,4 +115,8 @@ Actual NASA network probes (November 15, 2026) confirmed JPEG 256×256 for Vikin
 
 ## Native HiRISE zoom 11
 
-NASA Mars Trek responded with a real 256 × 256 HiRISE PNG at Jezero zoom 11 during the November 15, 2026 network probe. The app now allows zoom 11 only on the HiRISE layer; Viking Global (maximum 8) and MOLA Relief (maximum 7) are unchanged. Viking fallback at HiRISE zoom 11 remains lower-resolution context under transparent areas, not a new high-resolution image. Check zoom 9 → 10 → 11 → 10, viewport panning, PNG alpha edges and route overlay alignment; confirm the + control stops at 11.
+NASA Mars Trek responded with a real 256 × 256 HiRISE PNG at Jezero zoom 11 during the November 15, 2026 network probe. The app now allows zoom 11 only on the HiRISE layer; Viking Global (maximum 7) and MOLA Relief (maximum 7) are unchanged. Viking fallback at HiRISE zoom 11 remains lower-resolution context under transparent areas, not a new high-resolution image. Check zoom 9 → 10 → 11 → 10, viewport panning, PNG alpha edges and route overlay alignment; confirm the + control stops at 11.
+
+## Native Viking coverage correction (Chromium verified)
+
+In a real browser test, all twelve visible Viking WMTS zoom-8 tiles over Jezero failed, while zoom-7 requests succeeded (NASA returned JPEG 256×256). Viking Global has been capped at zoom 7 accordingly. In HiRISE mode, the separate background reuses zoom-7 Viking imagery across zoom 8–11, with high-resolution transparent PNG imagery only where HiRISE data exists. Test 7 → 8 → 9 → 10 → 11 → 7 without blank map warnings. Background context above zoom 7 is enlarged and must not be mistaken for new surface detail.

@@ -403,7 +403,7 @@ test("the default global basemap uses Viking imagery at all supported zooms", ()
     const map = testMap();
     map.layer = MAP_LAYERS.find(layer => layer.id === "viking");
 
-    for (const zoom of [3, 4, 5, 6, 7, 8])
+    for (const zoom of [3, 4, 5, 6, 7])
     {
         assert.equal(map.getImageryLayer(zoom).id, "viking");
         assert.match(map.tileCandidates(9, 3, zoom)[0], /Mars_Viking_MDIM21_ClrMosaic_global_232m/);
@@ -460,10 +460,10 @@ test("HiRISE imagery and native Viking fallback use geographically aligned tiles
         outside.startLoading();
         const detail = outside.children[1];
         assert.match(detail.src, /Mars_Viking_MDIM21_ClrMosaic_global_232m/);
-        assert.match(detail.src, /\/8\/75\/250\./);
-        assert.equal(detail.style.width, "1024px");
+        assert.match(detail.src, /\/7\/37\/125\./);
+        assert.equal(detail.style.width, "2048px");
         assert.equal(detail.style.left, "0px");
-        assert.equal(detail.style.top, "-512px");
+        assert.equal(detail.style.top, "-1536px");
         outside.dispose();
     });
 });
@@ -600,10 +600,10 @@ test("zoom 11 requests genuine NASA HiRISE PNGs rather than enlarged zoom 10 til
         assert.match(detail.src, /\/11\/\d+\/\d+\.png$/);
         assert.equal(detail.style.width, undefined);
         assert.match(preview.src, /Mars_Viking_MDIM21_ClrMosaic_global_232m/);
-        assert.match(preview.src, /\/8\/\d+\/\d+\.jpg$/);
-        assert.equal(preview.style.width, "2048px");
-        assert.equal(preview.style.left, -((x % 8) * 256) + "px");
-        assert.equal(preview.style.top, -((y % 8) * 256) + "px");
+        assert.match(preview.src, /\/7\/\d+\/\d+\.jpg$/);
+        assert.equal(preview.style.width, "4096px");
+        assert.equal(preview.style.left, -((x % 16) * 256) + "px");
+        assert.equal(preview.style.top, -((y % 16) * 256) + "px");
 
         detail.onload();
         preview.onload();
@@ -628,7 +628,7 @@ test("zoom 11 outside HiRISE coverage uses Viking context without 404 requests",
         assert.equal(tile.dataset.lowDetail, "true");
         assert.equal(requests.length, 1);
         assert.match(requests[0].url, /Mars_Viking_MDIM21_ClrMosaic_global_232m/);
-        assert.match(requests[0].url, /\/8\/75\/250\.jpg$/);
+        assert.match(requests[0].url, /\/7\/37\/125\.jpg$/);
         tile.dispose();
     });
 });
@@ -669,7 +669,7 @@ test("HiRISE uses one shared Viking backdrop rather than a giant parent per deta
         assert.ok(backgroundRequests.length <= 4);
         assert.ok(detailRequests.length >= 6);
         assert.ok(detailRequests.every(item => /JEZ_hirise_soc_006_orthoMosaic/.test(item.url)));
-        assert.ok(backgroundRequests.every(item => /\/8\/\d+\/\d+\.jpg$/.test(item.url)));
+        assert.ok(backgroundRequests.every(item => /\/7\/\d+\/\d+\.jpg$/.test(item.url)));
         assert.equal(new Set(backgroundRequests.map(item => item.url)).size, backgroundRequests.length);
         assert.ok(map.backgroundTiles.size < map.tiles.size);
 
@@ -706,7 +706,7 @@ test("zoom 11 → 10 → 11 reuses the same Viking backdrop without new download
     });
 });
 
-test("HiRISE zoom 8 uses only native Viking tiles without HiRISE downloads", () =>
+test("HiRISE zoom 8 uses verified Viking zoom 7 imagery without HiRISE downloads", () =>
 {
     withFakeTiles(requests =>
     {
@@ -717,7 +717,7 @@ test("HiRISE zoom 8 uses only native Viking tiles without HiRISE downloads", () 
         assert.equal(map.activeTiles.size, 0);
         assert.ok(map.backgroundActiveTiles.size > 0);
         assert.ok(requests.every(item => item.name === "map-background-tile"));
-        assert.ok(requests.every(item => /\/8\/\d+\/\d+\.jpg$/.test(item.url)));
+        assert.ok(requests.every(item => /\/7\/\d+\/\d+\.jpg$/.test(item.url)));
     });
 });
 
@@ -733,5 +733,26 @@ test("visible Viking imagery hides the unavailable warning during HiRISE loading
         assert.equal(map.notice.hidden, true);
         assert.equal(tile.style.opacity, "1");
         assert.match(map.notice.textContent, /Loading/);
+    });
+});
+
+
+test("Viking stops at confirmed native zoom 7; HiRISE never requests missing Viking zoom 8", () =>
+{
+    const viking = MAP_LAYERS.find(layer => layer.id === "viking");
+    assert.equal(viking.maxUsefulZoom, 7);
+    withFakeTiles(requests =>
+    {
+        const map = activeHiRISEMap();
+
+        for (const zoom of [8, 9, 10, 11])
+        {
+            map.zoom = zoom;
+            map.renderHiRISETiles(740, 410, project(map.center, zoom));
+        }
+
+        const vikingRequests = requests.filter(item => item.name === "map-background-tile");
+        assert.ok(vikingRequests.length > 0);
+        assert.ok(vikingRequests.every(item => /\/7\/\d+\/\d+\.jpg$/.test(item.url)));
     });
 });

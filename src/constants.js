@@ -15,7 +15,7 @@ export const MAP_LAYERS = [
         description: "Continuous Viking color mosaic for global Mars exploration. Native detail is limited to its map resolution.",
         url: "https://trek.nasa.gov/tiles/Mars/EQ/Mars_Viking_MDIM21_ClrMosaic_global_232m/1.0.0",
         extensions: ["jpg"],
-        maxUsefulZoom: 8
+        maxUsefulZoom: 7
     },
     {
         id: "hirise",
