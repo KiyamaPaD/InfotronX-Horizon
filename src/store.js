@@ -45,6 +45,40 @@ export function createDemoMission()
     return mission;
 }
 
+const ORIGINAL_EXAMPLE = [
+    { lat: 18.44460, lon: 77.45090 },
+    { lat: 18.44960, lon: 77.45610 },
+    { lat: 18.45490, lon: 77.46200 },
+    { lat: 18.46020, lon: 77.46950 }
+];
+
+export function removeUntouchedExample(mission)
+{
+    if (mission.title !== "Jezero field reconnaissance" || mission.routes.length !== 1 ||
+        mission.routes[0].name !== "Primary route" || mission.checkpoints.length !== 0 ||
+        mission.routes[0].points.length !== ORIGINAL_EXAMPLE.length || mission.observations.length !== 1)
+    {
+        return mission;
+    }
+
+    const points = mission.routes[0].points;
+    const note = mission.observations[0];
+    const originalPoints = points.every((point, index) => Math.abs(point.lat - ORIGINAL_EXAMPLE[index].lat) < 1e-9
+        && Math.abs(point.lon - ORIGINAL_EXAMPLE[index].lon) < 1e-9 && !point.icon);
+    const originalNote = note.title === "Survey checkpoint" && Math.abs(note.lat - 18.45160) < 1e-9
+        && Math.abs(note.lon - 77.45920) < 1e-9 && !note.icon;
+
+    if (originalPoints && originalNote)
+    {
+        mission.routes[0].points = [];
+        mission.observations = [];
+        mission.title = "Jezero mission";
+        mission.description = "Create your own route and field observations.";
+    }
+
+    return mission;
+}
+
 export function validateMission(candidate)
 {
     if (!candidate || typeof candidate !== "object" || !Array.isArray(candidate.routes) || candidate.routes.length > MAX_ROUTES)
@@ -187,13 +221,13 @@ export class MissionStore
             const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
             const rows = Array.isArray(stored) ? stored : stored?.missions;
             this.loadedActiveId = typeof stored?.activeId === "string" ? stored.activeId : null;
-            const missions = Array.isArray(rows) ? rows.slice(0, MAX_MISSIONS).map(validateMission).filter(Boolean) : [];
+            const missions = Array.isArray(rows) ? rows.slice(0, MAX_MISSIONS).map(validateMission).filter(Boolean).map(removeUntouchedExample) : [];
 
-            return missions.length ? missions : [createDemoMission()];
+            return missions.length ? missions : [createMission("Jezero mission")];
         }
         catch
         {
-            return [createDemoMission()];
+            return [createMission("Jezero mission")];
         }
     }
 
@@ -526,6 +560,19 @@ export class MissionStore
 
         point.lat = coordinate.lat;
         point.lon = coordinate.lon;
+        this.activeRoute.terrainModel = null;
+        this.save();
+        return true;
+    }
+
+    clearActiveRoute()
+    {
+        if (!this.activeRoute.points.length)
+        {
+            return false;
+        }
+
+        this.activeRoute.points = [];
         this.activeRoute.terrainModel = null;
         this.save();
         return true;
