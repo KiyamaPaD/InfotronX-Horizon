@@ -1,4 +1,5 @@
 import { JEZERO, JEZERO_CTX_CONTEXT, MAP_LAYERS } from "./constants.js";
+import { describeSource } from "./source-label.js";
 import { clamp, formatCoordinate, project, unproject } from "./geo.js";
 import { markerRadiusForZoom, normalizeMarkerIcon } from "./marker-icons.js";
 import { waypointLabel } from "./waypoint-editor.js";
@@ -82,7 +83,7 @@ export class MarsMap
         this.capabilitiesReady = false;
         this.capabilitiesTimer = null;
 
-        this.container.innerHTML = `<div class="map-fallback" aria-hidden="true"><div class="fallback-globe"></div><div class="coordinate-grid"></div></div><div class="map-background-tiles"></div><div class="map-context-tiles"></div><div class="map-tiles"></div><svg class="map-overlays" role="img" aria-label="Editable mission route overlays"></svg><div class="map-attribution">Map tiles © NASA / JPL · Mars Trek</div><div class="map-load-notice" role="status">Loading Mars imagery…</div><div class="map-network-notice" role="status" hidden><span class="map-network-dot" aria-hidden="true"></span><span class="map-network-text"></span></div>`;
+        this.container.innerHTML = `<div class="map-fallback" aria-hidden="true"><div class="fallback-globe"></div><div class="coordinate-grid"></div></div><div class="map-background-tiles"></div><div class="map-context-tiles"></div><div class="map-tiles"></div><svg class="map-overlays" role="img" aria-label="Editable mission route overlays"></svg><div class="map-attribution">Map tiles © NASA / JPL · Mars Trek</div><div class="map-load-notice" role="status">Loading Mars imagery…</div><div class="map-source-indicator" aria-live="polite"><span class="map-source-dot" aria-hidden="true"></span><span class="map-source-text"></span></div><div class="map-network-notice" role="status" hidden><span class="map-network-dot" aria-hidden="true"></span><span class="map-network-text"></span></div>`;
         this.tileContainer = this.container.querySelector(".map-tiles");
         this.backgroundTileContainer = this.container.querySelector(".map-background-tiles");
         this.backgroundTiles = new Map();
@@ -97,6 +98,7 @@ export class MarsMap
         this.overlay = this.container.querySelector(".map-overlays");
         this.notice = this.container.querySelector(".map-load-notice");
         this.networkNotice = this.container.querySelector(".map-network-notice");
+        this.sourceIndicator = this.container.querySelector(".map-source-indicator");
         this.offline = navigator.onLine === false;
         this.awaitingRecovery = false;
         this.lastRetryAt = 0;
@@ -1818,6 +1820,23 @@ export class MarsMap
             : "NASA imagery is not responding · retrying automatically";
     }
 
+    renderSourceIndicator()
+    {
+        if (!this.sourceIndicator || !this.layer)
+        {
+            return;
+        }
+
+        const text = describeSource(this.layer.id, this.zoom, this.center);
+        const label = this.sourceIndicator.querySelector(".map-source-text");
+
+        if (label && label.textContent !== text)
+        {
+            label.textContent = text;
+            this.sourceIndicator.dataset.source = text.startsWith("HiRISE") ? "hirise" : text.startsWith("MOLA") ? "mola" : text.includes("upscaled") ? "upscaled" : "viking";
+        }
+    }
+
     render()
     {
         if (this.frameScheduled)
@@ -1831,6 +1850,7 @@ export class MarsMap
             this.frameScheduled = false;
             this.renderTiles();
             this.renderOverlays();
+            this.renderSourceIndicator();
         });
     }
 }

@@ -178,6 +178,12 @@ Ordinea rămâne: întâi terminăm Etapa 1 (harta).
 
 ---
 
+## De investigat
+
+- Scenariul `network-nasa-503` din testul de browser: tile-ul părinte Viking zoom 5 (`5/12/45.jpg`) e cerut de două ori la ~4 ms distanță. Probabil două tile-uri copil cer același părinte ca preview, iar răspunsurile cu eroare nu ajung în cache. Mic, nu blochează nimic.
+
+---
+
 ## ETAPA 5 — Idei noi (doar după Etapele 1–4)
 
 Ordonate după valoare / efort. Fiecare se face ca pas separat, cu teste.

@@ -857,6 +857,102 @@ async function nasaOutageScenario()
     return { scenario: "network-nasa-503", viewport: VIEWPORTS[2], steps, checks, gateDuplicates: false, ...summarize(log) };
 }
 
+async function readIndicator(target, expected)
+{
+    if (expected)
+    {
+        await target.waitForFunction(text => document.querySelector("#map-root .map-source-indicator")?.textContent.trim() === text, expected, { timeout: 5000 }).catch(() => {});
+    }
+
+    return target.evaluate(() =>
+    {
+        const element = document.querySelector("#map-root .map-source-indicator");
+        const rect = element.getBoundingClientRect();
+        const map = document.querySelector("#map-root").getBoundingClientRect();
+        const wrap = document.querySelector("#map-root").closest(".map-wrap") || document.body;
+        const overlaps = [...wrap.querySelectorAll("button, .mode-indicator, .live-coordinate, .map-network-notice")].filter(node =>
+        {
+            const other = node.getBoundingClientRect();
+            return other.width > 0 && other.height > 0 && other.left < rect.right && other.right > rect.left && other.top < rect.bottom && other.bottom > rect.top;
+        }).map(node => (node.getAttribute("aria-label") || node.textContent.trim()).slice(0, 30));
+
+        return {
+            text: element.textContent.trim(),
+            source: element.dataset.source,
+            visible: rect.width > 0 && rect.height > 0 && getComputedStyle(element).display !== "none",
+            insideMap: rect.left >= map.left && rect.right <= map.right && rect.top >= map.top && rect.bottom <= map.bottom,
+            overlaps
+        };
+    });
+}
+
+async function sourceIndicatorScenario()
+{
+    const { context, target, log } = await openScenario(VIEWPORTS[2]);
+    const steps = [];
+    const checks = [];
+    const expect = async (name, text) =>
+    {
+        const indicator = await readIndicator(target, text);
+        steps.push({ step: "indicator-" + name, ...indicator });
+        checks.push({ name: name, ok: indicator.text === text && indicator.visible, detail: "\"" + indicator.text + "\"", hard: true });
+    };
+
+    try
+    {
+        await expect("cold load shows Viking z7", "Viking · z7");
+        await zoomTo(target, 5);
+        await expect("zoom out updates to Viking z5", "Viking · z5");
+        await selectLayer(target, "hirise");
+        await zoomTo(target, 8);
+        await expect("HiRISE selection at z8 shows upscaled Viking", "Viking upscaled from z7 · z8");
+        await zoomTo(target, 10);
+        await expect("HiRISE z10 inside coverage", "HiRISE 25 cm · z10");
+        await target.screenshot({ path: "browser-map-evidence/indicator-hirise-z10.png" });
+
+        const box = await target.locator("#map-root").boundingBox();
+        await target.mouse.move(box.x + box.width * 0.8, box.y + box.height * 0.5);
+        await target.mouse.down();
+        await target.mouse.move(box.x + box.width * 0.8 - 450, box.y + box.height * 0.5, { steps: 12 });
+        await target.mouse.up();
+        await expect("pan outside HiRISE coverage", "Viking upscaled from z7 · z10");
+        await target.screenshot({ path: "browser-map-evidence/indicator-outside-hirise.png" });
+
+        await target.evaluate(() => document.querySelector('[data-action="reset-map"]').click());
+        await expect("recenter returns to HiRISE z11", "HiRISE 25 cm · z11");
+        await selectLayer(target, "mola");
+        await expect("MOLA labelled as relief, not elevation", "MOLA shaded relief (not elevation) · z7");
+    }
+    finally
+    {
+        await context.close();
+    }
+
+    for (const viewport of VIEWPORTS)
+    {
+        const opened = await openScenario(viewport);
+
+        try
+        {
+            for (const layer of ["viking", "mola"])
+            {
+                if (layer !== "viking") await selectLayer(opened.target, layer);
+                const indicator = await readIndicator(opened.target);
+                steps.push({ step: "indicator-layout-" + viewport.name + "-" + layer, ...indicator });
+                checks.push({ name: viewport.name + " " + layer + ": indicator inside map, covers no control", ok: indicator.visible && indicator.insideMap && indicator.overlaps.length === 0, detail: indicator.overlaps.length ? "overlaps " + indicator.overlaps.join(", ") : "\"" + indicator.text + "\"", hard: true });
+            }
+
+            await opened.target.screenshot({ path: "browser-map-evidence/indicator-" + viewport.name + ".png" });
+        }
+        finally
+        {
+            await opened.context.close();
+        }
+    }
+
+    return { scenario: "source-indicator", viewport: VIEWPORTS[2], steps, checks, ...summarize(log) };
+}
+
 function countBy(items, key)
 {
     const counts = {};
@@ -940,6 +1036,7 @@ async function runStabilityScenarios()
         report.scenarios.push(await rapidZoomScenario("wheel"));
         report.scenarios.push(await largePanScenario());
         report.scenarios.push(await hiriseEdgeScenario());
+        report.scenarios.push(await sourceIndicatorScenario());
         report.scenarios.push(await slowNetworkScenario());
         report.scenarios.push(await offlineScenario());
         report.scenarios.push(await nasaOutageScenario());
@@ -1358,6 +1455,16 @@ try
         "Map browser JS errors: " + errors.join("; "));
 
     await runStabilityScenarios();
+}
+catch (error)
+{
+    // Annotations are readable through the public GitHub API, unlike job logs.
+    if (process.env.GITHUB_ACTIONS)
+    {
+        console.log("::error title=Map browser test::" + String(error?.message || error).slice(0, 6000).replace(/%/g, "%25").replace(/\r/g, "").replace(/\n/g, "%0A"));
+    }
+
+    throw error;
 }
 finally
 {
