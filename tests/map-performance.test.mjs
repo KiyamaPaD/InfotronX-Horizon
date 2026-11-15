@@ -463,3 +463,92 @@ test("HiRISE imagery and native Viking fallback use geographically aligned tiles
         outside.dispose();
     });
 });
+
+
+test("HiRISE transparent mosaic keeps Viking context beneath it in both load orders", () =>
+{
+    withFakeTiles(() =>
+    {
+        const map = testMap();
+        map.layer = MAP_LAYERS.find(item => item.id === "hirise");
+        map.center = { ...JEZERO };
+        const x = Math.floor((JEZERO.lon + 180) / 360 * 2 ** 11);
+        const y = Math.floor((90 - JEZERO.lat) / 180 * 2 ** 10);
+
+        for (const previewFirst of [true, false])
+        {
+            const tile = map.createTile(x, y, 10, 0, 0);
+            const [preview, detail] = tile.children;
+            tile.startLoading();
+
+            if (previewFirst)
+            {
+                preview.onload();
+                detail.onload();
+            }
+            else
+            {
+                detail.onload();
+                preview.onload();
+            }
+
+            assert.equal(tile.style.filter, "grayscale(1)");
+            assert.equal(preview.style.opacity, "1");
+            assert.equal(detail.style.opacity, "1");
+            tile.dispose();
+        }
+    });
+});
+
+test("HiRISE outside coverage loads Viking without an extra parent request", () =>
+{
+    withFakeTiles(requests =>
+    {
+        const map = testMap();
+        map.layer = MAP_LAYERS.find(item => item.id === "hirise");
+        map.center = { lat: 15, lon: 70 };
+        const tile = map.createTile(1000, 302, 10, 0, 0);
+        tile.startLoading();
+        assert.equal(requests.length, 1);
+        assert.equal(tile.dataset.source, "viking");
+        assert.match(requests[0].url, /Mars_Viking_MDIM21_ClrMosaic_global_232m/);
+        tile.dispose();
+    });
+});
+
+test("the new MOLA / HRSC relief uses a verified monochrome JPEG layer", () =>
+{
+    const mola = MAP_LAYERS.find(layer => layer.id === "mola");
+    assert.equal(mola.dataset, "Mars_MOLA_blend200ppx_HRSC_Shade_clon0dd_200mpp_lzw");
+    assert.deepEqual(mola.extensions, ["jpg"]);
+    assert.ok(!mola.dataset.includes("ClrShade"));
+    const hirise = MAP_LAYERS.find(layer => layer.id === "hirise");
+    assert.deepEqual(hirise.extensions, ["png"]);
+});
+
+test("NASA GetCapabilities URLs normalize doubled path separators", () =>
+{
+    const map = testMap();
+    const hirise = MAP_LAYERS.find(layer => layer.id === "hirise");
+    map.layer = hirise;
+    map.tileTemplates.set("hirise", {
+        template: hirise.url + "//{Style}/default028mm/{TileMatrix}/{TileRow}/{TileCol}.png",
+        matrixLookup: new Map([["2048-1024", "10"]])
+    });
+    const candidates = map.tileCandidates(1464, 407, 10, hirise);
+    assert.match(candidates[0], /\/1\.0\.0\/default\/default028mm\/10\/407\/1464\.png$/);
+    assert.ok(!candidates[0].includes("/1.0.0//"));
+    assert.ok(!candidates.some(url => url.endsWith(".jpg")));
+});
+
+test("partially overlapping HiRISE coverage is tested by tile extent", () =>
+{
+    const map = testMap();
+    map.layer = MAP_LAYERS.find(layer => layer.id === "hirise");
+    map.center = { ...JEZERO };
+    const zoom = 10;
+    const x = Math.floor((map.layer.coverage.west + 180) / 360 * 2 ** (zoom + 1));
+    const y = Math.floor((90 - JEZERO.lat) / 180 * 2 ** zoom);
+    assert.equal(map.getImageryLayer(zoom, x, y).id, "hirise");
+    assert.equal(map.getImageryLayer(zoom, x - 2, y).id, "viking");
+});

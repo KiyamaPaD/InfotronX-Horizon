@@ -103,3 +103,12 @@ The default Viking Global layer supports zoom 3–8. The HiRISE Jezero layer sup
 The old Caltech CTX beta01 global image layer was removed from normal map selection because its native missing-data strips, striping and mismatched seams remain visible at multiple scales. A separate numerical CTX elevation clip in the Terrain panel is unaffected and remains a valid data source for its documented extent.
 
 When selecting HiRISE at zoom 9–10, image tiles outside the local mosaic coverage show cropped Viking context instead. Check that source attribution updates after panning and that point coordinates and routes do not move when basemaps change. Do not expect native high-resolution imagery in regions beyond HiRISE's coverage.
+
+## Image format and HiRISE transparency
+
+- [ ] Open HiRISE Jezero at zoom 9–10 and wait for both Viking context and HiRISE imagery; transparent portions must never become opaque black boxes. The whole mode should appear consistently grayscale.
+- [ ] Pan outside the HiRISE geographic footprint; the Viking background must render without duplicate parent-image requests.
+- [ ] Switch to MOLA Relief at zoom 5–7 and verify continuous monochrome hillshade without the old colorized elevation tiles.
+- [ ] Switch repeatedly through Viking → HiRISE → MOLA → Viking, confirming no ghost tiles, changed routes or inconsistent color filters.
+
+Actual NASA network probes (November 15, 2026) confirmed JPEG 256×256 for Viking and the grayscale MOLA/HRSC mosaic, and PNG 256×256 for HiRISE. The HiRISE PNG uses grayscale with alpha (color type 4). These checks do not substitute for a visual browser test.

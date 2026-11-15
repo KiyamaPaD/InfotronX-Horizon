@@ -83,3 +83,7 @@ Scientific methodology, data references and engineering notes are available in t
 The numeric terrain clip derives from the **USGS Astrogeology / NASA MRO CTX Mars 2020 Terrain Relative Navigation DTM** (Fergason et al., 2020), [DOI 10.5066/P906QQT8](https://doi.org/10.5066/P906QQT8). Basemap imagery is served through NASA Mars Trek. For technical attribution and modeled-versus-observed limitations, see [NASA_DATA.md](NASA_DATA.md) and [Science validation](docs/SCIENCE_VALIDATION.md). The project's software license does not replace third-party data/imagery licenses.
 
 **InfotronX Horizon** is an independent team. The clean Git repository is a publication reset, **not evidence that all components were written during the hackathon**. See [Submission readiness](docs/SUBMISSION_READINESS.md) for the official timing and source-eligibility considerations. Tools and contributors are acknowledged in [SUBMISSION.md](SUBMISSION.md).
+
+## Imagery consistency
+
+The Viking global basemap remains the default. HiRISE Jezero imagery is grayscale PNG with transparency, so Viking context is retained below its transparent pixels and tinted consistently in the HiRISE view. The MOLA Relief option now uses NASA's monochrome MOLA/HRSC hillshade blend rather than the older colored elevation shading. The correct image formats are used to avoid unnecessary failed requests. These map layers are visual context, not certified terrain safety maps.

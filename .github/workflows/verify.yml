@@ -22,6 +22,7 @@ jobs:
         run: |
           for file in src/*.js; do node --check "$file"; done
           npm test
-      - name: Diagnose NASA imagery availability (non-blocking)
+      - name: Diagnose NASA imagery availability (manual only)
+        if: github.event_name == 'workflow_dispatch'
         continue-on-error: true
         run: node scripts/probe-nasa-tiles.mjs
