@@ -240,6 +240,39 @@ try
         item.url.includes("JEZ_ctx_B_soc_008_orthoMosaic_6m") && item.status !== 200);
     assert.deepEqual(failedContext, [], "NASA Jezero CTX tiles must load without HTTP errors");
 
+    // Editor V2: manual creation, metadata, local persistence and editable map markers.
+    await page.locator('[data-action="add-coordinates"]').click();
+    await page.locator("#latitude-input").fill("18.4446");
+    await page.locator("#longitude-input").fill("77.4509");
+    await page.locator('#coordinate-form button[type="submit"]').click();
+    await page.locator("#waypoint-list [data-edit-point]").first().click();
+    await page.locator("#waypoint-name-input").fill("Delta science site");
+    await page.locator("#waypoint-description-input").fill("User-proposed geological sampling stop");
+    await page.locator("#waypoint-category-input").selectOption("science");
+    await page.locator("#waypoint-icon-input").selectOption("star");
+    await page.locator("#waypoint-use-route-color").uncheck();
+    await page.locator("#waypoint-color-input").fill("#75d1c8");
+    await page.locator('#waypoint-editor-form button[type="submit"]').click();
+
+    assert.match(await page.locator("#waypoint-list .waypoint-coordinates strong").first().textContent(), /Delta science site/);
+    assert.equal(await page.locator(".map-overlays .route-node").first().getAttribute("fill"), "#75d1c8");
+    await page.locator('[data-action="undo-edit"]').click();
+    assert.doesNotMatch(await page.locator("#waypoint-list .waypoint-coordinates strong").first().textContent(), /Delta science site/);
+    await page.locator('[data-action="redo-edit"]').click();
+    assert.match(await page.locator("#waypoint-list .waypoint-coordinates strong").first().textContent(), /Delta science site/);
+
+    await page.locator(".map-overlays .route-node").first().click({ button: "right" });
+    assert.equal(await page.locator('#map-context-menu [data-context-action="edit-waypoint"]').isVisible(), true);
+    await page.locator('#map-context-menu [data-context-action="edit-waypoint"]').click();
+    assert.equal(await page.locator("#waypoint-name-input").inputValue(), "Delta science site");
+    await page.locator("#waypoint-editor-modal").screenshot({ path: "browser-map-evidence/waypoint-editor-v2.png" });
+    await page.locator('#waypoint-editor-modal [data-action="close-modal"]').click();
+
+    await page.reload({ waitUntil: "domcontentloaded" });
+    assert.match(await page.locator("#waypoint-list .waypoint-coordinates strong").first().textContent(), /Delta science site/,
+        "Manual waypoint metadata must persist after a browser reload");
+    assert.equal(await page.locator(".map-overlays .route-node").first().getAttribute("fill"), "#75d1c8");
+
     const unique = new Set(network);
     console.log(JSON.stringify({
         browser: "Chromium", totalNasaRequests: network.length,
