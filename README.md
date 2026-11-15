@@ -9,7 +9,7 @@ A manual-first Mars mission-planning workspace developed by **InfotronX Horizon*
 [![Verify](https://github.com/KiyamaPaD/Mars-Atlas/actions/workflows/verify.yml/badge.svg)](https://github.com/KiyamaPaD/Mars-Atlas/actions/workflows/verify.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**[Open Mars Atlas](https://mars-atlas-mu.vercel.app)** · **[Team testing guide](docs/BETA_TESTING.md)** · **[V2 product roadmap](docs/PRODUCT_ROADMAP_V2.md)** · **[Report a bug](https://github.com/KiyamaPaD/Mars-Atlas/issues/new?template=bug_report.md)**
+**[Open Mars Atlas](https://mars-atlas-mu.vercel.app)** · **[Scientific validation](docs/JUDGE_SCIENTIFIC_VALIDATION.md)** · **[Judge demo draft](docs/JUDGE_DEMO_DRAFT_2026.md)** · **[AI/data disclosure](docs/AI_USE_AND_SOURCES.md)** · **[Team testing guide](docs/BETA_TESTING.md)** · **[Report a bug](https://github.com/KiyamaPaD/Mars-Atlas/issues/new?template=bug_report.md)**
 
 > **Team-testing stage.** A successful deployment and automated checks do not replace testing the interactive map in a real browser. If you see a Vercel access screen, request a shareable link from the maintainer.
 
@@ -18,6 +18,7 @@ A manual-first Mars mission-planning workspace developed by **InfotronX Horizon*
 - **Plan directly on the map:** create missions, draw and edit routes, move/reorder waypoints, and attach observations and references. AI is not required.
 - **Waypoint & Mission Editor V2:** edit point names, categories, notes, shapes, colors and precise coordinates; use map context actions and mission-scoped Undo/Redo. [Editing guide](docs/WAYPOINT_EDITOR_V2.md).
 - **Compare route alternatives:** inspect A*, D* Lite replanning, bounded multi-objective route searches, and user-defined hypothetical exclusion zones.
+- **Explain route decisions rigorously:** Why This Route? displays the A* objective `C = D + λ × (ascent + descent)`, Pareto trade-offs, model limitations and user-adjustable preference rankings. [Validation evidence](docs/JUDGE_SCIENTIFIC_VALIDATION.md).
 - **Explore real terrain data:** study a limited-area USGS/NASA Mars Reconnaissance Orbiter CTX elevation clip near Jezero alongside NASA Mars Trek imagery layers.
 - **Terrain Intelligence V2:** inspect an interactive elevation profile, compare waypoint altitude and mean segment grade, and locate numeric DEM samples directly on the map. [Terrain profile guide](docs/TERRAIN_INTELLIGENCE_V2.md).
 - **Analyze terrain:** elevation and slope profiles, local roughness, line of sight, reachability, contours, and experimental scientific models.
