@@ -22,6 +22,7 @@ import { enableCardTilt } from "./tilt.js";
 import { mountHome } from "./home.js";
 import { mountAnalyzeDashboard } from "./analyze-dashboard.js";
 import { mountAccount } from "./account.js";
+import { benchmarkMissionData } from "./benchmark.js";
 import { mountSettings, rememberDetails, getPref, setPref } from "./settings.js";
 import { shrinkPhoto, MAX_PHOTOS_PER_MISSION } from "./photo.js";
 import { mountLineControls } from "./line-style.js";
@@ -1335,3 +1336,18 @@ document.querySelectorAll("[data-go]").forEach(button => button.addEventListener
     const step = button.dataset.go;
     get(step === "all" ? ".workflow-all" : `.workflow-step[data-step="${step}"]`)?.click();
 }));
+
+// The benchmark: one start, one end, three routes on the bundled height model, always the same numbers.
+window.addEventListener("mars-load-benchmark", () =>
+{
+    if (store.importMission(benchmarkMissionData()))
+    {
+        map.focusRoute();
+        scienceWorkbench.loadBundledDem();
+        notify("Benchmark mission opened: three routes between the same start and end.");
+    }
+    else
+    {
+        notify("The mission library is full (30). Export or remove an unused mission first.");
+    }
+});

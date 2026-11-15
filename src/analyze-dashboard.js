@@ -7,6 +7,7 @@ import { summarizeTerrainProfile } from "./terrain-profile-v2.js";
 import { animateNumber, prefersReducedMotion } from "./motion.js";
 import { estimateMarswalk } from "./resources.js";
 import { getPref, setPref } from "./settings.js";
+import { rankByCost, crossovers } from "./benchmark.js";
 import { COMPANIONS, supplyKit, pointOfNoReturn } from "./companions.js";
 import { buildMissionFacts } from "./mission-copilot.js";
 import { askCopilot } from "./copilot-client.js";
@@ -148,6 +149,46 @@ export function mountAnalyzeDashboard({ shell, store, getCloud, getDem })
     host.appendChild(dashboard);
     let token = 0;
     let lastSentences = null;
+    let lambda = 6;
+    let tradeRows = [];
+
+    // Distance versus relief: C = D + lambda × (climb + descent). Moving the slider re-ranks the routes at once.
+    function paintTrade()
+    {
+        const box = dashboard.querySelector(".ad-tradeoff");
+
+        if (!box) return;
+
+        const table = box.querySelector("tbody");
+        const text = box.querySelector(".ad-trade-text");
+        box.querySelector("[data-ad-lambda-out]").textContent = lambda.toFixed(1);
+
+        if (tradeRows.length < 2)
+        {
+            table.replaceChildren();
+            text.textContent = "Two routes with height data are needed. Load the benchmark mission to see the trade-off with three routes.";
+            return;
+        }
+
+        const ranked = rankByCost(tradeRows, lambda);
+        table.replaceChildren(...ranked.map((row, index) =>
+        {
+            const tr = document.createElement("tr");
+            tr.className = index === 0 ? "is-best" : "";
+            for (const value of [String(index + 1), row.name, formatDistance(row.distanceMeters), Math.round(row.verticalMeters) + " m", Math.round(row.cost).toLocaleString("en-US") + " m"])
+            {
+                const td = document.createElement("td");
+                td.textContent = value;
+                tr.append(td);
+            }
+            return tr;
+        }));
+        const points = crossovers(tradeRows);
+        const next = points.find(point => point.lambda > lambda);
+        const best = ranked[0];
+        text.textContent = `At a penalty of ${lambda.toFixed(1)} the best of the routes you calculated is "${best.name}".` +
+            (next ? ` The choice changes at ${next.lambda.toFixed(1)}: above it "${next.other}" is ${Math.round(next.extraDistance)} m longer but saves ${next.savedVertical.toFixed(1)} m of climb and descent.` : points.length ? " Beyond the last change point the ranking stays the same." : " One route is as short and climbs less, so there is nothing to trade.");
+    }
     let draft = "";
     let useAi = false;
     let busy = false;
@@ -319,6 +360,32 @@ export function mountAnalyzeDashboard({ shell, store, getCloud, getDem })
             threeD: "Open the 3D terrain to check what the numbers cannot show: hills, crater rims and where your route crosses them."
         };
         lastSentences = sentences;
+
+        // Height-based figures for every route that lies inside the height model.
+        tradeRows = [];
+
+        if (dem)
+        {
+            for (const other of store.current.routes)
+            {
+                if (other.points.length < 2) continue;
+
+                const other_profile = profileRouteOnDem(dem, other.points);
+                const other_summary = summarizeTerrainProfile(dem, other.points, other_profile);
+
+                if (other_summary.complete && other_summary.ascentMeters !== null)
+                {
+                    tradeRows.push({ name: other.name, distanceMeters: analyzeRoute(other.points).totalDistance, verticalMeters: other_summary.ascentMeters + other_summary.descentMeters });
+                }
+            }
+        }
+
+        const tradeHtml = `<div class="ad-tradeoff"><h4>Distance versus relief</h4>
+            <p class="ad-note">Move the slider to decide how much one metre of climb or descent counts against one metre of distance. The cost is <b>C = D + λ × (climb + descent)</b>, the same rule the planner uses.</p>
+            <label class="ad-lambda">Penalty λ <input type="range" min="0" max="30" step="0.5" value="${lambda}" data-ad-lambda aria-label="Penalty for height change"><b data-ad-lambda-out></b></label>
+            <table class="ad-table"><thead><tr><th>#</th><th>Route</th><th>Distance</th><th>Climb + descent</th><th>Cost C</th></tr></thead><tbody></tbody></table>
+            <p class="ad-trade-text" aria-live="polite"></p>
+            <button class="btn btn-outline small" type="button" data-ad="benchmark">Load the benchmark mission (3 routes, same start and end)</button></div>`;
         const checks = [
             [points.length >= 2, "The route has at least two waypoints"],
             [hasHeights && coverage === 100, hasHeights ? `Height data covers the whole route (${coverage}%)` : "Height data covers the route"],
@@ -398,7 +465,7 @@ export function mountAnalyzeDashboard({ shell, store, getCloud, getDem })
             </section>
             <section class="ad-step" id="ad-step-4">
                 ${stepHead(4, "Is there a better option?", "Put two routes side by side. A shorter route is not automatically safer, so look at distance and slope together.")}
-                <div class="ad-card"><div class="ad-bars">${routeComparison(store.current.routes, route.id)}</div></div>
+                <div class="ad-card"><div class="ad-bars">${routeComparison(store.current.routes, route.id)}</div>${tradeHtml}</div>
                 ${stepFoot(4, sentences.compare)}
             </section>
             <section class="ad-step" id="ad-step-5">
@@ -435,6 +502,7 @@ export function mountAnalyzeDashboard({ shell, store, getCloud, getDem })
             }
         }
 
+        paintTrade();
         paintChat();
         const askBox = dashboard.querySelector(".ad-ask-form textarea");
         if (askBox) askBox.value = draft;
@@ -462,6 +530,10 @@ export function mountAnalyzeDashboard({ shell, store, getCloud, getDem })
     dashboard.addEventListener("input", event =>
     {
         if (event.target.matches(".ad-ask-form textarea")) draft = event.target.value;
+    });
+    dashboard.addEventListener("input", event =>
+    {
+        if (event.target.matches("[data-ad-lambda]")) { lambda = Number(event.target.value); paintTrade(); }
     });
     dashboard.addEventListener("change", event =>
     {
@@ -505,6 +577,7 @@ export function mountAnalyzeDashboard({ shell, store, getCloud, getDem })
         else if (action === "tools") shell.querySelector(".workflow-all")?.click();
         else if (action === "plan") shell.querySelector('.workflow-step[data-step="plan"]')?.click();
         else if (action === "demo") shell.querySelector('[data-action="load-review-demo"]')?.click();
+        else if (action === "benchmark") window.dispatchEvent(new Event("mars-load-benchmark"));
     });
 
     // The 3D view lives inside the map, so the dashboard steps aside while it is open.

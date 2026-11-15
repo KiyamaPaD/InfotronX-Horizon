@@ -2577,3 +2577,15 @@ a:not(.source-link):hover
     background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 80'><rect x='14' y='20' width='36' height='34' rx='8' fill='white'/><rect x='24' y='4' width='16' height='14' rx='4' fill='white'/><rect x='6' y='56' width='14' height='20' rx='4' fill='white'/><rect x='44' y='56' width='14' height='20' rx='4' fill='white'/></svg>") center / contain no-repeat; animation: robot-drift 60s linear infinite; }
 @keyframes robot-drift { to { transform: translateX(calc(100vw + 180px)); } }
 @media (prefers-reduced-motion: reduce) { .analyze-dashboard::before { animation: none; display: none; } }
+
+/* Trade-off table */
+.ad-tradeoff { margin-top: 18px; padding-top: 14px; border-top: 1px solid #364655; display: grid; gap: 10px; }
+.ad-tradeoff h4 { margin: 0; font-size: 13px; letter-spacing: .12em; color: #e99570; }
+.ad-lambda { display: flex; align-items: center; gap: 12px; color: #d2dce5; font-size: 14px; }
+.ad-lambda input { flex: 1; }
+.ad-lambda b { min-width: 3ch; text-align: right; color: #ffcaa8; font-variant-numeric: tabular-nums; }
+.ad-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.ad-table th { text-align: left; color: #8da0b0; font-weight: 700; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; padding: 6px 8px; }
+.ad-table td { padding: 8px; border-top: 1px solid #2a3947; color: #d2dce5; font-variant-numeric: tabular-nums; }
+.ad-table tr.is-best td { background: #123030; color: #fff; font-weight: 700; }
+.ad-trade-text { margin: 0; color: #e6eef5; line-height: 1.55; }

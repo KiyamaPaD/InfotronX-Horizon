@@ -59,8 +59,8 @@ export const PHASES = [
         id: "p4", title: "Phase 4 · For the jury: proof, accuracy, links and law",
         items: [
             { id: "4.1", built: "partly", text: "Everything legal on terms, cookies, privacy and credits. Very important.", test: "Open legal.html: terms, privacy, cookies and credits exist. A lawyer should still review them." },
-            { id: "4.2", built: "no", text: "A repeatable mission benchmark: fixed start and destination in the height model, three variants, results, method and mission file." },
-            { id: "4.3", built: "no", text: "A slider that trades distance against relief and explains why the ranking of the routes changes." },
+            { id: "4.2", built: "yes", test: "Analyze → step 4 → Load the benchmark mission. Three routes with the same start and end appear; npm test re-plans them and checks the numbers did not drift (tests/benchmark.test.mjs).", text: "A repeatable mission benchmark: fixed start and destination in the height model, three variants, results, method and mission file." },
+            { id: "4.3", built: "yes", test: "Analyze → step 4: move the penalty slider. The table re-ranks the routes and the text names the penalty (about 10.6 for the benchmark) where the choice changes.", text: "A slider that trades distance against relief and explains why the ranking of the routes changes." },
             { id: "4.4", built: "no", text: "Data quality visible at the selected point: image source, height-model coverage, resolution, calculated or illustrative." },
             { id: "4.5", built: "yes", test: "The 3D panel, the profile note and the tour say the relief is approximate (8-bit, about 115 m per level). Nothing says 'real' or 'true scale'.", text: "Fix the 3D wording about MOLA heights ('real', 'true scale') so it matches what the data can support." },
             { id: "4.6", built: "no", text: "An independent check of a few points and a profile with a GIS tool, written down." },
