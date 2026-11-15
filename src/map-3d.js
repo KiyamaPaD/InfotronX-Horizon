@@ -6,6 +6,46 @@ import { MAP_LAYERS, JEZERO_CTX_CONTEXT } from "./constants.js";
 import { addSpaceDecor } from "./space-decor.js";
 import { lowPower, createGovernor } from "./perf.js";
 import { analyzeRoute, formatDistance } from "./geo.js";
+import { directionOf, latLonOf, ellipseRadius, parseGlb, subdivide, positionGroups } from "./planet-mesh.js";
+
+// NASA/JPL-Caltech 3D model of Mars: https://science.nasa.gov/resource/planet-mars-3d-model/
+const NASA_MODEL_URL = new URL("../assets/nasa/mars-3d-model.glb", import.meta.url);
+let nasaModel = null;
+
+async function loadNasaModel(passes)
+{
+    if (nasaModel?.passes === passes) return nasaModel;
+
+    const parsed = parseGlb(await (await fetch(NASA_MODEL_URL)).arrayBuffer());
+    // The model's equatorial radius is 500; work in units of one equatorial radius.
+    const dense = subdivide(parsed.positions.map(value => value / 500), parsed.uvs, parsed.indices, passes);
+    const count = dense.positions.length / 3;
+    const directions = new Float32Array(count * 3), radii = new Float32Array(count), lat = new Float32Array(count), lon = new Float32Array(count);
+
+    for (let i = 0; i < count; i++)
+    {
+        const x = dense.positions[i * 3], y = dense.positions[i * 3 + 1], z = dense.positions[i * 3 + 2];
+        const length = Math.hypot(x, y, z) || 1;
+        directions[i * 3] = x / length; directions[i * 3 + 1] = y / length; directions[i * 3 + 2] = z / length;
+        radii[i] = ellipseRadius(x / length, y / length, z / length);
+        const place = latLonOf(x, y, z);
+        lat[i] = place.lat;
+        lon[i] = place.lon;
+    }
+
+    const { group, count: groupCount } = positionGroups(dense.positions);
+    const decode = image => createImageBitmap(new Blob([image.bytes], { type: image.type }), { premultiplyAlpha: "none", colorSpaceConversion: "none" });
+    const [diffuse, normal] = await Promise.all([decode(parsed.diffuse), decode(parsed.normal)]);
+    nasaModel = { passes, directions, radii, lat, lon, uvs: dense.uvs, indices: dense.indices, groups: group, groupCount, diffuse, normal };
+    return nasaModel;
+}
+
+function releaseNasaModel()
+{
+    nasaModel?.diffuse.close();
+    nasaModel?.normal.close();
+    nasaModel = null;
+}
 
 const R = 3396190;
 const THREE_URL = "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
@@ -256,11 +296,11 @@ function sampleGrid(grid, point)
 
 const COPY = {
     crater: { title: "Jezero Crater", eyebrow: "3D VIEW · WHOLE CRATER", text: "Whole-crater visualization from NASA MOLA 8-bit grayscale imagery and Viking/HiRISE context. Vertical mapping is illustrative and not calibrated in meters. Use Delta detail for a documented numeric DEM.", switchLabel: "Delta detail · 20 m" },
-    planet: { title: "Whole planet", eyebrow: "3D VIEW · MARS", text: "All of Mars wrapped in real NASA Viking colour and raised by MOLA heights (relief exaggerated). Your route follows the surface between waypoints, anywhere on the planet. Distances use Mars's real radius.", switchLabel: "Whole crater" },
+    planet: { title: "Whole planet", eyebrow: "3D VIEW · MARS", text: "NASA's own 3D model of Mars (NASA/JPL-Caltech) with one texture, lifted by real MOLA heights (relief exaggerated; set the slider to 1 for true scale). Your route follows the surface between waypoints, anywhere on the planet. Distances use Mars's real radius.", switchLabel: "Whole crater" },
     delta: { title: "Delta front", eyebrow: "3D VIEW · DETAIL", text: "USGS CTX heights (20 m grid) with NASA HiRISE imagery (~1.2 m/pixel). Height and curvature are exaggerated for readability.", switchLabel: "Whole planet" }
 };
 
-export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mode = "crater", onFocusArea, onClose })
+export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mode = "planet", onFocusArea, onClose })
 {
     const layer = document.createElement("section");
     layer.className = "map-3d-layer";
@@ -275,7 +315,7 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
                 <div class="map-3d-actions">
                     <button type="button" class="btn btn-accent compact" data-3d="fly">Fly in</button>
                     <button type="button" class="btn btn-outline compact" data-3d="spin" aria-pressed="true">Rotate</button>
-                    <button type="button" class="btn btn-outline compact" data-3d="switch"></button>
+                    <button type="button" class="btn btn-outline compact" data-3d="switch" hidden></button>
                 </div>
             </div>
             <div class="map-3d-group"><span class="map-3d-label">YOUR ROUTE</span><p class="map-3d-route" data-3d="route"></p></div>
@@ -302,6 +342,7 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
         if (disposed) return;
         disposed = true;
         renderer?.setAnimationLoop(null);
+        releaseNasaModel();
         scene?.traverse(object =>
         {
             object.geometry?.dispose();
@@ -435,7 +476,6 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
             renderer.setViewport(0, 0, width, height);
         };
 
-        if (!light) { buildHud(); hudKeep = hud; }
         const tickers = new Set();
         // If frames stay slow, drop the decoration first (level 1), then the extra animation (level 2).
         const governor = createGovernor(level =>
@@ -497,10 +537,27 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
                 tickers.add(now => decorHandle.update(now));
             }
 
-            const geometry = new THREE.SphereGeometry(1, 256, 128);
-            const base = Float32Array.from(geometry.attributes.position.array);
-            const uv = geometry.attributes.uv;
-            const material = new THREE.MeshStandardMaterial({ color: 0x8a4a2c, roughness: 1 });
+            // NASA's own 3D model of Mars (NASA/JPL-Caltech), made denser so real MOLA heights can lift it. One mesh, one texture.
+            const nasa = await loadNasaModel(light ? 2 : 3);
+
+            if (disposed || id !== session) return;
+
+            const vertexCount = nasa.directions.length / 3;
+            const geometry = new THREE.BufferGeometry();
+            const positionArray = new Float32Array(nasa.directions.length);
+            geometry.setAttribute("position", new THREE.BufferAttribute(positionArray, 3));
+            geometry.setAttribute("uv", new THREE.BufferAttribute(nasa.uvs, 2));
+            geometry.setIndex(new THREE.BufferAttribute(nasa.indices, 1));
+            const diffuse = new THREE.Texture(nasa.diffuse);
+            diffuse.flipY = false;
+            diffuse.colorSpace = THREE.SRGBColorSpace;
+            diffuse.anisotropy = renderer.capabilities.getMaxAnisotropy();
+            diffuse.needsUpdate = true;
+            const normalMap = new THREE.Texture(nasa.normal);
+            normalMap.flipY = false;
+            normalMap.anisotropy = renderer.capabilities.getMaxAnisotropy();
+            normalMap.needsUpdate = true;
+            const material = new THREE.MeshStandardMaterial({ map: diffuse, normalMap, normalScale: new THREE.Vector2(1.3, 1.3), roughness: 0.92, metalness: 0 });
             scene.add(new THREE.Mesh(geometry, material));
             scene.add(new THREE.Mesh(new THREE.SphereGeometry(1.06, 96, 64), new THREE.ShaderMaterial({
                 transparent: true, side: THREE.BackSide, blending: THREE.AdditiveBlending, depthWrite: false, fog: false,
@@ -522,29 +579,43 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
             };
             const applyRelief = () =>
             {
-                const position = geometry.attributes.position;
-
-                for (let i = 0; i < position.count; i++)
+                for (let i = 0; i < vertexCount; i++)
                 {
-                    const scale = 1 + dispAt(90 - (1 - uv.getY(i)) * 180, uv.getX(i) * 360 - 180);
-                    position.setXYZ(i, base[i * 3] * scale, base[i * 3 + 1] * scale, base[i * 3 + 2] * scale);
+                    const radius = nasa.radii[i] * (1 + dispAt(nasa.lat[i], nasa.lon[i]));
+                    positionArray[i * 3] = nasa.directions[i * 3] * radius;
+                    positionArray[i * 3 + 1] = nasa.directions[i * 3 + 1] * radius;
+                    positionArray[i * 3 + 2] = nasa.directions[i * 3 + 2] * radius;
                 }
 
-                position.needsUpdate = true;
+                geometry.attributes.position.needsUpdate = true;
                 geometry.computeVertexNormals();
+
+                // Texture seams duplicate vertices; give each pair the same normal so no line shows.
+                const normals = geometry.attributes.normal.array;
+                const sums = new Float32Array(nasa.groupCount * 3);
+
+                for (let i = 0; i < vertexCount; i++)
+                {
+                    const g = nasa.groups[i] * 3;
+                    sums[g] += normals[i * 3]; sums[g + 1] += normals[i * 3 + 1]; sums[g + 2] += normals[i * 3 + 2];
+                }
+
+                for (let i = 0; i < vertexCount; i++)
+                {
+                    const g = nasa.groups[i] * 3, length = Math.hypot(sums[g], sums[g + 1], sums[g + 2]) || 1;
+                    normals[i * 3] = sums[g] / length; normals[i * 3 + 1] = sums[g + 1] / length; normals[i * 3 + 2] = sums[g + 2] / length;
+                }
+
+                geometry.attributes.normal.needsUpdate = true;
+                geometry.computeBoundingSphere();
             };
 
             const toVector = (lat, lon) =>
             {
-                const phi = (lon + 180) / 360 * Math.PI * 2, theta = (90 - lat) / 180 * Math.PI;
-                return new THREE.Vector3(-Math.cos(phi) * Math.sin(theta), Math.cos(theta), Math.sin(phi) * Math.sin(theta));
+                const d = directionOf(lat, lon);
+                return new THREE.Vector3(d.x, d.y, d.z);
             };
-            const toLatLon = vector =>
-            {
-                let phi = Math.atan2(vector.z, -vector.x);
-                if (phi < 0) phi += Math.PI * 2;
-                return { lat: 90 - Math.acos(Math.max(-1, Math.min(1, vector.y))) * 180 / Math.PI, lon: phi / (Math.PI * 2) * 360 - 180 };
-            };
+            const toLatLon = vector => latLonOf(vector.x, vector.y, vector.z);
 
             const valid = points.filter(point => Number.isFinite(point.lat) && Number.isFinite(point.lon));
             const vectors = valid.map(point => toVector(point.lat, point.lon));
@@ -566,7 +637,7 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
                 // Thick enough to see on a short route, thin enough not to swallow a long one.
                 const tube = Math.max(0.0035, Math.min(0.014, totalAngle * 0.012));
                 const lift = tube * 1.4;
-                const surface = vector => { const { lat, lon } = toLatLon(vector); return vector.clone().normalize().multiplyScalar(1 + dispAt(lat, lon) + lift); };
+                const surface = vector => { const { lat, lon } = toLatLon(vector); const n = vector.clone().normalize(); return n.multiplyScalar(ellipseRadius(n.x, n.y, n.z) * (1 + dispAt(lat, lon) + lift)); };
                 const dense = [];
 
                 // Great circles between waypoints, so a long route bends with the planet instead of cutting through it.
@@ -655,20 +726,14 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
 
             applyFactor();
             flyIn();
-            Promise.all([globalMosaic(VIKING_URL, light ? 2 : 3), globalMosaic(MOLA_DEM_URL, light ? 1 : 2, "png", "#000000")]).then(([colour, heights]) =>
+            globalMosaic(MOLA_DEM_URL, light ? 1 : 2, "png", "#000000").then(heights =>
             {
                 if (disposed || id !== session) return;
-                const map = new THREE.CanvasTexture(colour);
-                map.colorSpace = THREE.SRGBColorSpace;
-                map.anisotropy = renderer.capabilities.getMaxAnisotropy();
-                material.map = map;
-                material.color.set(0xffffff);
-                material.needsUpdate = true;
                 relief.width = heights.width;
                 relief.height = heights.height;
                 relief.data = heights.getContext("2d").getImageData(0, 0, heights.width, heights.height).data;
                 applyFactor();
-                status.textContent = "Whole planet · NASA Viking colour with MOLA relief (exaggerated)";
+                status.textContent = "NASA 3D model of Mars · MOLA relief, exaggerated";
             }).catch(() => { if (!disposed && id === session) status.textContent = "Whole planet · imagery unavailable"; });
         };
 
