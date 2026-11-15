@@ -18,11 +18,11 @@ export function cleanLineStyle(source)
 {
     const input = source && typeof source === "object" ? source : {};
     return {
-        width: clamp(number(input.width, DEFAULT_LINE_STYLE.width), 0.4, 4),
+        width: clamp(number(input.width, DEFAULT_LINE_STYLE.width), 0.3, 4),
         opacity: clamp(number(input.opacity, DEFAULT_LINE_STYLE.opacity), 0.3, 1),
         style: ["solid", "dashed", "flowing"].includes(input.style) ? input.style : DEFAULT_LINE_STYLE.style,
         glow: input.glow === undefined ? DEFAULT_LINE_STYLE.glow : Boolean(input.glow),
-        markerSize: clamp(number(input.markerSize, DEFAULT_LINE_STYLE.markerSize), 0.5, 2.5),
+        markerSize: clamp(number(input.markerSize, DEFAULT_LINE_STYLE.markerSize), 0.3, 2.5),
         animate: input.animate === undefined ? DEFAULT_LINE_STYLE.animate : Boolean(input.animate)
     };
 }
@@ -68,9 +68,9 @@ export function mountLineControls(container, route = {})
 {
     const style = getLineStyle();
     container.innerHTML = `
-        <label class="ls-row">Thickness<span data-ls-out="width"></span><input type="range" data-ls="width" min="0.4" max="4" step="0.1"></label>
+        <label class="ls-row">Thickness<span data-ls-out="width"></span><input type="range" data-ls="width" min="0.3" max="4" step="0.1"></label>
         <label class="ls-row">Opacity<span data-ls-out="opacity"></span><input type="range" data-ls="opacity" min="0.3" max="1" step="0.05"></label>
-        <label class="ls-row">Waypoint size<span data-ls-out="markerSize"></span><input type="range" data-ls="markerSize" min="0.5" max="2.5" step="0.1"></label>
+        <label class="ls-row">Waypoint size<span data-ls-out="markerSize"></span><input type="range" data-ls="markerSize" min="0.3" max="2.5" step="0.1"></label>
         <div class="ls-row ls-choice" role="group" aria-label="Line style">Style
             <span><button type="button" data-ls-style="solid">Solid</button><button type="button" data-ls-style="dashed">Dashed</button><button type="button" data-ls-style="flowing">Flowing</button></span>
         </div>

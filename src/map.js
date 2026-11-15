@@ -1893,6 +1893,16 @@ export class MarsMap
                     title.textContent = `${waypointLabel(point, index)} · ${formatCoordinate(point.lat, "lat")}, ${formatCoordinate(point.lon, "lon")}`;
                     marker.appendChild(title);
                     this.overlay.append(halo, marker);
+
+                    if (point.photo)
+                    {
+                        const clipId = "photo-" + point.id.replace(/[^a-z0-9]/gi, "");
+                        const clip = svgElement("clipPath", { id: clipId });
+                        clip.append(svgElement("circle", { cx: position.x, cy: position.y, r: radius * 1.9 }));
+                        const picture = svgElement("image", { href: point.photo, x: position.x - radius * 1.9, y: position.y - radius * 1.9, width: radius * 3.8, height: radius * 3.8, "clip-path": `url(#${clipId})`, preserveAspectRatio: "xMidYMid slice", "pointer-events": "none" });
+                        const frame = svgElement("circle", { cx: position.x, cy: position.y, r: radius * 1.9, fill: "none", stroke: "#ffffff", "stroke-width": 2, "pointer-events": "none" });
+                        this.overlay.append(clip, picture, frame);
+                    }
                 });
             }
         }
