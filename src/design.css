@@ -2624,3 +2624,8 @@ a:not(.source-link):hover
 .analytics-categories button { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: nowrap; line-height: 1.2; min-width: 0; }
 .analytics-count { flex: none; margin-left: 0; }
 .analytics-categories { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+/* Metric numbers shrink to fit their card instead of spilling out (long distances such as 10,669.40 km) */
+.metric-card { container-type: inline-size; overflow: hidden; }
+.metric-card strong { font-size: clamp(15px, 13cqw, 28px); white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.metric-card > span, .metric-card small { overflow-wrap: anywhere; }

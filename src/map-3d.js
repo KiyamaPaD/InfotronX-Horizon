@@ -1677,7 +1677,13 @@ export async function openMap3d({ host, points = [], groundAt, getPoints, getRou
             const groundPose = () =>
             {
                 const frame = frameAt(ground.lat, ground.lon);
-                const radius = ellipseRadius(frame.up.x, frame.up.y, frame.up.z) * (1 + dispAt(ground.lat, ground.lon)) + ground.height;
+                // The ground in front can be higher than the ground under the feet: take the highest of a small ring so the camera never dips into a hill.
+                let rise = dispAt(ground.lat, ground.lon);
+                const reach = Math.max(0.05, ground.height * 90);
+
+                for (let k = 0; k < 8; k++) rise = Math.max(rise, dispAt(Math.max(-89.9, Math.min(89.9, ground.lat + reach * Math.cos(k * Math.PI / 4))), ground.lon + reach * Math.sin(k * Math.PI / 4)));
+
+                const radius = ellipseRadius(frame.up.x, frame.up.y, frame.up.z) * (1 + rise) + ground.height;
                 const position = frame.up.clone().multiplyScalar(radius);
                 const flat = Math.cos(ground.pitch);
                 const forward = frame.north.clone().multiplyScalar(Math.cos(ground.yaw) * flat).addScaledVector(frame.east, Math.sin(ground.yaw) * flat).addScaledVector(frame.up, Math.sin(ground.pitch));
@@ -1707,6 +1713,9 @@ export async function openMap3d({ host, points = [], groundAt, getPoints, getRou
                 }
 
                 const pose = groundPose();
+                camera.near = Math.max(0.00002, ground.height * 0.12);
+                camera.far = 60;
+                camera.updateProjectionMatrix();
                 camera.up.copy(pose.up);
                 camera.position.copy(pose.position);
                 camera.lookAt(pose.target);
@@ -1736,6 +1745,9 @@ export async function openMap3d({ host, points = [], groundAt, getPoints, getRou
                 window.removeEventListener("keyup", onGroundKey);
                 groundPanel.hidden = true;
                 controls.enabled = true;
+                camera.near = 0.002;
+                camera.far = 400;
+                camera.updateProjectionMatrix();
                 camera.up.set(0, 1, 0);
                 camera.position.copy(here.clone().multiplyScalar(1.5));
                 flyTo(here, 2.2);
