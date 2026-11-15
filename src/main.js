@@ -12,6 +12,7 @@ import { initScienceWorkbench } from "./science-workbench.js";
 import { createJezeroReviewMission } from "./review-demo.js";
 import { setupAnalyticsNavigation } from "./workspace-ux.js";
 import { mountCloudWorkspace } from "./cloud-ui.js";
+import { mountMissionCopilot } from "./mission-copilot-ui.js";
 
 const store = new MissionStore();
 const imported = readSharedMission();
@@ -149,7 +150,13 @@ const map = new MarsMap(get("#map-root"), store, {
 const scienceWorkbench = initScienceWorkbench({ store, map, notify,
     onTerrainChange: () => analyticsNavigation?.refresh()
 });
-mountCloudWorkspace({ store, notify });
+const cloudWorkspace = mountCloudWorkspace({ store, notify });
+mountMissionCopilot({
+    panel: get("#analytics-panel"),
+    before: get("#route-inspector").closest(".panel-section"),
+    store, getDem: () => scienceWorkbench.numericDem,
+    getCloud: () => cloudWorkspace.cloud, notify
+});
 const analyticsNavigation = setupAnalyticsNavigation(get("#analytics-panel"), {
     getState: () => ({
         waypoints: store.activeRoute.points.length,

@@ -688,6 +688,10 @@ export function initScienceWorkbench({ store, map, notify, onTerrainChange = () 
         {
             return Boolean(dem);
         },
+        get numericDem()
+        {
+            return dem;
+        },
         getScenarioBrief()
         {
             const route = store.activeRoute;

@@ -581,4 +581,6 @@ export function mountCloudWorkspace({ store, notify })
         get("#cloud-status").textContent = "Cloud connection unavailable. Device saves and exports are still available.";
         get("#cloud-auth-form").hidden = true;
     });
+
+    return { cloud };
 }

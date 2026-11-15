@@ -15,7 +15,7 @@ export function setupAnalyticsNavigation(panel, options = {})
     const groupDefinitions = [
         { id: "overview", label: "Overview", items: ["MISSION TELEMETRY", "SEGMENT DISTANCES", "ROUTE CONNECTIVITY GRAPH", "ROUTE INSPECTOR", "WAYPOINT COORDINATES"] },
         { id: "terrain", label: "Terrain", items: ["DEM ROUTE LAB", "3D TERRAIN EXPLORER", "TERRAIN INTELLIGENCE", "ADVANCED MATHEMATICS LAB"] },
-        { id: "models", label: "Models", items: ["MARSWALK RESOURCE MODEL", "MISSION STRESS LAB", "ADVANCED ALGORITHMS"] },
+        { id: "models", label: "Models", items: ["MARSWALK RESOURCE MODEL", "MISSION STRESS LAB", "ADVANCED ALGORITHMS", "MISSION COPILOT"] },
         { id: "mission", label: "Mission", items: ["MISSION CHECKPOINTS", "ROUTE INSIGHTS", "DATA SOURCES", "DATA INTEGRITY"] }
     ];
 

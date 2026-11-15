@@ -1211,3 +1211,59 @@
     .terrain-3d-view { height:230px; }
     .terrain-3d-controls { grid-template-columns:1fr; }
 }
+
+/* Mission Copilot keeps local verified analytics separate from optional AI text. */
+.copilot-ai-form
+{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    margin:13px 0;
+}
+.copilot-ai-form label
+{
+    display:flex;
+    flex-direction:column;
+    gap:7px;
+    color:#bdd3dc;
+    font-size:11px;
+}
+.copilot-ai-form textarea
+{
+    box-sizing:border-box;
+    width:100%;
+    background:#122737;
+    border:1px solid #456473;
+    border-radius:7px;
+    padding:10px;
+    color:#eff6f9;
+    resize:vertical;
+}
+.copilot-ai-form .copilot-consent
+{
+    display:flex;
+    flex-direction:row;
+    align-items:flex-start;
+    gap:10px;
+    line-height:1.5;
+}
+.copilot-consent input
+{
+    flex:none;
+    margin:3px 0 0;
+    accent-color:#8bd7c2;
+}
+.copilot-output
+{
+    display:block;
+    white-space:pre-wrap;
+    overflow-wrap:anywhere;
+    max-height:380px;
+    overflow-y:auto;
+    padding:14px;
+    border:1px solid #456170;
+    border-radius:8px;
+    background:#102431;
+    color:#cfe1e8;
+    font:12px/1.65 'DM Sans',sans-serif;
+}
