@@ -41,6 +41,8 @@ export class MarsMap
         this.wheelTimer = null;
         this.activeTiles = new Set();
         this.preferredTileSuffix = new Map();
+        this.capabilitiesReady = false;
+        this.capabilitiesTimer = null;
 
         this.container.innerHTML = `<div class="map-fallback" aria-hidden="true"><div class="fallback-globe"></div><div class="coordinate-grid"></div></div><div class="map-tiles"></div><svg class="map-overlays" role="img" aria-label="Editable mission route overlays"></svg><div class="map-attribution">Map tiles © NASA / JPL · Mars Trek</div><div class="map-load-notice" role="status">Loading Mars imagery…</div>`;
         this.tileContainer = this.container.querySelector(".map-tiles");
@@ -55,19 +57,39 @@ export class MarsMap
         this.resizeObserver = new ResizeObserver(() => this.render());
         this.resizeObserver.observe(container);
         this.render();
+        this.scheduleCapabilities();
+    }
+
+    scheduleCapabilities()
+    {
+        clearTimeout(this.capabilitiesTimer);
+        this.capabilitiesReady = this.tileTemplates.has(this.layer.id);
+
+        if (this.capabilitiesReady)
+        {
+            this.render();
+            return;
+        }
+
+        this.capabilitiesTimer = setTimeout(() =>
+        {
+            this.capabilitiesReady = true;
+            this.render();
+        }, 850);
         this.loadCapabilities();
     }
 
     async loadCapabilities()
     {
         const requestId = ++this.capabilityRequest;
-        const endpoint = `${this.layer.url}/WMTSCapabilities.xml`;
+        const layer = this.layer;
+        const endpoint = `${layer.url}/WMTSCapabilities.xml`;
 
         try
         {
             const response = await fetch(endpoint, { mode: "cors" });
 
-            if (!response.ok)
+            if (!response.ok || requestId !== this.capabilityRequest)
             {
                 return;
             }
@@ -85,7 +107,7 @@ export class MarsMap
             const matrixSet = sets.find(element => [...element.children].some(child => child.localName === "TileMatrix"));
             const matrices = matrixSet ? [...matrixSet.children].filter(element => element.localName === "TileMatrix") : [];
             const matrixSetName = matrixSet ? [...matrixSet.children].find(element => element.localName === "Identifier")?.textContent.trim() : null;
-            template = template?.replaceAll("{TileMatrixSet}", matrixSetName || "default028mm").replaceAll("{Layer}", this.layer.dataset);
+            template = template?.replaceAll("{TileMatrixSet}", matrixSetName || "default028mm").replaceAll("{Layer}", layer.dataset);
             const matrixLookup = new Map();
 
             for (const matrix of matrices)
@@ -101,12 +123,19 @@ export class MarsMap
                 }
             }
 
-            const availableLevels = [...matrixLookup.values()].map(Number).filter(Number.isInteger);
-            const highestZoom = availableLevels.length ? Math.max(...availableLevels) : 11;
+            const availableLevels = [...matrixLookup.keys()].map(value => Math.log2(Number(value.split("-")[1]))).filter(Number.isInteger);
+            const highestZoom = availableLevels.length ? Math.max(...availableLevels) : layer.maxUsefulZoom || 10;
             const previousZoom = this.zoom;
-            this.layerMaxZoom = Math.min(this.layer.maxUsefulZoom || 13, highestZoom);
+            if (requestId !== this.capabilityRequest)
+            {
+                return;
+            }
+
+            this.layerMaxZoom = Math.min(layer.maxUsefulZoom || 13, highestZoom);
             this.zoom = clamp(this.zoom, 3, this.layerMaxZoom);
-            this.tileTemplates.set(this.layer.id, { template, matrixLookup, maxZoom: this.layerMaxZoom });
+            this.tileTemplates.set(layer.id, { template, matrixLookup, maxZoom: this.layerMaxZoom });
+            this.capabilitiesReady = true;
+            clearTimeout(this.capabilitiesTimer);
 
             if (this.zoom !== previousZoom)
             {
@@ -115,11 +144,9 @@ export class MarsMap
 
             for (const [key, image] of this.tiles)
             {
-                if (image.dataset.state === "error")
+                if (image.dataset.state !== "loaded")
                 {
-                    image.onload = null;
-                    image.onerror = null;
-                    image.remove();
+                    this.releaseTile(image);
                     this.tiles.delete(key);
                 }
             }
@@ -160,6 +187,7 @@ export class MarsMap
         }
 
         this.capabilityRequest++;
+        clearTimeout(this.capabilitiesTimer);
         this.activeTiles.clear();
         this.container.classList.remove("map-has-imagery");
         this.notice.textContent = "Loading Mars imagery…";
@@ -167,6 +195,11 @@ export class MarsMap
         this.layerMaxZoom = Math.min(this.layer.maxUsefulZoom || 13, this.tileTemplates.get(this.layer.id)?.maxZoom || 11);
         this.zoom = clamp(this.zoom, 3, this.layerMaxZoom);
         this.options.onViewChange?.(this.center, this.zoom);
+        for (const tile of this.tiles.values())
+        {
+            this.releaseTile(tile);
+        }
+
         this.tiles.clear();
         this.tileContainer.replaceChildren();
         this.loadedImages = 0;
@@ -174,10 +207,7 @@ export class MarsMap
         this.notice.hidden = false;
         this.render();
 
-        if (!this.tileTemplates.has(this.layer.id))
-        {
-            this.loadCapabilities();
-        }
+        this.scheduleCapabilities();
 
         this.options.onLayerChange?.(this.layer);
     }
@@ -343,6 +373,12 @@ export class MarsMap
         this.options.onMapClick?.(this.screenToGeo(event.clientX, event.clientY), this.mode);
     }
 
+    releaseTile(tile)
+    {
+        tile.dispose?.();
+        tile.remove?.();
+    }
+
     createTile(x, y, zoom, left, top)
     {
         const image = document.createElement("img");
@@ -437,6 +473,11 @@ export class MarsMap
 
     renderTiles()
     {
+        if (this.capabilitiesReady === false)
+        {
+            return;
+        }
+
         const width = this.container.clientWidth;
         const height = this.container.clientHeight;
 
@@ -472,9 +513,7 @@ export class MarsMap
 
                 if (tile?.dataset.state === "error" && Date.now() - Number(tile.dataset.failedAt) > 15000)
                 {
-                    tile.onload = null;
-                    tile.onerror = null;
-                    tile.remove();
+                    this.releaseTile(tile);
                     this.tiles.delete(key);
                     tile = null;
                 }
@@ -511,10 +550,7 @@ export class MarsMap
                     continue;
                 }
 
-                tile.onload = null;
-                tile.onerror = null;
-                tile.removeAttribute("src");
-                tile.remove();
+                this.releaseTile(tile);
                 this.tiles.delete(key);
 
                 if (this.tiles.size <= this.tileCacheLimit - 12)
