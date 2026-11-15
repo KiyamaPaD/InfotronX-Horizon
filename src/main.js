@@ -56,7 +56,7 @@ app.innerHTML = `
                     <div class="panel-section"><div class="panel-title-row"><span class="section-label">ROUTE CONNECTIVITY GRAPH</span><span class="tiny-pill">GRAPH THEORY</span></div><p class="section-help">Graph of user-created waypoints and route segments, with Mars spherical-distance edge weights. An abstract diagram, not a geographic route map.</p><div id="route-connectivity-graph"></div></div>
                     <div class="panel-section"><div class="panel-title-row"><span class="section-label">ROUTE INSPECTOR</span><span class="tiny-pill amber">REVIEW</span></div><p class="section-help">Transparent checks on geometry and user notes. Not a terrain safety certification.</p><div id="route-inspector" class="inspection-list"></div></div>
                     <div class="panel-section"><div class="panel-title-row"><span class="section-label">WAYPOINT COORDINATES</span><span class="small-muted" id="point-summary"></span></div><div id="waypoint-list" class="waypoint-list"></div></div>
-                    <div class="panel-section"><div class="panel-title-row"><span class="section-label">DATA SOURCES</span><span class="tiny-pill">NASA</span></div><div class="evidence-item"><span class="evidence-dot"></span><div><strong>NASA Mars Trek</strong><small>Viking, HiRISE Jezero and MOLA imagery</small></div></div><div class="evidence-item"><span class="evidence-dot yellow"></span><div><strong>Elevation analysis</strong><small>Uses numeric DEM grids, never image colors.</small></div></div><div class="evidence-item"><span class="evidence-dot yellow"></span><div><strong>What-if scenarios</strong><small>Modeled alternatives do not establish safe traversability.</small></div></div><a class="source-link" href="https://trek.nasa.gov/tiles/apidoc/trekAPI.html?body=mars" target="_blank" rel="noopener noreferrer">View NASA layer documentation ↗</a></div>
+                    <div class="panel-section"><div class="panel-title-row"><span class="section-label">DATA SOURCES</span><span class="tiny-pill">NASA</span></div><div class="evidence-item"><span class="evidence-dot"></span><div><strong>NASA Mars Trek imagery</strong><small>Viking MDIM 2.1 global mosaic, HiRISE Jezero 25 cm orthomosaic, MOLA/HRSC shaded relief (visual only, not elevation)</small></div></div><div class="evidence-item"><span class="evidence-dot"></span><div><strong>Jezero CTX elevation model</strong><small>USGS Astrogeology, Fergason et al. 2020 · <a href="https://doi.org/10.5066/P906QQT8" target="_blank" rel="noopener noreferrer">DOI 10.5066/P906QQT8 ↗</a></small></div></div><div class="evidence-item"><span class="evidence-dot yellow"></span><div><strong>Elevation analysis</strong><small>Uses numeric DEM grids, never image colors.</small></div></div><div class="evidence-item"><span class="evidence-dot yellow"></span><div><strong>AI assistance</strong><small>OpenAI ChatGPT and Anthropic Claude helped with code, tests and documentation; the team reviewed and tested the result. Route calculations are deterministic algorithms, not AI. <a href="https://github.com/KiyamaPaD/Mars-Atlas/blob/main/docs/AI_USE_AND_SOURCES.md" target="_blank" rel="noopener noreferrer">Full disclosure ↗</a></small></div></div><div class="evidence-item"><span class="evidence-dot yellow"></span><div><strong>What-if scenarios</strong><small>Modeled alternatives do not establish safe traversability.</small></div></div><a class="source-link" href="https://trek.nasa.gov/tiles/apidoc/trekAPI.html?body=mars" target="_blank" rel="noopener noreferrer">View NASA layer documentation ↗</a></div>
                     <div class="panel-section"><div class="panel-title-row"><span class="section-label">MISSION CHECKPOINTS</span><span class="tiny-pill">CHECKPOINT HISTORY</span></div><p class="section-help">Save a complete manual checkpoint before changing routes. Restore an earlier plan whenever needed.</p><button class="btn btn-outline wide" data-action="save-checkpoint">＋ Save checkpoint</button><div id="checkpoint-list" class="checkpoint-list"></div></div>
                     <div class="panel-section"><div class="panel-title-row"><span class="section-label">ROUTE INSIGHTS</span><span class="tiny-pill">OPTIONAL</span></div><p class="assistant-copy">Get a concise summary of your selected route.</p><button class="btn btn-outline wide" data-action="explain-route">✦ Explain my route</button><div id="assistant-response" class="assistant-response" hidden></div></div>
                 </div>
@@ -382,7 +382,7 @@ function setMode(mode)
 {
     currentMode = mode;
     map.setMode(mode);
-    document.querySelectorAll("[data-mode]").forEach(button =>
+    document.querySelectorAll("button[data-mode]").forEach(button =>
     {
         const active = button.dataset.mode === mode;
         button.classList.toggle("active", active);
@@ -524,11 +524,11 @@ async function shareMission()
     try
     {
         await navigator.clipboard.writeText(link);
-        notify("Shareable mission link copied. No account required.");
+        notify("Mission link copied. Anyone with this link can see the mission data inside it.");
     }
     catch
     {
-        window.prompt("Copy the mission link:", link);
+        window.prompt("Copy the mission link. Anyone with this link can see the mission data inside it:", link);
     }
 }
 
