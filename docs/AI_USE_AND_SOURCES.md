@@ -15,6 +15,8 @@ This file is a transparent disclosure draft for the InfotronX Horizon team to re
 
 **OpenAI ChatGPT:** assisted with architecture planning, code drafts, mathematical reasoning, test design, user-interface iterations, documentation, and preparation of model explanations. The team remains responsible for checking, running, debugging, selecting and accepting the resulting code and claims. AI-generated prose is not a scientific source, and AI model outputs are not a substitute for numeric terrain measurements.
 
+**Anthropic Claude Opus 5.5 (repository evidence):** Some public GitHub commits in the Mars Atlas repository explicitly record `Co-Authored-By: Claude Opus 5.5` for map-network stability work. The team must confirm who used the tool and what contribution that attribution represents before submitting its final disclosure.
+
 **Other AI tools/models:** TO BE COMPLETED BY THE TEAM based on actual use. Do **not** state "none" unless every teammate confirms it. Record the model/tool, purpose, human validation and whether AI-generated assets were used.
 
 ### Suggested submission language (review before sending)

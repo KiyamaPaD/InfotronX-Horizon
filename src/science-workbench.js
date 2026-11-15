@@ -4,6 +4,8 @@ import { planRouteOnDem, validateDem } from "./terrain.js";
 import { compareTerrainStrategies, estimateResourceEnvelope } from "./mission-scenarios.js";
 import { explainTerrainRouteChoice } from "./route-decision.js";
 import { renderRouteDecision } from "./route-explainer-ui.js";
+import { createScientificComparisonReport } from "./scientific-export.js";
+import { downloadFile } from "./share.js";
 import { loadJezeroDem } from "./bundled-dem.js";
 import { mountTerrainIntelligence } from "./terrain-intelligence-ui.js";
 import { mountInteractiveTerrainProfile } from "./terrain-profile-v2-ui.js";
@@ -105,6 +107,8 @@ export function initScienceWorkbench({ store, map, notify, onTerrainChange = () 
                 </select>
             </label>
             <div id="terrain-why-report" aria-live="polite" class="terrain-why-report"><p class="why-empty">Load a numeric DEM, add two waypoints and choose Compare 3 route strategies to see an evidence-based explanation.</p></div>
+            <button type="button" id="terrain-evidence-export" class="btn btn-outline wide" disabled>↓ Export scientific comparison (.md)</button>
+            <p class="science-footnote">Exports exact modeled assumptions and candidate metrics. No private account or photo data are included.</p>
         </section>
         <div id="terrain-report" class="terrain-report" aria-live="polite"></div>
         <div id="terrain-profile"></div>
@@ -126,6 +130,7 @@ export function initScienceWorkbench({ store, map, notify, onTerrainChange = () 
     const strategiesPanel = terrain.querySelector("#terrain-strategies");
     const whyPreference = terrain.querySelector("#terrain-why-preference");
     const whyPanel = terrain.querySelector("#terrain-why-report");
+    const evidenceButton = terrain.querySelector("#terrain-evidence-export");
     const exclusionSelect = terrain.querySelector("#exclusion-note");
     const exclusionRadius = terrain.querySelector("#exclusion-radius");
     const stressRun = stress.querySelector("#stress-run");
@@ -231,6 +236,7 @@ export function initScienceWorkbench({ store, map, notify, onTerrainChange = () 
         comparisonSource = null;
         strategiesPanel.replaceChildren();
         whyPreference.disabled = true;
+        evidenceButton.disabled = true;
         whyPanel.innerHTML = '<p class="why-empty">Comparison changed or no longer matches the mission. Run Compare 3 route strategies again.</p>';
     }
 
@@ -242,6 +248,7 @@ export function initScienceWorkbench({ store, map, notify, onTerrainChange = () 
         }
 
         const decision = explainTerrainRouteChoice(candidates, whyPreference.value);
+        evidenceButton.disabled = false;
         renderRouteDecision(whyPanel, decision, {
             source: dem?.source,
             maxSlopePercent: comparisonSource.maxSlopePercent,
@@ -250,6 +257,45 @@ export function initScienceWorkbench({ store, map, notify, onTerrainChange = () 
     }
 
     whyPreference.addEventListener("change", renderWhyRoute);
+
+    evidenceButton.addEventListener("click", () =>
+    {
+        if (!dem || !comparisonSource || !candidates.length)
+        {
+            notify("Recompute the DEM route comparison before exporting evidence.");
+            return;
+        }
+
+        const route = store.activeRoute;
+        const zones = scenarioZones();
+        const current = comparisonSource.missionId === store.current.id &&
+            comparisonSource.routeId === route.id &&
+            comparisonSource.signature === JSON.stringify(route.points) &&
+            comparisonSource.exclusions === JSON.stringify(zones) &&
+            comparisonSource.maxSlopePercent === Number(terrain.querySelector("#terrain-grade").value);
+
+        if (!current)
+        {
+            clearComparison();
+            notify("Mission inputs changed. Compare the routes again for current evidence.");
+            return;
+        }
+
+        try
+        {
+            const report = createScientificComparisonReport({
+                mission: store.current, route, dem, candidates,
+                maxSlopePercent: comparisonSource.maxSlopePercent,
+                exclusionZones: zones, preference: whyPreference.value
+            });
+            downloadFile("mars-atlas-scientific-comparison.md", report, "text/markdown");
+            notify("Scientific comparison exported with model assumptions and limitations.");
+        }
+        catch (error)
+        {
+            notify(error.message);
+        }
+    });
 
     function render()
     {

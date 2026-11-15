@@ -14,7 +14,7 @@ Suggested sequence; assign speakers and rehearse with the **currently deployed**
 | Manual-first | 15–35s | Create mission, place two waypoint coordinates inside DEM coverage | "These points are ours; AI is not required and cannot approve our route." |
 | Real terrain | 35–55s | Open Terrain, load numeric USGS/NASA CTX clip, show elevation profile | "Photographs and measured numeric elevation are separate data sources." |
 | Candidate analysis | 55–85s | Compare 3 A* strategies; change lambda in **Why This Route?** | "The algorithm minimizes D + lambda*(ascent+descent), subject to selected slope and data constraints." |
-| User control & limits | 85–105s | Add editable candidate or What-if exclusion, show warning and export | "Not safe-route certification: DEM has missing coverage; hypothetical obstacles remain hypothetical." |
+| User control & limits | 85–105s | Export **scientific comparison (.md)** from Why This Route?; optionally add an editable candidate | "The exported evidence records exact inputs, modeled results and limitations." |
 | Closing impact | 105–120s | Summary & link | "An educational, reproducible, user-controlled GIS workflow with clear scientific provenance." |
 
 If 3 minutes are available, add one numeric example of cost decomposition and display the original manual route against two candidates. **Do not improvise unsupported measured slope, percent safety improvement or claimed official NASA partnership.**
@@ -24,7 +24,8 @@ If 3 minutes are available, add one numeric example of cost decomposition and di
 - Ensure the URL opens without login, NASA tiles visibly load, demo DEM loads, and current deployed SHA contains the latest features.
 - Test at a narrow desktop and normal widescreen. Avoid needing login for the scientific part.
 - Save a named **manual example mission** with two valid waypoints in the documented bundled CTX clip; import the file on a test browser before recording.
-- Store a JSON backup and a screenshots backup in case the live internet fails. If fallback footage is needed, clearly say it is prerecorded.
+- Store a JSON backup, **scientific comparison Markdown export**, and screenshots in case the live internet fails. If fallback footage is needed, clearly say it is prerecorded.
+- Recalculate the three candidates after editing the demo route, maximum grade or hypothetical exclusion; evidence export intentionally disables on stale comparisons.
 - Choose a candidate where the preferred route **actually differs** across lambda values if possible; if all three match, show that the application honestly reports equivalent results. Never fabricate a difference.
 - Check formula with displayed unrounded values or explain chart rounding.
 - Capture screenshot of **Why This Route?**, Pareto chart, source/limitations, export and diagram.
