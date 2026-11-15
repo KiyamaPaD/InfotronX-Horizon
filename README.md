@@ -4,10 +4,10 @@
 
 Mars Atlas is a manual-first Mars mission-planning workspace. Draw a route across Jezero Crater, read its distance, slopes and heights from public NASA and USGS data, compare alternatives and see it in 3D. Built by **InfotronX Horizon** for the NASA Space Apps Challenge 2026.
 
-[![Verify](https://github.com/KiyamaPaD/Mars-Atlas/actions/workflows/verify.yml/badge.svg)](https://github.com/KiyamaPaD/Mars-Atlas/actions/workflows/verify.yml)
+[![Verify](https://github.com/mari0-th/InfotronX-Horizon/actions/workflows/verify.yml/badge.svg)](https://github.com/mari0-th/InfotronX-Horizon/actions/workflows/verify.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**[Open Mars Atlas](https://mars-atlas-map.netlify.app/)** · [Releases](https://github.com/KiyamaPaD/Mars-Atlas/releases) · [Changelog](CHANGELOG.md) · [Credits](CREDITS.md) · [Report a bug](https://github.com/KiyamaPaD/Mars-Atlas/issues/new?template=bug_report.md)
+**[Open Mars Atlas](https://mars-atlas-mu.vercel.app/)** · [Releases](https://github.com/mari0-th/InfotronX-Horizon/releases) · [Changelog](CHANGELOG.md) · [Credits](CREDITS.md) · [Report a bug](https://github.com/mari0-th/InfotronX-Horizon/issues/new?template=bug_report.md)
 
 > Mars Atlas is an independent educational project. It is a planning aid, **not** a navigation tool, and it is **not** certified, endorsed or approved by NASA.
 
@@ -18,6 +18,83 @@ Mars Atlas is a manual-first Mars mission-planning workspace. Draw a route acros
 3. **Analyze:** follow six explained steps (size, height, legs, comparison, 3D, decision) with charts and a checklist. Every number is labelled measured, calculated, illustrative or your own note.
 
 The "All tools" view keeps the full science, math and resource workspace.
+
+## The mathematics
+
+Every number in Mars Atlas is either **measured** (from NASA or USGS data), **calculated** from the formulas below, an **illustrative scenario**, or your own note. The code that implements each formula is named next to it, and the worked examples are checked by an automated test (`tests/readme-math.test.mjs`), so this page cannot drift from the program.
+
+### 1. Distance on Mars (`src/geo.js`)
+
+Mars is treated as a sphere of radius $R = 3\,396\,190\ \text{m}$. For two points with latitudes $\varphi_1,\varphi_2$ and longitudes $\lambda_1,\lambda_2$, the great-circle distance uses the haversine formula:
+
+$$a = \sin^2\!\frac{\varphi_2-\varphi_1}{2} + \cos\varphi_1\,\cos\varphi_2\,\sin^2\!\frac{\lambda_2-\lambda_1}{2}$$
+
+$$d = 2R\,\arcsin\!\sqrt{a}$$
+
+The length of a route with waypoints $P_0,\dots,P_n$ is the sum of its legs:
+
+$$D = \sum_{i=1}^{n} d(P_{i-1},P_i)$$
+
+Worked checks:
+
+| Case | Result |
+| --- | --- |
+| $1^\circ$ of latitude, $2\pi R/360$ | $59\,274.7\ \text{m}$ |
+| $1^\circ$ of longitude at $60^\circ$ latitude (half of the equator value) | $29\,637.1\ \text{m}$ |
+| Two points in Jezero, $(18.4446^\circ,77.4509^\circ)$ and $(18.4500^\circ,77.4600^\circ)$ | $603.5\ \text{m}$ |
+| Antipodal points, $\pi R$ | $10\,669.4\ \text{km}$ |
+
+Mars is slightly flattened (polar radius about $0.994$ of the equatorial one). The distance formula ignores this; the error is below one percent. The 3D globe uses the flattened shape.
+
+### 2. Slope and climb (`src/terrain.js`, `src/terrain-profile-v2.js`)
+
+Between two samples of the height model, 20 m apart or more, the grade is
+
+$$g = \frac{h_B-h_A}{d}\times 100\ \%$$
+
+so a grade of $7.3\,\%$ means $7.3\ \text{m}$ of rise for every $100\ \text{m}$ travelled. Total climb and descent add up every positive and every negative change along the profile:
+
+$$A=\sum \max(0,\Delta h),\qquad H=\sum \max(0,-\Delta h)$$
+
+Heights come from the USGS CTX terrain model (20 m cells) and are relative to the Mars datum. Where the model has no data, the answer is "unknown", never "flat".
+
+### 3. Route cost for the terrain planner (`src/terrain.js`, `src/route-decision.js`)
+
+On the height grid, moving between neighbouring cells of length $d$ and grade $g$ costs
+
+$$c = d\left(1+\lambda\,\frac{|g|}{100}\right) = d + \lambda\,|\Delta h|$$
+
+because $\frac{|g|}{100}\,d=|\Delta h|$. Summed along a path this gives the cost shown as *Why this route?*:
+
+$$C = D + \lambda\,(A+H)$$
+
+$\lambda$ is the penalty, in metres of cost for each metre of height change. It is $0$ for *minimise distance*, $6$ for *balanced* and $24$ for *gentle*. Cells steeper than the chosen limit (18 % by default) and cells in exclusion zones are not entered. A\* finds the cheapest path among the cells it can reach, so it is the best of the routes the grid allows, not a proven safe route.
+
+Example: a $100\ \text{m}$ step with a rise of $5\ \text{m}$ (grade $5\,\%$) and $\lambda=6$ costs $100\,(1+6\cdot 0.05)=130$, which equals $100+6\cdot5$.
+
+Two routes are compared on the pair $(D,\ A+H)$. A route *dominates* another when it is no longer and has no more height change, and is strictly better in at least one of them. The routes nobody dominates form the Pareto set.
+
+### 4. Time, oxygen and energy (`src/resources.js`)
+
+An illustrative scenario with walking speed $v$ (km/h), time at stops $t_s$ (hours), oxygen use $r_{O_2}$ (kg/h) and power $P$ (W). If the way back retraces the route, the travelled distance is $D_{\text{travel}}=2D$, otherwise $D$.
+
+$$t=\frac{D_{\text{travel}}/1000}{v}+t_s,\qquad m_{O_2}=t\,r_{O_2},\qquad E=t\,P$$
+
+Usable amounts keep a reserve of $\rho\,\%$:
+
+$$X_{\text{usable}} = X_{\text{available}}\left(1-\frac{\rho}{100}\right)$$
+
+Defaults: $v=2.4$ km/h, $t_s=0.25$ h, $r_{O_2}=0.12$ kg/h, $P=280$ W, $1.2$ kg of oxygen, $2200$ Wh of battery, $\rho=25\,\%$, $8$ h maximum. The scenario is a planning illustration, not measured telemetry, and it ignores terrain.
+
+Worked check, a $4.2\ \text{km}$ route with the way back: $D_{\text{travel}}=8.4$ km, $t=8.4/2.4+0.25=3.75$ h, $m_{O_2}=0.45$ kg against $0.9$ kg usable, $E=1050$ Wh against $1650$ Wh usable, and $3.75$ h against $6$ h usable.
+
+### 5. Risk measures in the advanced lab (`src/advanced-math.js`)
+
+The lab draws seeded synthetic variations of the resource inputs and reports the mean, the value at risk and the conditional value at risk at confidence level $\alpha$:
+
+$$\mathrm{VaR}_\alpha = \text{the } \lceil \alpha N\rceil\text{-th smallest of } N \text{ samples},\qquad \mathrm{CVaR}_\alpha=\frac{1}{(1-\alpha)N}\sum_{\text{worst tail}} x$$
+
+These describe hypothetical distributions. They are **not** NASA-calibrated probabilities and say nothing about the safety of a real extravehicular activity.
 
 ## What you can do
 
@@ -64,8 +141,8 @@ The scientific analyses are educational approximations, not real mission-operati
 Requires **Git** and **Node.js 22+**. The development server uses Python 3 (`npm run dev`).
 
 ```bash
-git clone https://github.com/KiyamaPaD/Mars-Atlas.git
-cd Mars-Atlas
+git clone https://github.com/mari0-th/InfotronX-Horizon.git
+cd InfotronX-Horizon
 npm run dev
 ```
 

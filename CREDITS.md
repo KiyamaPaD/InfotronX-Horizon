@@ -12,6 +12,8 @@ Mars Atlas stands on public data and open-source software. Thank you to everyone
 - **MOLA elevation and relief shading**: NASA / Goddard Space Flight Center (Mars Global Surveyor), with HRSC context from ESA / DLR / FU Berlin, served by NASA Mars Trek.
 - **CTX terrain model of the Mars 2020 landing site** (the bundled 20 m elevation clip): USGS Astrogeology Science Center. Fergason, R. L., et al. (2020). DOI [10.5066/P906QQT8](https://doi.org/10.5066/P906QQT8).
 - **3D model of Mars** (the planet in the 3D view, with its texture and normal map): NASA/JPL-Caltech, https://science.nasa.gov/resource/planet-mars-3d-model/. The file is included unchanged as `assets/nasa/mars-3d-model.glb`; the app makes its mesh denser and lifts it with MOLA heights.
+- **Photos of places on Mars** shown in the 3D view: NASA Image and Video Library, https://images.nasa.gov/. Each photo links back to its own page with its credit.
+- **MOLA colour relief** (a 2D and 3D layer): NASA / Goddard Space Flight Center (Mars Global Surveyor), dataset `Mars_MGS_MOLA_ClrShade_merge_global_463m`, served by NASA Mars Trek.
 - Mars Trek: https://trek.nasa.gov/mars/
 
 Please check each provider's own terms before reusing their imagery.
@@ -19,9 +21,14 @@ Please check each provider's own terms before reusing their imagery.
 ## Software
 
 - **three.js** (MIT): 3D graphics in the welcome screen and the terrain view.
+- The tool names and simplified marks on the welcome page belong to their owners (Anthropic, OpenAI, W3C, Supabase, GitHub, Vercel, Netlify and others) and only name the tools used.
 - **Supabase** (Apache-2.0): optional accounts and cloud storage.
 - **Google Fonts**: DM Sans and Space Grotesk (SIL Open Font Licence).
 - Everything else is native browser JavaScript and CSS.
+
+## Projects reviewed for ideas
+
+We read the public repositories of other teams on the same challenge for ideas about ground-level views, slope maps and judging demos. No code was copied. [Deepanki-sketch/Nasa-Martian-Map](https://github.com/Deepanki-sketch/Nasa-Martian-Map), [rijan-maharjan836/martian-map-project-astra](https://github.com/rijan-maharjan836/martian-map-project-astra) and [kmmohaimenulhaque-code/MartianMap-NeuroNexus](https://github.com/kmmohaimenulhaque-code/MartianMap-NeuroNexus).
 
 ## The globe, space scenery and animations
 
@@ -33,7 +40,7 @@ AI tools helped write code and documentation. People reviewed and tested the res
 
 ## Team
 
-Built by **InfotronX Horizon** for the NASA Space Apps Challenge 2026. Contributors are listed in the [GitHub contributors page](https://github.com/KiyamaPaD/Mars-Atlas/graphs/contributors).
+Built by **InfotronX Horizon** for the NASA Space Apps Challenge 2026. Contributors are listed in the [GitHub contributors page](https://github.com/mari0-th/InfotronX-Horizon/graphs/contributors).
 
 ## Copyright
 

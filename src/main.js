@@ -22,6 +22,9 @@ import { enableCardTilt } from "./tilt.js";
 import { mountHome } from "./home.js";
 import { mountAnalyzeDashboard } from "./analyze-dashboard.js";
 import { mountAccount } from "./account.js";
+import { benchmarkMissionData } from "./benchmark.js";
+import { mountSettings, rememberDetails, getPref, setPref } from "./settings.js";
+import { shrinkPhoto, MAX_PHOTOS_PER_MISSION } from "./photo.js";
 import { mountLineControls } from "./line-style.js";
 import { mountQuickWaypoint, quickWaypointEnabled } from "./quick-waypoint.js";
 
@@ -48,7 +51,7 @@ app.innerHTML = `
         <header class="header" role="banner">
             <div class="brand"><div class="brand-symbol"><span></span></div><div><div class="brand-wordmark">MARS <strong>ATLAS</strong></div><div class="brand-subline">INFOTRONX HORIZON</div></div></div>
             <div class="header-center"><span class="header-center-title">Jezero Crater <span class="header-divider"></span> Mars</span></div>
-            <div class="header-actions"><button class="btn btn-outline compact" id="start-tutorial" title="A step-by-step tour of every part of the app, plus keyboard shortcuts">Help & tour</button><button class="btn btn-outline compact header-copilot" data-action="open-copilot">Insights <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M4 4h8v8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="edition-pill">NASA SPACE APPS · 2026</span><button class="btn btn-accent compact header-share" data-action="share">Share mission <span aria-hidden="true">↗</span></button></div>
+            <nav class="header-nav" aria-label="Site"><button type="button" data-action="open-home">Start</button><button type="button" data-action="go-planet">Planet 3D</button><button type="button" data-action="go-map">Map 2D</button><button type="button" data-go="plan">Plan</button><button type="button" data-go="analyze">Analyze</button><button type="button" data-go="all">All tools</button><a href="./legal.html#credits">Sources</a><a href="./legal.html">Legal</a><button type="button" data-action="open-settings">Settings</button></nav><div class="header-actions"><button class="btn btn-outline compact" id="start-tutorial" title="A step-by-step tour of every part of the app, plus keyboard shortcuts">Help & tour</button><button class="btn btn-outline compact header-copilot" data-action="open-copilot">Insights <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M4 4h8v8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="edition-pill">NASA SPACE APPS · 2026</span><button class="btn btn-accent compact header-share" data-action="share">Share mission <span aria-hidden="true">↗</span></button></div>
         </header>
         <div class="workspace">
                         <aside class="sidebar sidebar-left" id="left-sidebar">
@@ -62,7 +65,7 @@ app.innerHTML = `
             </aside>
             <main class="center-column">
                 <div class="map-titlebar"><div class="map-title-copy"><div class="titlebar-kicker"><span class="titlebar-live-dot"></span> EXPLORE · PLAN · ANALYZE <span>/</span> JEZERO REGION</div><div class="map-title">Explore Jezero <span class="map-title-small">/ Mars</span></div></div><div class="map-title-actions"><div class="map-data-badge"><span class="map-source-eyebrow">CURRENT IMAGERY</span><strong id="map-source-name">VIKING GLOBAL</strong></div><span class="map-zoom-text" id="zoom-text">ZOOM 7</span><button class="btn btn-outline map-focus-btn" data-action="focus-mode" aria-pressed="false" title="Expand map workspace"><span aria-hidden="true">⛶</span> <span>Focus map</span></button></div></div>
-                <div class="map-wrap"><div class="map-root" id="map-root" role="region" tabindex="-1" aria-label="Interactive Mars map. Draw routes with map tools or enter waypoint coordinates manually."></div><button type="button" class="panel-toggle panel-toggle-left" data-action="toggle-left" aria-label="Hide left panel" aria-pressed="false">‹</button><button type="button" class="panel-toggle panel-toggle-right" data-action="toggle-right" aria-label="Hide right panel" aria-pressed="false">›</button><div class="map-context-menu" id="map-context-menu" role="menu" aria-label="Map actions" hidden><button type="button" role="menuitem" data-context-action="edit-waypoint">✎ Edit waypoint</button><button type="button" role="menuitem" data-context-action="delete-waypoint">× Delete waypoint</button><button type="button" role="menuitem" data-context-action="edit-observation">✎ Edit observation</button><button type="button" role="menuitem" data-context-action="delete-observation">× Delete observation</button><button type="button" role="menuitem" data-context-action="add-waypoint">＋ Place waypoint here</button><button type="button" role="menuitem" data-context-action="add-note">◇ Add field note here</button></div><div class="map-top-overlay"><div class="mode-indicator"><span class="indicator-symbol" aria-hidden="true">⌖</span><span id="mode-description">Explore mode · drag to navigate</span></div><div class="planet-tag"><span class="planet-tag-indicator"></span> PLANET MARS <span>·</span> JEZERO</div></div><div class="mobile-map-toolbar" role="group" aria-label="Map editing tools"><button data-mode="pan" class="active" aria-pressed="true">↔ Explore</button><button data-mode="draw" aria-pressed="false">✎ Draw</button><button data-mode="edit" aria-pressed="false">◎ Move</button><button data-mode="observe" aria-pressed="false">✧ Note</button></div><div class="map-controls"><button data-action="zoom-in" title="Maximum map detail" aria-label="Zoom in" disabled>＋</button><button data-action="zoom-out" title="Zoom out" aria-label="Zoom out">−</button><span class="control-break"></span><button data-action="focus-route" title="Fit active route" aria-label="Fit active route">⌖</button><button data-action="reset-map" title="Reset map" aria-label="Reset map">⟲</button><span class="control-break"></span><button data-action="open-3d" class="map-3d-toggle" title="3D terrain view" aria-label="Open 3D terrain view">3D</button></div><details class="map-lines"><summary>Lines</summary><div data-lines></div></details><details class="map-legend" open><summary>Legend</summary><ul><li><i class="lg-line"></i>Your route, drawn in the route's colour</li><li><span class="lg-symbols">● ◆ ■ ▲ ★</span>Waypoint, in the shape you choose</li><li><span class="lg-symbols">✎</span>Field note</li><li><i class="lg-dash"></i>Distance is measured along the surface of Mars</li></ul></details><div class="map-bottom-overlay"><div class="live-coordinate" id="live-coordinates">18.44460° N · 77.45090° E</div><span class="map-scale">SPHERICAL DISTANCE MODEL</span></div></div>
+                <div class="map-wrap"><div class="map-root" id="map-root" role="region" tabindex="-1" aria-label="Interactive Mars map. Draw routes with map tools or enter waypoint coordinates manually."></div><button type="button" class="panel-toggle panel-toggle-left" data-action="toggle-left" aria-label="Hide left panel" aria-pressed="false">‹</button><button type="button" class="panel-toggle panel-toggle-right" data-action="toggle-right" aria-label="Hide right panel" aria-pressed="false">›</button><div class="map-context-menu" id="map-context-menu" role="menu" aria-label="Map actions" hidden><button type="button" role="menuitem" data-context-action="edit-waypoint">✎ Edit waypoint</button><button type="button" role="menuitem" data-context-action="delete-waypoint">× Delete waypoint</button><button type="button" role="menuitem" data-context-action="edit-observation">✎ Edit observation</button><button type="button" role="menuitem" data-context-action="delete-observation">× Delete observation</button><button type="button" role="menuitem" data-context-action="add-waypoint">＋ Place waypoint here</button><button type="button" role="menuitem" data-context-action="add-note">◇ Add field note here</button></div><div class="map-top-overlay"><div class="mode-indicator"><span class="indicator-symbol" aria-hidden="true">⌖</span><span id="mode-description">Explore mode · drag to navigate</span></div><div class="planet-tag"><span class="planet-tag-indicator"></span> PLANET MARS <span>·</span> JEZERO</div></div><div class="mobile-map-toolbar" role="group" aria-label="Map editing tools"><button data-mode="pan" class="active" aria-pressed="true">↔ Explore</button><button data-mode="draw" aria-pressed="false">✎ Draw</button><button data-mode="edit" aria-pressed="false">◎ Move</button><button data-mode="observe" aria-pressed="false">✧ Note</button></div><div class="map-controls"><button data-action="zoom-in" title="Maximum map detail" aria-label="Zoom in" disabled>＋</button><button data-action="zoom-out" title="Zoom out" aria-label="Zoom out">−</button><span class="control-break"></span><button data-action="focus-route" title="Fit active route" aria-label="Fit active route">⌖</button><button data-action="reset-map" title="Reset map" aria-label="Reset map">⟲</button><span class="control-break"></span><button type="button" class="map-pegman" draggable="true" title="Drag onto the map to stand on Mars" aria-label="Surface view: drag this figure onto the map"><svg viewBox="0 0 24 32" aria-hidden="true"><circle cx="12" cy="6" r="4" fill="currentColor"/><path d="M5 30 L8 14 Q12 11 16 14 L19 30 L15 30 L12 21 L9 30 Z" fill="currentColor"/></svg></button><span class="control-break"></span><button data-action="open-3d" class="map-3d-toggle" title="3D terrain view" aria-label="Open 3D terrain view">3D</button></div><div class="map-dock"><details class="map-lines" data-pref="2d-lines"><summary>Lines</summary><div data-lines></div></details><details class="map-legend" data-pref="2d-legend" open><summary>Legend</summary><ul><li><i class="lg-line"></i>Your route, drawn in the route's colour</li><li><span class="lg-symbols">● ◆ ■ ▲ ★</span>Waypoint, in the shape you choose</li><li><span class="lg-symbols">✎</span>Field note</li><li><i class="lg-dash"></i>Distance is measured along the surface of Mars</li></ul></details></div><div class="map-bottom-overlay"><div class="live-coordinate" id="live-coordinates">18.44460° N · 77.45090° E</div><span class="map-scale">SPHERICAL DISTANCE MODEL</span></div></div>
                 <div class="bottom-area"><div class="bottom-section-header"><div><span class="section-label">ROUTE COMPARISON</span><p>Compare route distances. Shorter does not necessarily mean safer.</p></div><div class="bottom-section-actions"><button class="btn btn-quiet small" data-action="show-route-guide">How to choose a route</button><button class="btn btn-outline small" data-action="simulate-detour">↗ Simulate a detour</button></div></div><div class="route-comparison" id="route-comparison"></div></div>
             </main>
                         <aside class="sidebar sidebar-right" id="right-sidebar">
@@ -89,7 +92,7 @@ app.innerHTML = `
         <dialog class="modal" id="mission-modal"><form method="dialog" id="mission-form"><div class="modal-header"><span class="section-label" id="modal-eyebrow">NEW MISSION</span><button class="modal-x" type="button" data-action="close-modal" aria-label="Close dialog">×</button></div><h2 id="modal-title">Create a mission</h2><p id="modal-hint">Plan your next Marswalk.</p><label class="field-label" for="mission-input">MISSION NAME</label><input id="mission-input" class="field-input" maxlength="90" autocomplete="off" required /><div id="mission-description-field"><label class="field-label" for="mission-description-input">MISSION DESCRIPTION</label><textarea id="mission-description-input" class="field-input" rows="3" maxlength="300" placeholder="Mission purpose, objectives or field notes"></textarea></div><div class="dialog-actions"><button type="button" class="btn btn-outline" data-action="close-modal">Cancel</button><button id="mission-submit" type="submit" class="btn btn-accent">Create mission</button></div></form></dialog>
         <dialog class="modal" id="observation-modal"><form method="dialog" id="observation-form"><div class="modal-header"><span class="section-label">GEOREFERENCED NOTE</span><button class="modal-x" type="button" data-action="close-modal" aria-label="Close dialog">×</button></div><h2>Record observation</h2><p id="observation-location"></p><label class="field-label" for="observation-title">TITLE</label><input id="observation-title" class="field-input" maxlength="80" required placeholder="Sample site, landmark, hazard hypothesis..."/><label class="field-label" for="observation-note">FIELD NOTES</label><textarea id="observation-note" class="field-input" maxlength="500" rows="4" placeholder="Describe what you observed. Mark uncertainty clearly."></textarea><label class="field-label" for="observation-source">SOURCE / EVIDENCE REFERENCE (OPTIONAL)</label><input id="observation-source" class="field-input" maxlength="160" placeholder="Example: NASA Mars Trek / user field note"/><div class="dialog-actions"><button type="button" class="btn btn-outline" data-action="delete-editing-observation" id="observation-delete" hidden>Delete note</button><button type="button" class="btn btn-outline" data-action="close-modal">Cancel</button><button type="submit" class="btn btn-accent" id="observation-submit">Save note</button></div></form></dialog>
         <dialog class="modal" id="coordinate-modal"><form method="dialog" id="coordinate-form"><div class="modal-header"><span class="section-label">MANUAL INPUT</span><button class="modal-x" type="button" data-action="close-modal" aria-label="Close dialog">×</button></div><h2>Enter coordinates</h2><p>Enter a precise Mars position in planetocentric east-positive decimal degrees.</p><label class="field-label" for="latitude-input">LATITUDE (−90 TO 90)</label><input id="latitude-input" class="field-input" type="number" step="any" min="-90" max="90" required placeholder="18.4446"/><label class="field-label" for="longitude-input">LONGITUDE (−180 TO 180)</label><input id="longitude-input" class="field-input" type="number" step="any" min="-180" max="180" required placeholder="77.4509"/><div class="dialog-actions"><button type="button" class="btn btn-outline" data-action="close-modal">Cancel</button><button type="submit" class="btn btn-accent"><span id="coordinate-submit-label">Add waypoint</span></button></div></form></dialog>
-        <dialog class="modal waypoint-editor-modal" id="waypoint-editor-modal" aria-labelledby="waypoint-editor-title"><form id="waypoint-editor-form"><div class="modal-header"><span class="section-label">WAYPOINT / MANUAL EDITOR V2</span><button class="modal-x" type="button" data-action="close-modal" aria-label="Close waypoint editor">×</button></div><h2 id="waypoint-editor-title">Edit waypoint</h2><p>Every change belongs to your mission and can be undone.</p><label class="field-label" for="waypoint-name-input">WAYPOINT NAME</label><input id="waypoint-name-input" class="field-input" maxlength="80" autocomplete="off" placeholder="e.g. Delta sampling site"/><label class="field-label" for="waypoint-category-input">CATEGORY</label><select id="waypoint-category-input" class="field-input"></select><label class="field-label" for="waypoint-description-input">DESCRIPTION / PURPOSE</label><textarea id="waypoint-description-input" class="field-input" rows="3" maxlength="500" placeholder="What is this point for? Separate hypotheses from measured facts."></textarea><div class="waypoint-editor-grid"><div><label class="field-label" for="waypoint-icon-input">MARKER SHAPE</label><select id="waypoint-icon-input" class="field-input"></select></div><div><label class="field-label" for="waypoint-color-input">MARKER COLOR</label><input id="waypoint-color-input" class="field-input color-field" type="color" value="#ec9976"/></div></div><label class="editor-color-default"><input id="waypoint-use-route-color" type="checkbox" checked/> Use active route color</label><div class="waypoint-editor-grid"><div><label class="field-label" for="waypoint-lat-input">LATITUDE (°)</label><input id="waypoint-lat-input" class="field-input" type="number" step="any" min="-90" max="90" required/></div><div><label class="field-label" for="waypoint-lon-input">LONGITUDE (°)</label><input id="waypoint-lon-input" class="field-input" type="number" step="any" min="-180" max="180" required/></div></div><div class="dialog-actions waypoint-editor-actions"><button type="button" class="btn btn-outline" data-action="delete-editing-waypoint">Delete point</button><button type="button" class="btn btn-outline" data-action="close-modal">Cancel</button><button type="submit" class="btn btn-accent">Save waypoint</button></div></form></dialog>
+        <dialog class="modal waypoint-editor-modal" id="waypoint-editor-modal" aria-labelledby="waypoint-editor-title"><form id="waypoint-editor-form"><div class="modal-header"><span class="section-label">WAYPOINT / MANUAL EDITOR V2</span><button class="modal-x" type="button" data-action="close-modal" aria-label="Close waypoint editor">×</button></div><h2 id="waypoint-editor-title">Edit waypoint</h2><p>Every change belongs to your mission and can be undone.</p><label class="field-label" for="waypoint-name-input">WAYPOINT NAME</label><input id="waypoint-name-input" class="field-input" maxlength="80" autocomplete="off" placeholder="e.g. Delta sampling site"/><button type="button" class="btn btn-outline small" data-action="choose-kind">Kind of place…</button><label class="field-label" for="waypoint-category-input" hidden>CATEGORY</label><select id="waypoint-category-input" class="field-input" hidden></select><label class="field-label" for="waypoint-description-input">DESCRIPTION / PURPOSE</label><textarea id="waypoint-description-input" class="field-input" rows="3" maxlength="500" placeholder="What is this point for? Separate hypotheses from measured facts."></textarea><label class="field-label">PHOTO (OPTIONAL)</label><div class="wp-photo"><img id="waypoint-photo-preview" alt="Photo of this place" hidden><input type="file" id="waypoint-photo-input" accept="image/*"><button type="button" class="btn btn-quiet small" id="waypoint-photo-remove" hidden>Remove photo</button></div><p class="field-hint" id="waypoint-photo-hint">Pictures are shrunk and kept with the mission.</p><div class="waypoint-editor-grid"><div><label class="field-label" for="waypoint-icon-input">MARKER SHAPE</label><select id="waypoint-icon-input" class="field-input"></select></div><div><label class="field-label" for="waypoint-color-input">MARKER COLOR</label><input id="waypoint-color-input" class="field-input color-field" type="color" value="#ec9976"/></div></div><label class="editor-color-default"><input id="waypoint-use-route-color" type="checkbox" checked/> Use active route color</label><div class="waypoint-editor-grid"><div><label class="field-label" for="waypoint-lat-input">LATITUDE (°)</label><input id="waypoint-lat-input" class="field-input" type="number" step="any" min="-90" max="90" required/></div><div><label class="field-label" for="waypoint-lon-input">LONGITUDE (°)</label><input id="waypoint-lon-input" class="field-input" type="number" step="any" min="-180" max="180" required/></div></div><div class="dialog-actions waypoint-editor-actions"><button type="button" class="btn btn-outline" data-action="delete-editing-waypoint">Delete point</button><button type="button" class="btn btn-outline" data-action="close-modal">Cancel</button><button type="submit" class="btn btn-accent">Save waypoint</button></div></form></dialog>
         <dialog class="modal library-modal" id="library-modal"><div class="modal-header"><span class="section-label">MISSION LIBRARY</span><button class="modal-x" type="button" data-action="close-modal" aria-label="Close dialog">×</button></div><h2>Your saved missions</h2><p>Your missions are saved on this device. Export a JSON backup to keep a copy.</p><div class="library-list" id="library-list"></div><div class="dialog-actions"><label class="btn btn-outline file-input-button">↑ Import JSON<input type="file" accept=".json,application/json" id="import-json" hidden /></label><button class="btn btn-accent" data-action="new-mission">＋ New mission</button></div></dialog>
     </div>`;
 
@@ -147,6 +150,7 @@ const map = new MarsMap(get("#map-root"), store, {
         get("[data-action='zoom-out']").disabled = zoom <= 3;
     },
     onWaypointSelect: id => openWaypointEditor(id),
+    onNodeClick: id => connectNodes(id),
     onObservationSelect: id => openObservationEditor(id),
     onContextMenu: details => showMapContextMenu(details),
     onMapClick: (point, mode) =>
@@ -269,6 +273,23 @@ function openObservationEditor(id)
     get("#observation-title").focus();
 }
 
+// The photo shown in the editor; null removes it, a picture replaces it.
+let waypointPhoto = null;
+
+function showWaypointPhoto(data)
+{
+    waypointPhoto = data;
+    const preview = get("#waypoint-photo-preview");
+    preview.hidden = !data;
+    preview.src = data || "";
+    get("#waypoint-photo-remove").hidden = !data;
+}
+
+function photoCount()
+{
+    return store.activeRoute.points.filter(point => point.photo).length;
+}
+
 function openWaypointEditor(id)
 {
     const index = store.activeRoute.points.findIndex(point => point.id === id);
@@ -285,6 +306,7 @@ function openWaypointEditor(id)
     get("#waypoint-name-input").value = point.name || "";
     get("#waypoint-category-input").value = point.category || "navigation";
     get("#waypoint-description-input").value = point.description || "";
+    showWaypointPhoto(point.photo || null);
     get("#waypoint-icon-input").value = normalizeMarkerIcon(point.icon);
     get("#waypoint-color-input").value = point.color || store.activeRoute.color;
     get("#waypoint-use-route-color").checked = !point.color;
@@ -405,8 +427,56 @@ function render()
     map.render();
 }
 
+// In Draw mode: click a waypoint, then another one, and the two are joined by a line. Esc or any other tool cancels.
+let linkFrom = null;
+
+function cancelLink()
+{
+    if (linkFrom === null) return;
+
+    linkFrom = null;
+    map.setLinkSource(null);
+}
+
+function connectNodes(id)
+{
+    const points = store.activeRoute.points;
+    const name = pointId => { const index = points.findIndex(point => point.id === pointId); return index < 0 ? "waypoint" : waypointLabel(points[index], index); };
+
+    if (linkFrom === null)
+    {
+        linkFrom = id;
+        map.setLinkSource(id);
+        notify(`${name(id)} selected. Click the waypoint you want to connect it to. Esc cancels.`);
+        return;
+    }
+
+    if (linkFrom === id)
+    {
+        cancelLink();
+        return;
+    }
+
+    const first = linkFrom;
+    cancelLink();
+    const result = store.linkPoints(first, id);
+
+    if (result === "linked")
+    {
+        const a = points.find(point => point.id === first), b = points.find(point => point.id === id);
+        notify(`Connected ${name(first)} and ${name(id)}, ${formatDistance(analyzeRoute([a, b]).totalDistance)} apart.`);
+    }
+    else
+    {
+        notify(result === "exists" ? "Those two waypoints are already connected." : "They could not be connected.");
+    }
+}
+
+window.addEventListener("keydown", pressed => { if (pressed.key === "Escape") cancelLink(); });
+
 function setMode(mode)
 {
+    if (mode !== "draw") cancelLink();
     currentMode = mode;
     map.setMode(mode);
     window.dispatchEvent(new CustomEvent("mars-mode", { detail: mode }));
@@ -525,8 +595,8 @@ function exportJson()
 function openCopilot()
 {
     get('#tab-analytics').click();
-    const workflow = get('button[data-step="analyze"]');
-    if (get('#mars-shell').dataset.step === 'explore') workflow?.click();
+    // The science panel lives in the full workspace; the guided steps hide it.
+    if (get('#mars-shell').dataset.step !== 'all') get('.workflow-all')?.click();
     setMobilePanel('analytics');
     missionCopilot.refresh();
     analyticsNavigation.openSection(missionCopilot.section);
@@ -807,7 +877,11 @@ document.addEventListener("click", event =>
         case "focus-route": map.focusRoute(); break;
                 case "reset-map": map.flyTo(JEZERO, 11); break;
         case "start-tutorial": tutorial.start(); break;
+        case "choose-kind": { const id = editingWaypointId; get("#waypoint-editor-modal").close(); if (id) quickWaypoint.open(id); break; }
         case "open-home": openHome(); break;
+        case "go-planet": get("[data-action='open-3d']")?.click(); break;
+        case "go-map": get(".map-3d-close")?.click(); break;
+        case "open-settings": settings.open(); break;
         case "toggle-left": togglePanel("left"); break;
         case "toggle-right": togglePanel("right"); break;
         case "open-3d":
@@ -819,11 +893,15 @@ document.addEventListener("click", event =>
                     getPoints: () => store.activeRoute.points,
                     getRoutes: () => store.current.routes.map(item => ({ id: item.id, name: item.name, color: item.color, active: item.id === store.current.activeRouteId, points: item.points })),
                     getObservations: () => store.current.observations,
+                    getLinks: () => store.activeRoute.links || [],
+                    onNodeClick: id => connectNodes(id),
                     getMode: () => currentMode,
                     setMode: mode => setMode(mode),
                     onMovePoint: (id, coordinate, persist) => store.movePoint(id, coordinate, persist),
                     onSelectWaypoint: id => openWaypointEditor(id),
                     onSelectObservation: id => openObservationEditor(id),
+                    onDeleteWaypoint: id => { store.removePoint(id); notify("Waypoint removed. Undo brings it back."); },
+                    onDeleteObservation: id => { store.deleteObservation(id); notify("Field note removed. Undo brings it back."); },
                     onObserve: coordinate => openObservationAt(coordinate),
                     canUndo: () => store.canUndo,
                     canRedo: () => store.canRedo,
@@ -840,6 +918,7 @@ document.addEventListener("click", event =>
                         return added;
                     },
                     routeControls: routeControls(),
+                    groundAt: takePendingGround(),
                     routeColor: store.activeRoute.color || "#ff9a6b",
                     onFocusArea: point => map.flyTo(point, 11)
                 }));
@@ -981,6 +1060,7 @@ get("#waypoint-editor-form").addEventListener("submit", event =>
         name: get("#waypoint-name-input").value,
         category: get("#waypoint-category-input").value,
         description: get("#waypoint-description-input").value,
+        photo: waypointPhoto,
         icon: get("#waypoint-icon-input").value,
         color: get("#waypoint-use-route-color").checked ? null : get("#waypoint-color-input").value
     });
@@ -1153,6 +1233,10 @@ render();
 get("#start-tutorial").onclick = () => tutorial.start();
 enableCardTilt();
 let tourRequested = false;
+// Dropping the figure on the 2D map opens the planet and stands there.
+let pendingGround = null;
+const takePendingGround = () => { const place = pendingGround; pendingGround = null; return place; };
+const settings = mountSettings({ notify: message => notify(message) });
 const homeCallbacks = {
     onStart: () => get('.workflow-step[data-step="plan"]')?.click(),
     onDemo: () => get('[data-action="load-review-demo"]')?.click(),
@@ -1208,3 +1292,62 @@ mountAnalyzeDashboard({ shell: get("#mars-shell"), store, getCloud: () => cloudW
 mountAccount({ store, cloudWorkspace, notify, shell: get("#mars-shell") });
 
 mountLineControls(get("[data-lines]"), routeControls());
+
+get("#waypoint-photo-input").addEventListener("change", async event =>
+{
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) return;
+
+    const current = store.activeRoute.points.find(point => point.id === editingWaypointId);
+
+    if (!waypointPhoto && photoCount() >= MAX_PHOTOS_PER_MISSION && !current?.photo)
+    {
+        notify(`A route can hold ${MAX_PHOTOS_PER_MISSION} photos. Remove one first.`);
+        return;
+    }
+
+    try
+    {
+        showWaypointPhoto(await shrinkPhoto(file));
+    }
+    catch (error)
+    {
+        notify(error.message);
+    }
+});
+get("#waypoint-photo-remove").addEventListener("click", () => showWaypointPhoto(null));
+
+get(".map-pegman")?.addEventListener("dragstart", event => { event.dataTransfer.setData("text/plain", "pegman"); event.dataTransfer.effectAllowed = "move"; });
+get(".map-wrap").addEventListener("dragover", event => { if (!document.querySelector(".map-3d-layer")) event.preventDefault(); });
+get(".map-wrap").addEventListener("drop", event =>
+{
+    if (document.querySelector(".map-3d-layer") || event.dataTransfer?.getData("text/plain") !== "pegman") return;
+
+    event.preventDefault();
+    pendingGround = map.screenToGeo(event.clientX, event.clientY);
+    get("[data-action='open-3d']")?.click();
+});
+
+rememberDetails(document);
+document.querySelectorAll("[data-go]").forEach(button => button.addEventListener("click", () =>
+{
+    const step = button.dataset.go;
+    get(step === "all" ? ".workflow-all" : `.workflow-step[data-step="${step}"]`)?.click();
+}));
+
+// The benchmark: one start, one end, three routes on the bundled height model, always the same numbers.
+window.addEventListener("mars-load-benchmark", () =>
+{
+    if (store.importMission(benchmarkMissionData()))
+    {
+        map.focusRoute();
+        scienceWorkbench.loadBundledDem();
+        notify("Benchmark mission opened: three routes between the same start and end.");
+    }
+    else
+    {
+        notify("The mission library is full (30). Export or remove an unused mission first.");
+    }
+});

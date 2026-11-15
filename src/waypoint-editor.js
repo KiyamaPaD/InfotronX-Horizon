@@ -1,4 +1,5 @@
 import { normalizeMarkerIcon } from "./marker-icons.js";
+import { isPhotoData } from "./photo.js";
 
 export const WAYPOINT_CATEGORIES = Object.freeze([
     { id: "navigation", label: "Navigation" },
@@ -47,6 +48,15 @@ export function cleanWaypointMetadata(source)
     if (typeof source.description === "string")
     {
         meta.description = source.description.trim().slice(0, 500);
+    }
+
+    if (source.photo === null || source.photo === "")
+    {
+        meta.photo = null;
+    }
+    else if (isPhotoData(source.photo))
+    {
+        meta.photo = source.photo;
     }
 
     if (typeof source.icon === "string")

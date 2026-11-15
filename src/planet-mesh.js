@@ -146,3 +146,43 @@ export function parseGlb(buffer)
         normal: imageBytes(material.normalTexture.index)
     };
 }
+
+// A latitude-longitude sphere in the model's frame, for maps that come as a flat world image (columns of longitude from -180 to 180,
+// rows of latitude from 90 to -90). Used when the surface is a different NASA map than the model's own texture.
+export function equirectMesh(columns = 256, rows = 128)
+{
+    const width = columns + 1, height = rows + 1, count = width * height;
+    const directions = new Float32Array(count * 3), radii = new Float32Array(count), lat = new Float32Array(count), lon = new Float32Array(count), uvs = new Float32Array(count * 2);
+
+    for (let j = 0; j < height; j++)
+    {
+        for (let i = 0; i < width; i++)
+        {
+            const index = j * width + i;
+            const latitude = 90 - j / rows * 180, longitude = -180 + i / columns * 360;
+            const d = directionOf(latitude, longitude);
+            directions.set([d.x, d.y, d.z], index * 3);
+            radii[index] = ellipseRadius(d.x, d.y, d.z);
+            lat[index] = latitude;
+            lon[index] = longitude;
+            uvs.set([i / columns, 1 - j / rows], index * 2);
+        }
+    }
+
+    const indices = new Uint32Array(columns * rows * 6);
+    let at = 0;
+
+    for (let j = 0; j < rows; j++)
+    {
+        for (let i = 0; i < columns; i++)
+        {
+            const a = j * width + i, b = a + 1, c = a + width, d = c + 1;
+            // Wound so that the faces look outward in this frame.
+            indices.set([a, c, b, b, c, d], at);
+            at += 6;
+        }
+    }
+
+    const { group, count: groupCount } = positionGroups(directions);
+    return { directions, radii, lat, lon, uvs, indices, groups: group, groupCount };
+}

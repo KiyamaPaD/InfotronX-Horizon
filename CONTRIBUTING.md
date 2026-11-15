@@ -5,8 +5,8 @@ Thank you for helping. Mars Atlas is an InfotronX Horizon project and a planning
 ## Quick start
 
 ```bash
-git clone https://github.com/KiyamaPaD/Mars-Atlas.git
-cd Mars-Atlas
+git clone https://github.com/mari0-th/InfotronX-Horizon.git
+cd InfotronX-Horizon
 npm run dev        # serves http://localhost:4173
 npm test           # unit and structure tests (Node 22+)
 ```
@@ -53,7 +53,7 @@ You may use AI tools. You are responsible for the result: read it, test it, and 
 
 ## Reporting problems
 
-Use the issue templates: [Bug report](https://github.com/KiyamaPaD/Mars-Atlas/issues/new?template=bug_report.md), the map-specific `bug_harta` template, or a [Feature request](https://github.com/KiyamaPaD/Mars-Atlas/issues/new?template=feature_request.md). Include browser, layer, zoom, coordinates, steps and a screenshot.
+Use the issue templates: [Bug report](https://github.com/mari0-th/InfotronX-Horizon/issues/new?template=bug_report.md), the map-specific `bug_harta` template, or a [Feature request](https://github.com/mari0-th/InfotronX-Horizon/issues/new?template=feature_request.md). Include browser, layer, zoom, coordinates, steps and a screenshot.
 
 ## Licence of contributions
 

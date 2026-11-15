@@ -11,7 +11,7 @@ Mars Atlas is a manual-first Mars mission-planning workspace by InfotronX Horizo
 - **Analyze, step by step:** six explained steps (size, height, legs, comparison, 3D, decision) with animated charts and a checklist. Each step says what it helps with and gives a plain sentence built from your own numbers. Every figure is labelled calculated, measured, illustrative or your own note.
 - **Ask a question:** a seventh step where you can ask about your route. Answers come from your own numbers, work offline and need no account. An optional AI explanation (sign-in and consent required) sends only route totals, never coordinates, titles or notes.
 - **How to choose a route:** a short guide for comparing alternatives.
-- **3D planet:** NASA's own 3D model of Mars (NASA/JPL-Caltech) with a single texture, made denser and lifted by real MOLA heights (exaggerated; slider 1 is true scale). Your route runs anywhere on the planet along great circles. The space scenery is decoration.
+- **3D planet:** NASA's own 3D model of Mars (NASA/JPL-Caltech) with a single texture, made denser and lifted by approximate MOLA heights (8-bit, about 115 m per grey level; exaggerated by the slider). Your route runs anywhere on the planet along great circles. The space scenery is decoration.
 - **Science and math tools** remain in "All tools": terrain intelligence, advanced mathematics, resource and stress models, algorithms and data sources. The group is calmer, with the main tool of each section open.
 - **Simple accounts:** a sign-in window at the start, with guest mode one click away. Guests can use everything but nothing they draw is saved, and the page warns before they leave with unsaved work. Signing in saves automatically. Exports, a cloud library with sharing and the team's Insights dialog remain.
 - **Smoother on modest computers:** a low-power mode and an automatic watchdog turn decoration down if frames stay slow.
@@ -19,12 +19,12 @@ Mars Atlas is a manual-first Mars mission-planning workspace by InfotronX Horizo
 
 ## Try it
 
-- Live site: https://mars-atlas-mu.vercel.app/ and https://mars-atlas-map.netlify.app/
+- Live site: https://mars-atlas-mu.vercel.app/ and https://mars-atlas-mu.vercel.app/
 - Run locally:
 
 ```bash
-git clone https://github.com/KiyamaPaD/Mars-Atlas.git
-cd Mars-Atlas
+git clone https://github.com/mari0-th/InfotronX-Horizon.git
+cd InfotronX-Horizon
 npm run dev
 ```
 
@@ -39,4 +39,4 @@ Then open http://localhost:4173. Run the tests with `npm test`.
 
 ## Credits, privacy and terms
 
-[Credits](https://github.com/KiyamaPaD/Mars-Atlas/blob/main/CREDITS.md) · [Terms](https://github.com/KiyamaPaD/Mars-Atlas/blob/main/TERMS.md) · [Privacy](https://github.com/KiyamaPaD/Mars-Atlas/blob/main/PRIVACY.md) · [Cookies](https://github.com/KiyamaPaD/Mars-Atlas/blob/main/COOKIES.md) · [MIT licence](https://github.com/KiyamaPaD/Mars-Atlas/blob/main/LICENSE)
+[Credits](https://github.com/mari0-th/InfotronX-Horizon/blob/main/CREDITS.md) · [Terms](https://github.com/mari0-th/InfotronX-Horizon/blob/main/TERMS.md) · [Privacy](https://github.com/mari0-th/InfotronX-Horizon/blob/main/PRIVACY.md) · [Cookies](https://github.com/mari0-th/InfotronX-Horizon/blob/main/COOKIES.md) · [MIT licence](https://github.com/mari0-th/InfotronX-Horizon/blob/main/LICENSE)

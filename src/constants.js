@@ -39,6 +39,17 @@ export const MAP_LAYERS = [
         url: "https://trek.nasa.gov/tiles/Mars/EQ/Mars_MOLA_blend200ppx_HRSC_Shade_clon0dd_200mpp_lzw/1.0.0",
         extensions: ["jpg"],
         maxUsefulZoom: 7
+    },
+    {
+        id: "mola-color",
+        name: "MOLA Colour Relief",
+        short: "MOLA COLOUR",
+        agency: "NASA / MGS",
+        dataset: "Mars_MGS_MOLA_ClrShade_merge_global_463m",
+        description: "MOLA elevation in colour with hillshading: lows in blue, highs in red and white. The colours stand for height; the picture is not a photograph.",
+        url: "https://trek.nasa.gov/tiles/Mars/EQ/Mars_MGS_MOLA_ClrShade_merge_global_463m/1.0.0",
+        extensions: ["jpg"],
+        maxUsefulZoom: 7
     }
 ];
 

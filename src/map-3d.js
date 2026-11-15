@@ -8,7 +8,8 @@ import { lowPower, createGovernor } from "./perf.js";
 import { analyzeRoute, formatDistance } from "./geo.js";
 import { MARS_SITES, SITE_TYPES } from "./mars-sites.js";
 import { getLineStyle, mountLineControls } from "./line-style.js";
-import { directionOf, latLonOf, ellipseRadius, parseGlb, subdivide, positionGroups } from "./planet-mesh.js";
+import { rememberDetails, getPref, setPref } from "./settings.js";
+import { directionOf, latLonOf, ellipseRadius, parseGlb, subdivide, positionGroups, equirectMesh } from "./planet-mesh.js";
 
 // NASA/JPL-Caltech 3D model of Mars: https://science.nasa.gov/resource/planet-mars-3d-model/
 const NASA_MODEL_URL = new URL("../assets/nasa/mars-3d-model.glb", import.meta.url);
@@ -65,6 +66,7 @@ const CRATER_BOUNDS = { north: 18.9, south: 18.0, west: 77.0, east: 77.9 };
 const CRATER_GRID = 121;
 const VIKING_URL = MAP_LAYERS.find(layer => layer.id === "viking").url + "/default/default028mm/";
 const MOLA_DEM_URL = MOLA_URL;
+const MOLA_COLOR_URL = MAP_LAYERS.find(layer => layer.id === "mola-color").url + "/default/default028mm/";
 const MOLA_SHADE_URL = MAP_LAYERS.find(layer => layer.id === "mola").url + "/default/default028mm/";
 const HIRISE_URL = MAP_LAYERS.find(layer => layer.id === "hirise").url + "/default/default028mm/";
 const CTX_URL = JEZERO_CTX_CONTEXT.url + "/default/default028mm/";
@@ -298,11 +300,11 @@ function sampleGrid(grid, point)
 
 const COPY = {
     crater: { title: "Jezero Crater", eyebrow: "3D VIEW · WHOLE CRATER", text: "Whole-crater visualization from NASA MOLA 8-bit grayscale imagery and Viking/HiRISE context. Vertical mapping is illustrative and not calibrated in meters. Use Delta detail for a documented numeric DEM.", switchLabel: "Delta detail · 20 m" },
-    planet: { title: "Whole planet", eyebrow: "3D VIEW · MARS", text: "NASA's own 3D model of Mars (NASA/JPL-Caltech) with one texture, lifted by real MOLA heights (relief exaggerated; set the slider to 1 for true scale). Click a glowing pin for a real place, its facts and NASA photos. Your route follows the surface between waypoints, anywhere on the planet. Distances use Mars's real radius.", switchLabel: "Whole crater" },
+    planet: { title: "Whole planet", eyebrow: "3D VIEW · MARS", text: "NASA's own 3D model of Mars (NASA/JPL-Caltech) with a single texture. The relief comes from the 8-bit NASA MOLA mosaic, about 115 m per grey level, so it is approximate; the slider exaggerates it. Click a glowing pin for a real place, its facts and NASA photos. Your route follows the surface between waypoints, anywhere on the planet. Distances use Mars's real radius.", switchLabel: "Whole crater" },
     delta: { title: "Delta front", eyebrow: "3D VIEW · DETAIL", text: "USGS CTX heights (20 m grid) with NASA HiRISE imagery (~1.2 m/pixel). Height and curvature are exaggerated for readability.", switchLabel: "Whole planet" }
 };
 
-export async function openMap3d({ host, points = [], getPoints, getRoutes, getObservations, subscribe, getMode, setMode, onAddWaypoint, onMovePoint, onSelectWaypoint, onSelectObservation, onObserve, canUndo, canRedo, onUndo, onRedo, routeControls, routeColor = "#ff9a6b", mode = "planet", onFocusArea, onClose })
+export async function openMap3d({ host, points = [], groundAt, getPoints, getRoutes, getObservations, getLinks, onNodeClick, onDeleteWaypoint, onDeleteObservation, subscribe, getMode, setMode, onAddWaypoint, onMovePoint, onSelectWaypoint, onSelectObservation, onObserve, canUndo, canRedo, onUndo, onRedo, routeControls, routeColor = "#ff9a6b", mode = "planet", onFocusArea, onClose })
 {
     const layer = document.createElement("section");
     layer.className = "map-3d-layer";
@@ -313,6 +315,7 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
             <div class="map-3d-head"><div><div class="map-3d-eyebrow" data-3d="eyebrow"></div><h3 class="map-3d-title" data-3d="title"></h3></div><button type="button" class="map-3d-fold" data-3d="fold" aria-expanded="true" aria-label="Fold or unfold this panel">−</button></div>
             <p class="map-3d-copy" data-3d="copy"></p>
             <div class="map-3d-group"><span class="map-3d-label">VIEW</span>
+                <label class="map-3d-surface">Surface<select data-3d="surface" aria-label="Surface map"><option value="nasa">NASA 3D model (one texture)</option><option value="viking">Viking colour map</option><option value="mola">MOLA shaded relief</option><option value="mola-color">MOLA colour relief</option></select></label>
                 <label class="map-3d-range">Vertical ×<span data-3d="ex-value">3</span><input data-3d="ex" type="range" min="1" max="12" step="0.5" value="6" /></label>
                 <div class="map-3d-actions">
                     <button type="button" class="btn btn-accent compact" data-3d="fit" title="Frame the whole route">Fit route</button>
@@ -330,9 +333,11 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
                 </div>
                 <div class="map-3d-actions"><button type="button" class="btn btn-quiet compact" data-3d="undo">Undo</button><button type="button" class="btn btn-quiet compact" data-3d="redo">Redo</button></div>
             </div>
-            <div class="map-3d-group"><span class="map-3d-label">YOUR ROUTE</span><p class="map-3d-route" data-3d="route"></p></div>
-            <details class="map-3d-group map-3d-lines"><summary class="map-3d-label">LINES</summary><div data-3d="lines"></div></details>
-            <details class="map-3d-group map-3d-legend" open><summary class="map-3d-label">LEGEND</summary>
+            <div class="map-3d-group"><span class="map-3d-label">YOUR ROUTE</span><p class="map-3d-route" data-3d="route"></p>
+                <div class="map-3d-actions"><button type="button" class="btn btn-accent compact" data-3d="preview" aria-pressed="false">▶ Fly over the route</button><button type="button" class="btn btn-outline compact" data-3d="speed" title="Fly-over speed" style="flex:0 0 auto">1×</button></div>
+            </div>
+            <details class="map-3d-group map-3d-lines" data-pref="3d-lines"><summary class="map-3d-label">LINES</summary><div data-3d="lines"></div></details>
+            <details class="map-3d-group map-3d-legend" data-pref="3d-legend" open><summary class="map-3d-label">LEGEND</summary>
                 <ul>
                     <li><i class="lg3-pin" style="--c:#75d1c8"></i>Landing site of a rover or lander</li>
                     <li><i class="lg3-pin" style="--c:#e3a06a"></i>Natural feature: volcano, canyon, basin</li>
@@ -354,17 +359,25 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
             <div class="map-3d-site-actions"><button type="button" class="btn btn-accent compact" data-3d="site-fly">Fly here</button><button type="button" class="btn btn-outline compact" data-3d="site-add">Add as waypoint</button></div>
         </aside>
         <div class="map-3d-tip" hidden></div>
+        <div class="map-3d-menu" data-3d="menu" role="menu" hidden></div>
+        <div class="map-3d-ground" data-3d="ground" hidden><strong>SURFACE VIEW</strong><span data-3d="ground-read"></span><small>Drag to look · ↑ ↓ walk · ← → turn · PageUp/PageDown or wheel for height · Shift to go faster</small><button type="button" class="btn btn-accent compact" data-3d="ground-exit">Back to the planet</button></div>
+        <div class="map-3d-profile" data-3d="profile" hidden>
+            <div class="map-3d-profile-head"><span>HEIGHT ALONG THE ROUTE</span><button type="button" class="map-3d-fold" data-3d="profile-fold" aria-label="Fold or unfold the profile">−</button></div>
+            <svg viewBox="0 0 560 120" role="img" aria-label="Elevation profile of the route" preserveAspectRatio="none"></svg>
+            <p class="map-3d-profile-read" data-profile-read>Move over the profile to see the height at each point.</p>
+            <p class="map-3d-profile-note">Heights come from the 8-bit NASA MOLA mosaic (about 115 m per grey level on a grid of about 463 m), relative to the Mars datum. Treat them as approximate; small features are not resolved.</p>
+        </div>
         <div class="map-3d-nav">
-            <button type="button" class="map-3d-compass" data-3d="compass" aria-label="Compass. North is where the red needle points. Click to return to the default view.">
-                <svg viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="25" fill="#0b121bcc" stroke="#ffffff33"/><g data-3d="needle" style="transform-origin:28px 28px"><path d="M28 7 L34 28 L28 24 L22 28 Z" fill="#e3623a"/><path d="M28 49 L34 28 L28 32 L22 28 Z" fill="#aebdca"/></g><text x="28" y="6" text-anchor="middle" font-size="7" font-weight="700" fill="#fff">N</text></svg>
-            </button>
+            <button type="button" class="map-3d-compass" data-3d="compass" aria-label="Compass. The turning dial shows north, east, south, west and the points between. Click to return to the default view."><svg viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="38" fill="#0b121bdd" stroke="#ffffff40"/><circle cx="40" cy="40" r="30" fill="none" stroke="#ffffff1a"/><g data-3d="needle" style="transform-origin:40px 40px"><line x1="40" y1="4" x2="40" y2="11" stroke="#e7eef4" stroke-width="1.6" transform="rotate(0 40 40)"/><line x1="40" y1="5" x2="40" y2="8" stroke="#8da0b0" stroke-width="1" transform="rotate(15 40 40)"/><line x1="40" y1="5" x2="40" y2="8" stroke="#8da0b0" stroke-width="1" transform="rotate(30 40 40)"/><line x1="40" y1="4" x2="40" y2="11" stroke="#e7eef4" stroke-width="1.6" transform="rotate(45 40 40)"/><line x1="40" y1="5" x2="40" y2="8" stroke="#8da0b0" stroke-width="1" transform="rotate(60 40 40)"/><line x1="40" y1="5" x2="40" y2="8" stroke="#8da0b0" stroke-width="1" transform="rotate(75 40 40)"/><line x1="40" y1="4" x2="40" y2="11" stroke="#e7eef4" stroke-width="1.6" transform="rotate(90 40 40)"/><line x1="40" y1="5" x2="40" y2="8" stroke="#8da0b0" stroke-width="1" transform="rotate(105 40 40)"/><line x1="40" y1="5" x2="40" y2="8" stroke="#8da0b0" stroke-width="1" transform="rotate(120 40 40)"/><line x1="40" y1="4" x2="40" y2="11" stroke="#e7eef4" stroke-width="1.6" transform="rotate(135 40 40)"/><line x1="40" y1="5" x2="40" y2="8" stroke="#8da0b0" stroke-width="1" transform="rotate(150 40 40)"/><line x1="40" y1="5" x2="40" y2="8" stroke="#8da0b0" stroke-width="1" transform="rotate(165 40 40)"/><line x1="40" y1="4" x2="40" y2="11" stroke="#e7eef4" stroke-width="1.6" transform="rotate(180 40 40)"/><line x1="40" y1="5" x2="40" y2="8" stroke="#8da0b0" stroke-width="1" transform="rotate(195 40 40)"/><line x1="40" y1="5" x2="40" y2="8" stroke="#8da0b0" stroke-width="1" transform="rotate(210 40 40)"/><line x1="40" y1="4" x2="40" y2="11" stroke="#e7eef4" stroke-width="1.6" transform="rotate(225 40 40)"/><line x1="40" y1="5" x2="40" y2="8" stroke="#8da0b0" stroke-width="1" transform="rotate(240 40 40)"/><line x1="40" y1="5" x2="40" y2="8" stroke="#8da0b0" stroke-width="1" transform="rotate(255 40 40)"/><line x1="40" y1="4" x2="40" y2="11" stroke="#e7eef4" stroke-width="1.6" transform="rotate(270 40 40)"/><line x1="40" y1="5" x2="40" y2="8" stroke="#8da0b0" stroke-width="1" transform="rotate(285 40 40)"/><line x1="40" y1="5" x2="40" y2="8" stroke="#8da0b0" stroke-width="1" transform="rotate(300 40 40)"/><line x1="40" y1="4" x2="40" y2="11" stroke="#e7eef4" stroke-width="1.6" transform="rotate(315 40 40)"/><line x1="40" y1="5" x2="40" y2="8" stroke="#8da0b0" stroke-width="1" transform="rotate(330 40 40)"/><line x1="40" y1="5" x2="40" y2="8" stroke="#8da0b0" stroke-width="1" transform="rotate(345 40 40)"/><text x="40" y="22" text-anchor="middle" font-size="9" font-weight="700" fill="#ff7a5c" transform="rotate(0 40 40)">N</text><text x="40" y="22" text-anchor="middle" font-size="6" font-weight="700" fill="#aebdca" transform="rotate(45 40 40)">NE</text><text x="40" y="22" text-anchor="middle" font-size="8" font-weight="700" fill="#e7eef4" transform="rotate(90 40 40)">E</text><text x="40" y="22" text-anchor="middle" font-size="6" font-weight="700" fill="#aebdca" transform="rotate(135 40 40)">SE</text><text x="40" y="22" text-anchor="middle" font-size="8" font-weight="700" fill="#e7eef4" transform="rotate(180 40 40)">S</text><text x="40" y="22" text-anchor="middle" font-size="6" font-weight="700" fill="#aebdca" transform="rotate(225 40 40)">SW</text><text x="40" y="22" text-anchor="middle" font-size="8" font-weight="700" fill="#e7eef4" transform="rotate(270 40 40)">W</text><text x="40" y="22" text-anchor="middle" font-size="6" font-weight="700" fill="#aebdca" transform="rotate(315 40 40)">NW</text><path d="M40 30 L44 40 L40 37 L36 40 Z" fill="#e3623a"/><path d="M40 50 L44 40 L40 43 L36 40 Z" fill="#aebdca"/></g><path d="M40 0 L44 5 L36 5 Z" fill="#75d1c8"/></svg></button>
             <div class="map-3d-poles"><button type="button" data-3d="north" title="Look down on the north pole">N pole</button><button type="button" data-3d="south" title="Look down on the south pole">S pole</button></div>
             <div class="map-3d-readout" data-3d="readout" aria-live="off"></div>
             <div class="map-3d-readout" data-3d="pointer" aria-live="off"></div>
+            <div class="map-3d-pegman" data-3d="pegman" draggable="true" title="Drag onto the planet to stand on its surface" role="img" aria-label="Surface view figure: drag it onto the planet"><svg viewBox="0 0 24 32" aria-hidden="true"><circle cx="12" cy="6" r="4" fill="currentColor"/><path d="M5 30 L8 14 Q12 11 16 14 L19 30 L15 30 L12 21 L9 30 Z" fill="currentColor"/></svg><span>Drag me onto Mars</span></div>
         </div>
         <button type="button" class="map-3d-close" data-3d="close" aria-label="Close 3D view">✕ 2D map</button>
         <div class="map-3d-status" role="status" data-3d="status">Loading 3D terrain…</div>`;
     host.appendChild(layer);
+    rememberDetails(layer);
     requestAnimationFrame(() => layer.classList.add("is-open"));
     const get = name => layer.querySelector(`[data-3d="${name}"]`);
     const status = get("status");
@@ -373,6 +386,7 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
     let hud = null;
     let stopListening = null;
     let stopTools = null;
+    let groundHook = null;
     const currentPoints = () => getPoints ? getPoints() : points;
     let hudKeep = null;
     let decorHandle = null;
@@ -568,7 +582,8 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
             camera.updateProjectionMatrix();
             controls.minDistance = 1.12;
             controls.maxDistance = 14;
-            scene.add(new THREE.HemisphereLight(0xffe2cf, 0x1b2430, 0.55));
+            const skyLight = new THREE.HemisphereLight(0xffe2cf, 0x1b2430, 0.55);
+            scene.add(skyLight);
             const sunLight = new THREE.DirectionalLight(0xfff1e0, 2.4);
             sunLight.position.set(-5, 2.5, 4);
             scene.add(sunLight);
@@ -583,14 +598,14 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
                 tickers.add(now => decorHandle.update(now));
             }
 
-            // NASA's own 3D model of Mars (NASA/JPL-Caltech), made denser so real MOLA heights can lift it. One mesh, one texture.
-            const nasa = await loadNasaModel(light ? 2 : 3);
+            // NASA's own 3D model of Mars (NASA/JPL-Caltech), made denser so MOLA heights (8-bit, approximate) can lift it. One mesh, one texture.
+            let nasa = await loadNasaModel(light ? 2 : 3);
 
             if (disposed || id !== session) return;
 
-            const vertexCount = nasa.directions.length / 3;
+            let vertexCount = nasa.directions.length / 3;
             const geometry = new THREE.BufferGeometry();
-            const positionArray = new Float32Array(nasa.directions.length);
+            let positionArray = new Float32Array(nasa.directions.length);
             geometry.setAttribute("position", new THREE.BufferAttribute(positionArray, 3));
             geometry.setAttribute("uv", new THREE.BufferAttribute(nasa.uvs, 2));
             geometry.setIndex(new THREE.BufferAttribute(nasa.indices, 1));
@@ -605,13 +620,14 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
             normalMap.needsUpdate = true;
             const material = new THREE.MeshStandardMaterial({ map: diffuse, normalMap, normalScale: new THREE.Vector2(1.3, 1.3), roughness: 0.92, metalness: 0 });
             scene.add(new THREE.Mesh(geometry, material));
-            scene.add(new THREE.Mesh(new THREE.SphereGeometry(1.06, 96, 64), new THREE.ShaderMaterial({
+            const haloMaterial = new THREE.ShaderMaterial({ uniforms: { strength: { value: 1.5 } },
                 transparent: true, side: THREE.BackSide, blending: THREE.AdditiveBlending, depthWrite: false, fog: false,
                 vertexShader: "varying vec3 n; void main(){ n = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
-                fragmentShader: "varying vec3 n; void main(){ float i = pow(max(0.0, 0.72 - dot(n, vec3(0.0, 0.0, 1.0))), 3.0); gl_FragColor = vec4(1.0, 0.55, 0.34, 1.0) * i * 1.5; }"
-            })));
+                fragmentShader: "uniform float strength; varying vec3 n; void main(){ float i = pow(max(0.0, 0.72 - dot(n, vec3(0.0, 0.0, 1.0))), 3.0); gl_FragColor = vec4(1.0, 0.55, 0.34, 1.0) * i * strength; }"
+            });
+            scene.add(new THREE.Mesh(new THREE.SphereGeometry(1.06, 96, 64), haloMaterial));
 
-            // MOLA grey level 0-255 spans 29.4 km of height; at true scale that is 0.87% of the radius, multiplied by the slider.
+            // MOLA grey level 0-255 spans 29.4 km of height (about 115 m per level); that is 0.87% of the radius, multiplied by the slider.
             const relief = { data: null, width: 0, height: 0 };
             const dispAt = (lat, lon) =>
             {
@@ -622,6 +638,16 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
                 const grey = (cx, cy) => relief.data[(cy * relief.width + cx) * 4];
                 const value = grey(x0, y0) * (1 - tx) * (1 - ty) + grey(x1, y0) * tx * (1 - ty) + grey(x0, y1) * (1 - tx) * ty + grey(x1, y1) * tx * ty;
                 return value / 255 * 0.00867 * factor;
+            };
+            const heightMeters = (lat, lon) =>
+            {
+                if (!relief.data) return null;
+
+                const x = Math.min(relief.width - 1, Math.max(0, (lon + 180) / 360 * relief.width)), y = Math.min(relief.height - 1, Math.max(0, (90 - lat) / 180 * relief.height));
+                const x0 = Math.floor(x), y0 = Math.floor(y), x1 = Math.min(relief.width - 1, x0 + 1), y1 = Math.min(relief.height - 1, y0 + 1), tx = x - x0, ty = y - y0;
+                const grey = (cx, cy) => relief.data[(cy * relief.width + cx) * 4];
+                const value = grey(x0, y0) * (1 - tx) * (1 - ty) + grey(x1, y0) * tx * (1 - ty) + grey(x0, y1) * (1 - tx) * ty + grey(x1, y1) * tx * ty;
+                return value / 255 * 29430 - 8201;
             };
             const applyRelief = () =>
             {
@@ -656,6 +682,63 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
                 geometry.computeBoundingSphere();
             };
 
+            // The surface: NASA's own model, or a flat NASA map wrapped on a latitude-longitude sphere (same relief, same route).
+            const SURFACES = { nasa: null, viking: VIKING_URL, mola: MOLA_SHADE_URL, "mola-color": MOLA_COLOR_URL };
+            let flatBody = null;
+            let surfaceToken = 0;
+            const setSurface = async name =>
+            {
+                const token = ++surfaceToken;
+                setPref("3d-surface", name);
+
+                if (name === "nasa" || !SURFACES[name])
+                {
+                    nasa = await loadNasaModel(light ? 2 : 3);
+                    material.map = diffuse;
+                    material.normalMap = normalMap;
+                }
+                else
+                {
+                    flatBody ??= equirectMesh(light ? 192 : 288, light ? 96 : 144);
+                    nasa = flatBody;
+                    status.textContent = "Loading the map…";
+
+                    try
+                    {
+                        const picture = await globalMosaic(SURFACES[name], light ? 2 : 3);
+
+                        if (disposed || token !== surfaceToken) return;
+
+                        const texture = new THREE.CanvasTexture(picture);
+                        texture.colorSpace = THREE.SRGBColorSpace;
+                        texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+                        flatTexture?.dispose();
+                        flatTexture = texture;
+                        material.map = texture;
+                        material.normalMap = null;
+                    }
+                    catch
+                    {
+                        status.textContent = "That map could not be loaded. Showing the NASA model instead.";
+                        return setSurface("nasa");
+                    }
+                }
+
+                vertexCount = nasa.directions.length / 3;
+                positionArray = new Float32Array(nasa.directions.length);
+                geometry.setAttribute("position", new THREE.BufferAttribute(positionArray, 3));
+                geometry.setAttribute("uv", new THREE.BufferAttribute(nasa.uvs, 2));
+                geometry.setIndex(new THREE.BufferAttribute(nasa.indices, 1));
+                geometry.deleteAttribute("normal");
+                material.needsUpdate = true;
+                applyRelief();
+                status.textContent = name === "nasa" ? "NASA 3D model of Mars · MOLA relief, exaggerated" : "Map: " + (name === "viking" ? "Viking colour" : name === "mola" ? "MOLA shaded relief" : "MOLA colour relief") + " · MOLA relief, exaggerated";
+            };
+            let flatTexture = null;
+            const surfaceSelect = get("surface");
+            surfaceSelect.value = getPref("3d-surface", "nasa");
+            surfaceSelect.addEventListener("change", () => setSurface(surfaceSelect.value));
+
             const toVector = (lat, lon) =>
             {
                 const d = directionOf(lat, lon);
@@ -674,6 +757,8 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
             const route = new THREE.Group();
             scene.add(route);
             const waypointTargets = [], noteTargets = [], labels = [];
+            let lastRoute = null;
+            let onRouteBuilt = () => {};
             let roverTick = null, ringTick = null;
             const labelCache = new Map();
             const labelTexture = text =>
@@ -730,6 +815,38 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
 
                 return out;
             };
+            const photoCache = new Map();
+            const photoTexture = data =>
+            {
+                if (!photoCache.has(data))
+                {
+                    const frame = document.createElement("canvas");
+                    frame.width = frame.height = 96;
+                    const texture = new THREE.CanvasTexture(frame);
+                    const picture = new Image();
+                    picture.onload = () =>
+                    {
+                        const context = frame.getContext("2d");
+                        context.save();
+                        context.beginPath();
+                        context.arc(48, 48, 44, 0, Math.PI * 2);
+                        context.clip();
+                        const side = Math.min(picture.width, picture.height);
+                        context.drawImage(picture, (picture.width - side) / 2, (picture.height - side) / 2, side, side, 0, 0, 96, 96);
+                        context.restore();
+                        context.lineWidth = 5;
+                        context.strokeStyle = "#ffffff";
+                        context.beginPath();
+                        context.arc(48, 48, 44, 0, Math.PI * 2);
+                        context.stroke();
+                        texture.needsUpdate = true;
+                    };
+                    picture.src = data;
+                    photoCache.set(data, texture);
+                }
+
+                return photoCache.get(data);
+            };
             const clearRoute = () =>
             {
                 route.traverse(object =>
@@ -750,7 +867,7 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
             {
                 const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTexture(text), transparent: true, depthWrite: false, fog: false }));
                 sprite.position.copy(position).multiplyScalar(1 + size * 2.6);
-                sprite.scale.set(0.17, 0.0425, 1);
+                sprite.scale.set(0.11, 0.0275, 1);
                 sprite.visible = false;
                 route.add(sprite);
                 labels.push(sprite);
@@ -765,6 +882,8 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
                 waypointTargets.length = 0;
                 noteTargets.length = 0;
                 labels.length = 0;
+                lastRoute = null;
+                onRouteBuilt();
                 const look = getLineStyle();
                 const colour = routeControls?.getColor?.() || routeColor;
 
@@ -788,7 +907,7 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
                 {
                     if (!Number.isFinite(note.lat) || !Number.isFinite(note.lon)) continue;
 
-                    const size = 0.009 * look.markerSize;
+                    const size = 0.006 * look.markerSize;
                     const marker = new THREE.Mesh(new THREE.OctahedronGeometry(size), new THREE.MeshBasicMaterial({ color: 0xffdd9c }));
                     marker.position.copy(surfaceAt(note.lat, note.lon, 0.007));
                     route.add(marker);
@@ -806,16 +925,17 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
                 for (let i = 1; i < vectors.length; i++) totalAngle += Math.acos(Math.max(-1, Math.min(1, vectors[i - 1].dot(vectors[i]))));
 
                 // Thick enough to see on a short route, thin enough not to swallow a long one.
-                const base = Math.max(0.0035, Math.min(0.014, totalAngle * 0.012));
+                const base = Math.max(0.0022, Math.min(0.009, totalAngle * 0.008));
                 const tube = base * look.width;
                 const lift = tube * 1.4;
-                const dense = densify(vectors, lift);
+                // Points that sit on top of each other make a curve with undefined positions, so only distinct ones are kept.
+                const dense = densify(vectors, lift).filter((point, index, all) => index === 0 || point.distanceToSquared(all[index - 1]) > 1e-14);
                 const ringMaterials = [];
 
                 valid.forEach((point, index) =>
                 {
                     const position = surfaceOf(vectors[index], lift).multiplyScalar(1 + tube * 0.4);
-                    const size = Math.max(0.004, base * 2.2 * look.markerSize);
+                    const size = Math.max(0.0028, base * 2.2 * look.markerSize);
                     const marker = new THREE.Mesh(shapeGeometry(point.icon, size), new THREE.MeshBasicMaterial({ color: point.color || (index === 0 ? "#75d1c8" : "#ffffff") }));
                     marker.position.copy(position);
                     marker.lookAt(position.clone().multiplyScalar(2));
@@ -824,16 +944,41 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
                     ring.lookAt(position.clone().multiplyScalar(2));
                     route.add(marker, ring);
                     ringMaterials.push(ring);
-                    const target = targetFor(Math.max(0.02, size * 2.4));
+                    const target = targetFor(Math.max(0.014, size * 2.4));
                     target.position.copy(position);
                     target.userData.waypointId = point.id;
                     waypointTargets.push(target);
+                    if (point.photo)
+                    {
+                        const picture = new THREE.Sprite(new THREE.SpriteMaterial({ map: photoTexture(point.photo), transparent: true, depthWrite: false, fog: false }));
+                        picture.position.copy(position).multiplyScalar(1 + size * 1.6);
+                        picture.scale.setScalar(Math.max(0.035, size * 7) * look.markerSize);
+                        route.add(picture);
+                    }
+
                     addLabel(String(point.name || "").trim().slice(0, 18) || String(index + 1), position, size);
                 });
+
+                // Extra connections between waypoints.
+                for (const [first, second] of getLinks ? getLinks() : [])
+                {
+                    const a = valid.findIndex(point => point.id === first), b = valid.findIndex(point => point.id === second);
+
+                    if (a < 0 || b < 0) continue;
+
+                    const path = densify([vectors[a], vectors[b]], lift);
+
+                    if (path.length < 2) continue;
+
+                    route.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(path), path.length, tube * 0.7, 6, false), new THREE.MeshBasicMaterial({ color: colour, transparent: true, opacity: 0.8 * look.opacity })));
+                }
 
                 if (dense.length < 2) return;
 
                 const curve = new THREE.CatmullRomCurve3(dense);
+                const routeCentre = vectors.reduce((sum, vector) => sum.add(vector), new THREE.Vector3()).normalize();
+                lastRoute = { dense, curve, totalAngle, centre: routeCentre.lengthSq() > 0.25 ? routeCentre : defaultDirection };
+                onRouteBuilt();
                 const lineMaterial = new THREE.MeshBasicMaterial({ color: colour, transparent: look.opacity < 1, opacity: look.opacity });
                 const outline = new THREE.MeshBasicMaterial({ color: 0x07121a, transparent: true, opacity: 0.55 * look.opacity });
 
@@ -867,10 +1012,10 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
                     ring.material.opacity = (1 - phase) * 0.8;
                 });
                 tickers.add(ringTick);
-                const rover = new THREE.Mesh(new THREE.SphereGeometry(Math.max(0.006, base * 3 * look.markerSize), 16, 12), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+                const rover = new THREE.Mesh(new THREE.SphereGeometry(Math.max(0.004, base * 3 * look.markerSize), 16, 12), new THREE.MeshBasicMaterial({ color: 0xffffff }));
                 route.add(rover);
-                const seconds = Math.max(6, Math.min(24, totalAngle * 8));
-                roverTick = now => rover.position.copy(curve.getPointAt((now / 1000 / seconds) % 1));
+                const seconds = Math.max(6, Math.min(24, totalAngle * 8)) || 12;
+                roverTick = now => { const u = (now / 1000 / seconds) % 1; if (Number.isFinite(u)) rover.position.copy(curve.getPointAt(Math.min(0.9999, Math.max(0, u)))); };
                 tickers.add(roverTick);
             };
 
@@ -947,11 +1092,11 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
                 {
                     const colour = SITE_TYPES[site.type].colour;
                     const position = surfaceAt(site.lat, site.lon, 0.006);
-                    const pin = new THREE.Mesh(new THREE.SphereGeometry(0.0105, 12, 8), new THREE.MeshBasicMaterial({ color: colour }));
+                    const pin = new THREE.Mesh(new THREE.SphereGeometry(0.0072, 12, 8), new THREE.MeshBasicMaterial({ color: colour }));
                     pin.position.copy(position);
                     const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow, color: colour, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.85 }));
                     halo.position.copy(position);
-                    halo.scale.setScalar(0.06);
+                    halo.scale.setScalar(0.04);
                     const target = new THREE.Mesh(new THREE.SphereGeometry(0.026, 8, 6), new THREE.MeshBasicMaterial({ visible: false }));
                     target.position.copy(position);
                     target.userData.site = site;
@@ -1103,8 +1248,60 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
                     }
                 }
             });
+            const menu = get("menu");
+            const closeMenu = () => { menu.hidden = true; menu.replaceChildren(); };
+            const openMenu = (event, entries) =>
+            {
+                closeMenu();
+                const box = layer.getBoundingClientRect();
+                menu.style.left = Math.min(event.clientX - box.left, box.width - 230) + "px";
+                menu.style.top = Math.min(event.clientY - box.top, box.height - 40 * entries.length - 20) + "px";
+
+                for (const [label, action, danger] of entries)
+                {
+                    const item = document.createElement("button");
+                    item.type = "button";
+                    item.setAttribute("role", "menuitem");
+                    item.textContent = label;
+                    if (danger) item.className = "is-danger";
+                    item.addEventListener("click", () => { closeMenu(); action(); });
+                    menu.append(item);
+                }
+
+                menu.hidden = false;
+                menu.querySelector("button")?.focus();
+            };
+            canvas.addEventListener("contextmenu", event =>
+            {
+                event.preventDefault();
+                const waypoint = hitAt(event, waypointTargets)?.userData.waypointId;
+                const note = !waypoint && hitAt(event, noteTargets)?.userData.observationId;
+
+                if (waypoint)
+                {
+                    openMenu(event, [["Edit waypoint", () => onSelectWaypoint?.(waypoint)], ["Delete waypoint", () => onDeleteWaypoint?.(waypoint), true]]);
+                    return;
+                }
+
+                if (note)
+                {
+                    openMenu(event, [["Edit field note", () => onSelectObservation?.(note)], ["Delete field note", () => onDeleteObservation?.(note), true]]);
+                    return;
+                }
+
+                const place = placeAt(event);
+
+                if (!place) return;
+
+                const coordinate = { lat: Number(place.lat.toFixed(5)), lon: Number(place.lon.toFixed(5)) };
+                openMenu(event, [["Add waypoint here", () => onAddWaypoint?.(coordinate)], ["Add field note here", () => onObserve?.(coordinate)], ["Stand here (surface view)", () => groundHook?.(coordinate.lat, coordinate.lon)]]);
+            });
+            window.addEventListener("pointerdown", closeMenuOutside);
+            function closeMenuOutside(event) { if (!menu.contains(event.target)) closeMenu(); }
             canvas.addEventListener("pointerup", event =>
             {
+                if (event.button === 2) { downAt = null; return; }
+
                 if (drag)
                 {
                     if (drag.place) onMovePoint?.(drag.id, { lat: Number(drag.place.lat.toFixed(5)), lon: Number(drag.place.lon.toFixed(5)) }, true);
@@ -1121,7 +1318,7 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
                 downAt = null;
                 const waypoint = hitAt(event, waypointTargets)?.userData.waypointId;
 
-                if (waypoint) { onSelectWaypoint?.(waypoint); return; }
+                if (waypoint) { if (modeNow() === "draw" && onNodeClick) onNodeClick(waypoint); else onSelectWaypoint?.(waypoint); return; }
 
                 const note = hitAt(event, noteTargets)?.userData.observationId;
 
@@ -1152,6 +1349,11 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
                 }
             });
             const pointerReadout = get("pointer");
+            // What the numbers under the pointer rest on. The 20 m CTX model only covers a small clip near the Jezero delta.
+            const inClip = (lat, lon) => lat <= 18.47 && lat >= 18.4377 && lon >= 77.443 && lon <= 77.4783;
+            const dataQuality = (lat, lon) => inClip(lat, lon)
+                ? "heights: USGS CTX 20 m (calculated); picture: " + (surfaceSelect.value === "nasa" ? "NASA model" : "NASA Trek map")
+                : "heights: MOLA 8-bit, approximate; slopes unknown here";
             let hoverTimer = 0;
             canvas.addEventListener("pointermove", event =>
             {
@@ -1189,7 +1391,7 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
                 }
 
                 const place = placeAt(event);
-                pointerReadout.textContent = place ? `Pointer ${Math.abs(place.lat).toFixed(3)}° ${place.lat >= 0 ? "N" : "S"} ${Math.abs(place.lon).toFixed(3)}° ${place.lon >= 0 ? "E" : "W"}` : "";
+                pointerReadout.textContent = place ? `Pointer ${Math.abs(place.lat).toFixed(3)}° ${place.lat >= 0 ? "N" : "S"} ${Math.abs(place.lon).toFixed(3)}° ${place.lon >= 0 ? "E" : "W"} · ${dataQuality(place.lat, place.lon)}` : "";
             });
             get("fit").addEventListener("click", fitRoute);
 
@@ -1208,6 +1410,15 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
             window.addEventListener("mars-mode", paintTools);
             stopTools = () => window.removeEventListener("mars-mode", paintTools);
             paintTools();
+
+            // Close to the ground the sun and the glow soften, so the surface is not washed out.
+            tickers.add(() =>
+            {
+                const far = Math.max(0, Math.min(1, (camera.position.length() - 1.02) / 1.2));
+                sunLight.intensity = 0.9 + 1.5 * far;
+                skyLight.intensity = 0.22 + 0.33 * far;
+                haloMaterial.uniforms.strength.value = 1.5 * far;
+            });
 
             // Compass and readout, in the spirit of a planetarium: which way is north, how high you are and what is below you.
             const needle = get("needle");
@@ -1240,12 +1451,320 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
             get("north").addEventListener("click", () => flyTo(new THREE.Vector3(0, 1, 0), 2.6));
             get("south").addEventListener("click", () => flyTo(new THREE.Vector3(0, -1, 0), 2.6));
             get("compass").addEventListener("click", () => flyTo(defaultDirection, 3.1));
+            const foldPanel = (folded, button) =>
+            {
+                layer.querySelector(".map-3d-panel").classList.toggle("is-folded", folded);
+                button.setAttribute("aria-expanded", String(!folded));
+                button.textContent = folded ? "+" : "−";
+            };
+            foldPanel(Boolean(getPref("3d-panel-folded", false)), get("fold"));
             get("fold").addEventListener("click", event =>
             {
-                const folded = layer.querySelector(".map-3d-panel").classList.toggle("is-folded");
-                event.currentTarget.setAttribute("aria-expanded", String(!folded));
-                event.currentTarget.textContent = folded ? "+" : "−";
+                const folded = !layer.querySelector(".map-3d-panel").classList.contains("is-folded");
+                foldPanel(folded, event.currentTarget);
+                setPref("3d-panel-folded", folded);
             });
+
+            // Fly-over of the route, with the height profile underneath. The marker on the profile and the camera move together.
+            const profile = get("profile");
+            const profileSvg = profile.querySelector("svg");
+            const profileRead = profile.querySelector("[data-profile-read]");
+            const scrub = new THREE.Mesh(new THREE.SphereGeometry(0.012, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffdd9c, depthTest: false }));
+            scrub.renderOrder = 20;
+            scrub.visible = false;
+            scene.add(scrub);
+            let samples = [];
+            let previewing = null;
+            const PROFILE = { width: 560, height: 120, left: 36, right: 8, top: 10, bottom: 18 };
+            const profileX = t => PROFILE.left + t * (PROFILE.width - PROFILE.left - PROFILE.right);
+
+            const buildProfile = () =>
+            {
+                samples = [];
+
+                if (!lastRoute || lastRoute.dense.length < 2 || !relief.data)
+                {
+                    profile.hidden = true;
+                    return;
+                }
+
+                const { dense } = lastRoute;
+                const stride = Math.max(1, Math.floor(dense.length / 300));
+                let distance = 0;
+
+                for (let i = 0; i < dense.length; i += stride)
+                {
+                    if (i > 0) distance += Math.acos(Math.max(-1, Math.min(1, dense[i].clone().normalize().dot(dense[i - stride].clone().normalize())))) * 3396.19;
+
+                    const place = toLatLon(dense[i]);
+                    samples.push({ distance, height: heightMeters(place.lat, place.lon), lat: place.lat, lon: place.lon, t: i / (dense.length - 1) });
+                }
+
+                const known = samples.filter(sample => sample.height !== null);
+
+                if (known.length < 2 || distance <= 0)
+                {
+                    profile.hidden = true;
+                    return;
+                }
+
+                const low = Math.min(...known.map(sample => sample.height)), high = Math.max(...known.map(sample => sample.height));
+                const span = Math.max(50, high - low);
+                const y = height => PROFILE.top + (1 - (height - low) / span) * (PROFILE.height - PROFILE.top - PROFILE.bottom);
+                const points = known.map(sample => `${profileX(sample.distance / distance).toFixed(1)},${y(sample.height).toFixed(1)}`);
+                const baseline = PROFILE.height - PROFILE.bottom;
+                profileSvg.innerHTML = `<defs><linearGradient id="profile-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e39165" stop-opacity=".5"/><stop offset="1" stop-color="#e39165" stop-opacity="0"/></linearGradient></defs>
+                    <path d="M${points[0].split(",")[0]},${baseline} L${points.join(" L")} L${points.at(-1).split(",")[0]},${baseline} Z" fill="url(#profile-fill)"/>
+                    <polyline points="${points.join(" ")}" fill="none" stroke="#f0a27a" stroke-width="2" stroke-linejoin="round"/>
+                    <text x="2" y="${y(high) + 4}" class="pf-axis">${Math.round(high)} m</text><text x="2" y="${y(low) + 4}" class="pf-axis">${Math.round(low)} m</text>
+                    <text x="${PROFILE.left}" y="${PROFILE.height - 4}" class="pf-axis">0</text><text x="${PROFILE.width - PROFILE.right}" y="${PROFILE.height - 4}" text-anchor="end" class="pf-axis">${distance.toFixed(distance < 10 ? 1 : 0)} km</text>
+                    <line class="pf-cursor" x1="0" x2="0" y1="${PROFILE.top}" y2="${baseline}" visibility="hidden"/>`;
+                profile.dataset.distance = String(distance);
+                profile.hidden = false;
+            };
+            onRouteBuilt = buildProfile;
+
+            const showAt = t =>
+            {
+                if (!lastRoute || !samples.length) return;
+
+                const index = Math.max(0, Math.min(samples.length - 1, Math.round(t * (samples.length - 1))));
+                const sample = samples[index];
+                const cursor = profileSvg.querySelector(".pf-cursor");
+
+                if (cursor)
+                {
+                    cursor.setAttribute("x1", profileX(sample.distance / Number(profile.dataset.distance)));
+                    cursor.setAttribute("x2", profileX(sample.distance / Number(profile.dataset.distance)));
+                    cursor.setAttribute("visibility", "visible");
+                }
+
+                profileRead.textContent = `${sample.distance.toFixed(1)} km along the route · ${sample.height === null ? "no height data" : Math.round(sample.height) + " m (MOLA)"} · ${Math.abs(sample.lat).toFixed(2)}° ${sample.lat >= 0 ? "N" : "S"} ${Math.abs(sample.lon).toFixed(2)}° ${sample.lon >= 0 ? "E" : "W"}`;
+                scrub.position.copy(lastRoute.curve.getPointAt(Math.min(0.9999, Math.max(0, t))));
+                scrub.visible = true;
+            };
+
+            profileSvg.addEventListener("pointermove", event =>
+            {
+                if (previewing) return;
+
+                const box = profileSvg.getBoundingClientRect();
+                const x = (event.clientX - box.left) / box.width * PROFILE.width;
+                showAt(Math.max(0, Math.min(1, (x - PROFILE.left) / (PROFILE.width - PROFILE.left - PROFILE.right))));
+            });
+            profileSvg.addEventListener("pointerleave", () =>
+            {
+                if (previewing) return;
+
+                scrub.visible = false;
+                profileSvg.querySelector(".pf-cursor")?.setAttribute("visibility", "hidden");
+                profileRead.textContent = "Move over the profile to see the height at each point.";
+            });
+            get("profile-fold").addEventListener("click", event =>
+            {
+                const folded = profile.classList.toggle("is-folded");
+                event.currentTarget.textContent = folded ? "+" : "−";
+                setPref("3d-profile-folded", folded);
+            });
+
+            if (getPref("3d-profile-folded", false)) { profile.classList.add("is-folded"); get("profile-fold").textContent = "+"; }
+            const previewButton = get("preview");
+            let speed = 1;
+            const stopPreview = () =>
+            {
+                if (!previewing) return;
+
+                tickers.delete(previewing.tick);
+                previewing = null;
+                controls.enabled = true;
+                camera.up.set(0, 1, 0);
+                previewButton.textContent = "▶ Fly over the route";
+                previewButton.setAttribute("aria-pressed", "false");
+                scrub.visible = false;
+                flyTo(lastRoute ? lastRoute.centre : defaultDirection, 2.4);
+            };
+            const startPreview = () =>
+            {
+                if (!lastRoute || lastRoute.dense.length < 2)
+                {
+                    status.textContent = "Add two or more waypoints to fly over a route.";
+                    return;
+                }
+
+                const { curve, totalAngle } = lastRoute;
+                const seconds = Math.max(12, Math.min(70, totalAngle * 40)) || 20;
+                const begin = performance.now();
+                const here = new THREE.Vector3(), ahead = new THREE.Vector3();
+                controls.enabled = false;
+                previewButton.textContent = "■ Stop fly-over";
+                previewButton.setAttribute("aria-pressed", "true");
+                const tick = now =>
+                {
+                    const t = Math.min(1, (now - begin) / 1000 * speed / seconds);
+
+                    if (!Number.isFinite(t)) { stopPreview(); return; }
+
+                    curve.getPointAt(Math.min(0.9999, t), here);
+                    curve.getPointAt(Math.min(0.9999, t + 0.02), ahead);
+                    const up = here.clone().normalize();
+                    camera.up.copy(up);
+                    camera.position.copy(here).addScaledVector(up, 0.05);
+                    camera.lookAt(ahead);
+                    showAt(t);
+
+                    if (t >= 1) stopPreview();
+                };
+                previewing = { tick };
+                tickers.add(tick);
+            };
+            previewButton.addEventListener("click", () => (previewing ? stopPreview() : startPreview()));
+            get("speed").addEventListener("click", event =>
+            {
+                speed = speed === 1 ? 2 : speed === 2 ? 4 : 1;
+                event.currentTarget.textContent = speed + "×";
+            });
+            const baseStop = stopListening;
+            stopTools = (previousStop => () => { previousStop?.(); stopPreview(); })(stopTools);
+
+            // Surface view: drag the little figure onto the planet to stand there and look around.
+            // The height model is coarse (a point every few kilometres), so this is a low flight over the ground, not a photograph of it.
+            let ground = null;
+            const keysDown = new Set();
+            const groundPanel = get("ground");
+            const frameAt = (lat, lon) => ({
+                up: toVector(lat, lon),
+                east: toVector(lat, lon + 0.05).sub(toVector(lat, lon - 0.05)).normalize(),
+                north: toVector(Math.min(89.9, lat + 0.05), lon).sub(toVector(Math.max(-89.9, lat - 0.05), lon)).normalize()
+            });
+            const groundPose = () =>
+            {
+                const frame = frameAt(ground.lat, ground.lon);
+                const radius = ellipseRadius(frame.up.x, frame.up.y, frame.up.z) * (1 + dispAt(ground.lat, ground.lon)) + ground.height;
+                const position = frame.up.clone().multiplyScalar(radius);
+                const flat = Math.cos(ground.pitch);
+                const forward = frame.north.clone().multiplyScalar(Math.cos(ground.yaw) * flat).addScaledVector(frame.east, Math.sin(ground.yaw) * flat).addScaledVector(frame.up, Math.sin(ground.pitch));
+                return { position, up: frame.up, target: position.clone().add(forward) };
+            };
+            const compassWord = yaw => ["N", "NE", "E", "SE", "S", "SW", "W", "NW"][Math.round((((yaw * 180 / Math.PI) % 360) + 360) % 360 / 45) % 8];
+            const groundTick = (now) =>
+            {
+                if (!ground?.ready) return;
+
+                const delta = Math.min(0.05, (now - (ground.last || now)) / 1000);
+                ground.last = now;
+                const fast = keysDown.has("Shift") ? 4 : 1;
+
+                if (keysDown.has("ArrowLeft")) ground.yaw -= 1.1 * delta;
+                if (keysDown.has("ArrowRight")) ground.yaw += 1.1 * delta;
+                if (keysDown.has("PageUp")) ground.height = Math.min(0.03, ground.height * (1 + 1.5 * delta));
+                if (keysDown.has("PageDown")) ground.height = Math.max(0.0004, ground.height / (1 + 1.5 * delta));
+
+                const move = (keysDown.has("ArrowUp") ? 1 : 0) - (keysDown.has("ArrowDown") ? 1 : 0);
+
+                if (move)
+                {
+                    const step = move * fast * 0.25 * ground.height * delta * 180 / Math.PI;
+                    ground.lat = Math.max(-89.5, Math.min(89.5, ground.lat + step * Math.cos(ground.yaw)));
+                    ground.lon = ((ground.lon + step * Math.sin(ground.yaw) / Math.max(0.05, Math.cos(ground.lat * Math.PI / 180)) + 540) % 360) - 180;
+                }
+
+                const pose = groundPose();
+                camera.up.copy(pose.up);
+                camera.position.copy(pose.position);
+                camera.lookAt(pose.target);
+                get("ground-read").textContent = `Facing ${compassWord(ground.yaw)} · ${Math.abs(ground.lat).toFixed(2)}° ${ground.lat >= 0 ? "N" : "S"} ${Math.abs(ground.lon).toFixed(2)}° ${ground.lon >= 0 ? "E" : "W"} · ${(ground.height * 3396.19).toFixed(1)} km up`;
+            };
+            tickers.add(groundTick);
+            const onGroundKey = event =>
+            {
+                if (!ground) return;
+
+                if (event.type === "keyup") { keysDown.delete(event.key); return; }
+
+                if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "PageUp", "PageDown"].includes(event.key) || event.key === "Shift")
+                {
+                    keysDown.add(event.key);
+                    if (event.key !== "Shift") event.preventDefault();
+                }
+            };
+            const exitGround = () =>
+            {
+                if (!ground) return;
+
+                const here = toVector(ground.lat, ground.lon);
+                ground = null;
+                keysDown.clear();
+                window.removeEventListener("keydown", onGroundKey);
+                window.removeEventListener("keyup", onGroundKey);
+                groundPanel.hidden = true;
+                controls.enabled = true;
+                camera.up.set(0, 1, 0);
+                camera.position.copy(here.clone().multiplyScalar(1.5));
+                flyTo(here, 2.2);
+            };
+            const enterGround = (lat, lon) =>
+            {
+                stopPreview();
+                ground = { lat, lon, yaw: 0, pitch: -0.15, height: 0.0012, ready: false };
+                controls.enabled = false;
+                const start = camera.position.clone();
+                const startUp = camera.up.clone();
+                const pose = groundPose();
+                const begin = performance.now();
+                groundPanel.hidden = false;
+                get("ground-read").textContent = "Descending…";
+                const descend = now =>
+                {
+                    if (!ground || disposed) return;
+
+                    const t = Math.min(1, (now - begin) / 2200);
+                    const eased = 1 - Math.pow(1 - t, 3);
+                    const turn = start.clone().normalize().lerp(pose.position.clone().normalize(), eased).normalize();
+                    camera.position.copy(turn.multiplyScalar(start.length() + (pose.position.length() - start.length()) * eased));
+                    camera.up.copy(startUp).lerp(pose.up, eased).normalize();
+                    camera.lookAt(new THREE.Vector3().lerp(pose.target, eased));
+
+                    if (t < 1) requestAnimationFrame(descend);
+                    else { ground.ready = true; window.addEventListener("keydown", onGroundKey); window.addEventListener("keyup", onGroundKey); }
+                };
+                requestAnimationFrame(descend);
+            };
+            groundHook = enterGround;
+            get("ground-exit").addEventListener("click", exitGround);
+
+            // Look around by dragging; the wheel changes the height.
+            let look = null;
+            canvas.addEventListener("pointerdown", event => { if (ground?.ready && event.button === 0) look = { x: event.clientX, y: event.clientY }; });
+            window.addEventListener("pointerup", () => { look = null; });
+            canvas.addEventListener("pointermove", event =>
+            {
+                if (!look || !ground?.ready) return;
+
+                ground.yaw -= (event.clientX - look.x) * 0.004;
+                ground.pitch = Math.max(-1.3, Math.min(1.3, ground.pitch + (event.clientY - look.y) * 0.004));
+                look = { x: event.clientX, y: event.clientY };
+            });
+            canvas.addEventListener("wheel", event =>
+            {
+                if (!ground?.ready) return;
+
+                event.preventDefault();
+                ground.height = Math.max(0.0004, Math.min(0.03, ground.height * Math.exp(event.deltaY * 0.0012)));
+            }, { passive: false });
+
+            // The little figure.
+            const figure = get("pegman");
+            figure.addEventListener("dragstart", event => { event.dataTransfer.setData("text/plain", "pegman"); event.dataTransfer.effectAllowed = "move"; });
+            canvas.addEventListener("dragover", event => event.preventDefault());
+            canvas.addEventListener("drop", event =>
+            {
+                event.preventDefault();
+                const place = placeAt(event);
+
+                if (place) enterGround(place.lat, place.lon);
+                else status.textContent = "Drop the figure on the planet.";
+            });
+            stopTools = (previousStop => () => { previousStop?.(); exitGround(); })(stopTools);
 
             const updateRouteText = () =>
             {
@@ -1289,6 +1808,7 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
 
             applyFactor();
             flyIn();
+            if (surfaceSelect.value !== "nasa") setSurface(surfaceSelect.value);
             globalMosaic(MOLA_DEM_URL, light ? 1 : 2, "png", "#000000").then(heights =>
             {
                 if (disposed || id !== session) return;
@@ -1493,7 +2013,7 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
                 const target = new THREE.Matrix4().makeBasis(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, -1));
                 body.quaternion.setFromRotationMatrix(target.multiply(local.transpose()));
             }
-            // Real Viking colour for the whole planet, and the real MOLA heights raised as relief all over it.
+            // Real Viking colour for the whole planet, and the MOLA heights (8-bit, approximate) raised as relief all over it.
             globalMosaic(VIKING_URL, light ? 2 : 3).then(colour =>
             {
                 if (disposed || id !== session) return;
@@ -1715,6 +2235,7 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
         });
         get("switch").addEventListener("click", () => build({ crater: "delta", delta: "planet", planet: "crater" }[mode]).catch(() => { status.textContent = "3D terrain could not load. Check your connection."; }));
         await build(mode);
+        if (groundAt && Number.isFinite(groundAt.lat) && Number.isFinite(groundAt.lon)) groundHook?.(groundAt.lat, groundAt.lon);
     }
     catch
     {

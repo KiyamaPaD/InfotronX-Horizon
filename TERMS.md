@@ -4,7 +4,7 @@
 
 ## 1. Who we are
 
-Mars Atlas is developed by **InfotronX Horizon** ("we", "us"), an independent student team. Contact: mario2008toth@gmail.ro. The source code is published at https://github.com/KiyamaPaD/Mars-Atlas under the MIT licence.
+Mars Atlas is developed by **InfotronX Horizon** ("we", "us"), an independent student team. Contact: mario2008toth@gmail.ro. The source code is published at https://github.com/mari0-th/InfotronX-Horizon under the MIT licence.
 
 ## 2. What Mars Atlas is, and what it is not
 
@@ -32,6 +32,10 @@ We may limit or remove accounts and content that break these rules.
 - You keep the rights to your missions, notes and profile. You give us permission to store and display them as needed to run the service for you and the people you share with.
 - You are responsible for what you write. Do not enter secrets or personal data of other people.
 - Export a backup (JSON) from Mission Center if a mission matters to you.
+
+## 4a. Photos and notes you add
+
+You are responsible for any photo or text you add. Add only material you have the right to use, with no personal data of other people. NASA images shown in the app come from the NASA Image and Video Library; follow NASA's media usage guidelines if you reuse them, and keep the credit. Mars Atlas does not claim NASA's endorsement of your use.
 
 ## 5. Data from other sources
 

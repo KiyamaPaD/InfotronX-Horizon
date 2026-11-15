@@ -5,6 +5,10 @@ import { loadJezeroDem } from "./bundled-dem.js";
 import { profileRouteOnDem } from "./terrain.js";
 import { summarizeTerrainProfile } from "./terrain-profile-v2.js";
 import { animateNumber, prefersReducedMotion } from "./motion.js";
+import { estimateMarswalk } from "./resources.js";
+import { getPref, setPref } from "./settings.js";
+import { rankByCost, crossovers } from "./benchmark.js";
+import { COMPANIONS, supplyKit, pointOfNoReturn } from "./companions.js";
 import { buildMissionFacts } from "./mission-copilot.js";
 import { askCopilot } from "./copilot-client.js";
 
@@ -145,6 +149,46 @@ export function mountAnalyzeDashboard({ shell, store, getCloud, getDem })
     host.appendChild(dashboard);
     let token = 0;
     let lastSentences = null;
+    let lambda = 6;
+    let tradeRows = [];
+
+    // Distance versus relief: C = D + lambda × (climb + descent). Moving the slider re-ranks the routes at once.
+    function paintTrade()
+    {
+        const box = dashboard.querySelector(".ad-tradeoff");
+
+        if (!box) return;
+
+        const table = box.querySelector("tbody");
+        const text = box.querySelector(".ad-trade-text");
+        box.querySelector("[data-ad-lambda-out]").textContent = lambda.toFixed(1);
+
+        if (tradeRows.length < 2)
+        {
+            table.replaceChildren();
+            text.textContent = "Two routes with height data are needed. Load the benchmark mission to see the trade-off with three routes.";
+            return;
+        }
+
+        const ranked = rankByCost(tradeRows, lambda);
+        table.replaceChildren(...ranked.map((row, index) =>
+        {
+            const tr = document.createElement("tr");
+            tr.className = index === 0 ? "is-best" : "";
+            for (const value of [String(index + 1), row.name, formatDistance(row.distanceMeters), Math.round(row.verticalMeters) + " m", Math.round(row.cost).toLocaleString("en-US") + " m"])
+            {
+                const td = document.createElement("td");
+                td.textContent = value;
+                tr.append(td);
+            }
+            return tr;
+        }));
+        const points = crossovers(tradeRows);
+        const next = points.find(point => point.lambda > lambda);
+        const best = ranked[0];
+        text.textContent = `At a penalty of ${lambda.toFixed(1)} the best of the routes you calculated is "${best.name}".` +
+            (next ? ` The choice changes at ${next.lambda.toFixed(1)}: above it "${next.other}" is ${Math.round(next.extraDistance)} m longer but saves ${next.savedVertical.toFixed(1)} m of climb and descent.` : points.length ? " Beyond the last change point the ranking stays the same." : " One route is as short and climbs less, so there is nothing to trade.");
+    }
     let draft = "";
     let useAi = false;
     let busy = false;
@@ -282,7 +326,7 @@ export function mountAnalyzeDashboard({ shell, store, getCloud, getDem })
 
         if (points.length < 2)
         {
-            dashboard.innerHTML = `<div class="ad-empty"><div class="ad-empty-orb" aria-hidden="true"></div><h2>Your analysis starts with a route</h2><p>Add two or more waypoints and this page fills with distance, slope, elevation and a 3D view of your route.</p><div class="ad-actions"><button class="btn btn-accent" type="button" data-ad="plan">Draw a route</button><button class="btn btn-outline" type="button" data-ad="demo">Open the example mission</button></div></div>`;
+        dashboard.innerHTML = `<div class="ad-empty"><div class="ad-empty-orb" aria-hidden="true"></div><h2>Your analysis starts with a route</h2><p>Add two or more waypoints and this page fills with distance, slope, elevation and a 3D view of your route.</p><div class="ad-actions"><button class="btn btn-accent" type="button" data-ad="plan">Draw a route</button><button class="btn btn-outline" type="button" data-ad="demo">Open the example mission</button></div></div>`;
             return;
         }
 
@@ -316,6 +360,32 @@ export function mountAnalyzeDashboard({ shell, store, getCloud, getDem })
             threeD: "Open the 3D terrain to check what the numbers cannot show: hills, crater rims and where your route crosses them."
         };
         lastSentences = sentences;
+
+        // Height-based figures for every route that lies inside the height model.
+        tradeRows = [];
+
+        if (dem)
+        {
+            for (const other of store.current.routes)
+            {
+                if (other.points.length < 2) continue;
+
+                const other_profile = profileRouteOnDem(dem, other.points);
+                const other_summary = summarizeTerrainProfile(dem, other.points, other_profile);
+
+                if (other_summary.complete && other_summary.ascentMeters !== null)
+                {
+                    tradeRows.push({ name: other.name, distanceMeters: analyzeRoute(other.points).totalDistance, verticalMeters: other_summary.ascentMeters + other_summary.descentMeters });
+                }
+            }
+        }
+
+        const tradeHtml = `<div class="ad-tradeoff"><h4>Distance versus relief</h4>
+            <p class="ad-note">Move the slider to decide how much one metre of climb or descent counts against one metre of distance. The cost is <b>C = D + λ × (climb + descent)</b>, the same rule the planner uses.</p>
+            <label class="ad-lambda">Penalty λ <input type="range" min="0" max="30" step="0.5" value="${lambda}" data-ad-lambda aria-label="Penalty for height change"><b data-ad-lambda-out></b></label>
+            <table class="ad-table"><thead><tr><th>#</th><th>Route</th><th>Distance</th><th>Climb + descent</th><th>Cost C</th></tr></thead><tbody></tbody></table>
+            <p class="ad-trade-text" aria-live="polite"></p>
+            <button class="btn btn-outline small" type="button" data-ad="benchmark">Load the benchmark mission (3 routes, same start and end)</button></div>`;
         const checks = [
             [points.length >= 2, "The route has at least two waypoints"],
             [hasHeights && coverage === 100, hasHeights ? `Height data covers the whole route (${coverage}%)` : "Height data covers the route"],
@@ -325,7 +395,43 @@ export function mountAnalyzeDashboard({ shell, store, getCloud, getDem })
         const passed = checks.filter(item => item[0]).length;
         const stepHead = (number, title, help) => `<div class="ad-step-head"><span class="ad-step-no">${number}</span><div><h3>${title}</h3><p>${help}</p></div><button type="button" class="ad-fold" data-ad-fold aria-expanded="true" aria-label="Fold or unfold this step">−</button></div>`;
         const stepFoot = (number, sentence) => `<div class="ad-result"><span>IN YOUR CASE</span><p>${sentence}</p></div>${number < 7 ? `<button class="ad-next" type="button" data-ad-go="${number + 1}">Next step →</button>` : ""}`;
-        const chips = [["1", "Size"], ["2", "Height"], ["3", "Legs"], ["4", "Compare"], ["5", "3D"], ["6", "Decide"], ["7", "Ask"]].map(([n, label]) => `<button type="button" class="ad-chip" data-ad-go="${n}"><b>${n}</b> ${label}</button>`).join("");
+        const chips = [["1", "Size"], ["2", "Height"], ["3", "Legs"], ["4", "Compare"], ["5", "3D"], ["6", "Decide"], ["7", "Ask"], ["8", "Safety"]].map(([n, label]) => `<button type="button" class="ad-chip" data-ad-go="${n}"><b>${n}</b> ${label}</button>`).join("");
+
+        // Safety planning: robots that could go along, what to pack, and the point beyond which a return is no longer covered.
+        let safetyHtml = "";
+
+        try
+        {
+            const estimate = estimateMarswalk(total, store.current.evaScenario || {});
+            const cumulative = analysis.segments.reduce((list, segment) => { list.push(segment.cumulative); return list; }, [0]);
+            const turn = pointOfNoReturn(cumulative, estimate);
+            const turnText = turn.reachesEnd
+                ? `With the reserve, you could turn back from any point of this route and still get home (budget ${turn.budgetHours.toFixed(1)} h of the tightest allowance).`
+                : turn.lastSafeIndex < 0
+                    ? "The reserve-adjusted budget does not cover even the first waypoint and the way back. Shorten the route or carry more."
+                    : `Beyond waypoint ${turn.lastSafeIndex + 1} (${formatDistance(cumulative[turn.lastSafeIndex])} from the start) a full return is no longer covered by the reserve-adjusted budget. Plan a cache, a relay or a rescue rover for the rest.`;
+            const kit = supplyKit(estimate);
+            safetyHtml = `
+            <section class="ad-step" id="ad-step-8">
+                ${stepHead(8, "What if something goes wrong?", "Robots that could go along, what to pack, and how far you can go before turning back stops being covered. All of it is planning material from the resource scenario, not a safety approval.")}
+                <div class="ad-card ad-safety">
+                    <h4>Point of no return</h4>
+                    <p class="ad-result-line">${turnText}</p>
+                    <h4>Robots that could go along</h4>
+                    <div class="ad-robots">${COMPANIONS.map(item => `<article class="ad-robot"><strong>${item.name}</strong><span class="ad-robot-kind">${item.kind === "real-analog" ? "Has a real example" : "Concept"}</span><p>${item.role}</p><small><b>Carries:</b> ${item.carries}</small><small><b>Helps with:</b> ${item.help}</small>${item.example ? `<small class="ad-robot-example">${item.example}</small>` : ""}</article>`).join("")}</div>
+                    <h4>Earth–Mars message delay</h4>
+                    <div class="ad-delay"><label>One-way delay <input type="range" min="3" max="22" step="1" value="12" data-ad-delay aria-label="One-way message delay in minutes"><b data-ad-delay-out>12 min</b></label>
+                    <p class="ad-note" data-ad-delay-text></p></div>
+                    <h4>What to pack</h4>
+                    <ul class="ad-kit">${kit.map(item => `<li><label><input type="checkbox"> <span><strong>${item.name}</strong> <em>${item.amount}</em><small>${item.why}</small></span></label></li>`).join("")}</ul>
+                </div>
+                <div class="ad-result"><span>GOOD TO KNOW</span><p>Amounts come from the resource scenario (speed ${estimate.assumptions.speedKmh} km/h, ${estimate.assumptions.reservePercent}% reserve) and ignore terrain. Robots marked Concept are ideas, not existing hardware. Tick items as you pack them; ticks are not saved.</p></div>
+            </section>`;
+        }
+        catch
+        {
+            safetyHtml = "";
+        }
 
         dashboard.innerHTML = `
             <header class="ad-head">
@@ -337,7 +443,7 @@ export function mountAnalyzeDashboard({ shell, store, getCloud, getDem })
                 </div>
             </header>
             <nav class="ad-chips" aria-label="Analysis steps">${chips}</nav>
-            <section class="ad-step" id="ad-step-1">
+            <section class="ad-step glow-border" id="ad-step-1">
                 ${stepHead(1, "How big is the route?", "Distance and number of legs tell you how long the trip is and how many stops it has.")}
                 <div class="ad-kpis">
                     ${kpi("DISTANCE", `<span data-count="${total}" data-kind="distance">0 m</span>`, "Along the surface of Mars", "Calculated")}
@@ -362,7 +468,7 @@ export function mountAnalyzeDashboard({ shell, store, getCloud, getDem })
             </section>
             <section class="ad-step" id="ad-step-4">
                 ${stepHead(4, "Is there a better option?", "Put two routes side by side. A shorter route is not automatically safer, so look at distance and slope together.")}
-                <div class="ad-card"><div class="ad-bars">${routeComparison(store.current.routes, route.id)}</div></div>
+                <div class="ad-card"><div class="ad-bars">${routeComparison(store.current.routes, route.id)}</div>${tradeHtml}</div>
                 ${stepFoot(4, sentences.compare)}
             </section>
             <section class="ad-step" id="ad-step-5">
@@ -387,8 +493,20 @@ export function mountAnalyzeDashboard({ shell, store, getCloud, getDem })
                     </form>
                 </div>
                 <div class="ad-result"><span>GOOD TO KNOW</span><p>AI answers are unverified explanations, not NASA measurements. The assistant cannot change, save or share your route. Limit: five AI questions every ten minutes.</p></div>
-            </section>`;
+            </section>${safetyHtml}`;
 
+        for (const section of dashboard.querySelectorAll(".ad-step"))
+        {
+            if (getPref("ad-fold:" + section.id, false))
+            {
+                section.classList.add("is-folded");
+                const button = section.querySelector("[data-ad-fold]");
+                if (button) { button.textContent = "+"; button.setAttribute("aria-expanded", "false"); }
+            }
+        }
+
+        paintTrade();
+        dashboard.querySelector("[data-ad-delay]")?.dispatchEvent(new Event("input", { bubbles: true }));
         paintChat();
         const askBox = dashboard.querySelector(".ad-ask-form textarea");
         if (askBox) askBox.value = draft;
@@ -415,7 +533,18 @@ export function mountAnalyzeDashboard({ shell, store, getCloud, getDem })
     });
     dashboard.addEventListener("input", event =>
     {
+        if (event.target.matches("[data-ad-delay]"))
+        {
+            const minutes = Number(event.target.value);
+            dashboard.querySelector("[data-ad-delay-out]").textContent = minutes + " min";
+            dashboard.querySelector("[data-ad-delay-text]").textContent = `A command sent now reaches the rover in ${minutes} minutes. The earliest reply is back on Earth after ${minutes * 2} minutes, so the team on the ground cannot steer in real time: the rover or the walker must decide locally, and every plan needs backup steps. The delay is a value you choose (it is about 3 to 22 minutes in reality, depending on where the planets are).`;
+        }
+
         if (event.target.matches(".ad-ask-form textarea")) draft = event.target.value;
+    });
+    dashboard.addEventListener("input", event =>
+    {
+        if (event.target.matches("[data-ad-lambda]")) { lambda = Number(event.target.value); paintTrade(); }
     });
     dashboard.addEventListener("change", event =>
     {
@@ -440,6 +569,7 @@ export function mountAnalyzeDashboard({ shell, store, getCloud, getDem })
             const folded = section.classList.toggle("is-folded");
             fold.setAttribute("aria-expanded", String(!folded));
             fold.textContent = folded ? "+" : "−";
+            setPref("ad-fold:" + section.id, folded);
             return;
         }
 
@@ -458,6 +588,7 @@ export function mountAnalyzeDashboard({ shell, store, getCloud, getDem })
         else if (action === "tools") shell.querySelector(".workflow-all")?.click();
         else if (action === "plan") shell.querySelector('.workflow-step[data-step="plan"]')?.click();
         else if (action === "demo") shell.querySelector('[data-action="load-review-demo"]')?.click();
+        else if (action === "benchmark") window.dispatchEvent(new Event("mars-load-benchmark"));
     });
 
     // The 3D view lives inside the map, so the dashboard steps aside while it is open.

@@ -109,6 +109,30 @@ export function removeUntouchedExample(mission)
     return mission;
 }
 
+// Extra connections between waypoints, beyond the order they were placed in. Pairs of existing point ids, no repeats.
+export function cleanLinks(links, points)
+{
+    const ids = new Set((points || []).map(point => point.id));
+    const seen = new Set();
+    const clean = [];
+
+    for (const pair of Array.isArray(links) ? links : [])
+    {
+        if (!Array.isArray(pair) || pair.length !== 2 || pair[0] === pair[1] || !ids.has(pair[0]) || !ids.has(pair[1])) continue;
+
+        const key = [pair[0], pair[1]].sort().join("|");
+
+        if (seen.has(key)) continue;
+
+        seen.add(key);
+        clean.push([pair[0], pair[1]]);
+
+        if (clean.length >= 80) break;
+    }
+
+    return clean;
+}
+
 export function validateMission(candidate)
 {
     if (!candidate || typeof candidate !== "object" || !Array.isArray(candidate.routes) || candidate.routes.length > MAX_ROUTES)
@@ -133,7 +157,8 @@ export function validateMission(candidate)
         name: String(route.name || `Route ${index + 1}`).slice(0, 70),
         color: normalizeColor(route.color, ROUTE_COLORS[index % ROUTE_COLORS.length]),
         points: Array.isArray(route.points) ? route.points.filter(isValidCoordinate).slice(0, MAX_POINTS_PER_ROUTE).map(point => ({ id: String(point.id || createId()).slice(0, 80), lat: Number(point.lat), lon: Number(point.lon), ...cleanWaypointMetadata(point) })) : [],
-        terrainModel: readTerrainMetadata(route.terrainModel)
+        terrainModel: readTerrainMetadata(route.terrainModel),
+        links: route.links
     }));
     mission.observations = Array.isArray(candidate.observations) ? candidate.observations.filter(observation => observation && typeof observation === "object" && isValidCoordinate(observation)).slice(0, MAX_OBSERVATIONS).map(observation => ({
         id: String(observation.id || createId()).slice(0, 80),
@@ -145,6 +170,7 @@ export function validateMission(candidate)
         ...(typeof observation.icon === "string" ? { icon: normalizeMarkerIcon(observation.icon) } : {})
     })) : [];
     normalizeRouteIds(mission.routes);
+    for (const route of mission.routes) route.links = cleanLinks(route.links, route.points);
     ensureUniqueIds(mission.observations);
     mission.checkpoints = Array.isArray(candidate.checkpoints) ? candidate.checkpoints.slice(0, MAX_CHECKPOINTS).filter(item => item && typeof item === "object" && Array.isArray(item.routes) && item.routes.length > 0 && item.routes.length <= MAX_ROUTES).map(item =>
     {
@@ -806,6 +832,8 @@ export class MissionStore
         const moved = point.lat !== coordinate.lat || point.lon !== coordinate.lon;
         Object.assign(point, cleanWaypointMetadata(input), coordinate);
 
+        if (point.photo === null) delete point.photo;
+
         if (moved)
         {
             this.activeRoute.terrainModel = null;
@@ -823,6 +851,7 @@ export class MissionStore
         }
 
         this.activeRoute.points = [];
+        this.activeRoute.links = [];
         this.activeRoute.terrainModel = null;
         this.save();
         return true;
@@ -842,8 +871,44 @@ export class MissionStore
         return true;
     }
 
+    // Joins two waypoints of the active route with an extra line. Returns "linked", "exists" or false.
+    linkPoints(firstId, secondId)
+    {
+        const route = this.activeRoute;
+        const ids = route.points.map(point => point.id);
+
+        if (firstId === secondId || !ids.includes(firstId) || !ids.includes(secondId)) return false;
+
+        const a = ids.indexOf(firstId), b = ids.indexOf(secondId);
+        const key = [firstId, secondId].sort().join("|");
+        route.links = cleanLinks(route.links, route.points);
+
+        if (Math.abs(a - b) === 1 || route.links.some(pair => [pair[0], pair[1]].sort().join("|") === key)) return "exists";
+
+        if (route.links.length >= 80) return false;
+
+        route.links.push([firstId, secondId]);
+        route.terrainModel = null;
+        this.save();
+        return "linked";
+    }
+
+    unlinkPoints(firstId, secondId)
+    {
+        const route = this.activeRoute;
+        const key = [firstId, secondId].sort().join("|");
+        const before = (route.links || []).length;
+        route.links = (route.links || []).filter(pair => [pair[0], pair[1]].sort().join("|") !== key);
+
+        if (route.links.length === before) return false;
+
+        this.save();
+        return true;
+    }
+
     removePoint(id)
     {
+        this.activeRoute.links = (this.activeRoute.links || []).filter(pair => !pair.includes(id));
         this.activeRoute.points = this.activeRoute.points.filter(point => point.id !== id);
         this.activeRoute.terrainModel = null;
         this.save();

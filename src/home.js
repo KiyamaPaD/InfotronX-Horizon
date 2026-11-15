@@ -1,6 +1,7 @@
 // Welcome screen: a 3D Mars with its Sun, two moons and the Jezero landing site, then a short introduction.
 // The globe is wrapped in the real Viking colour mosaic with MOLA relief shading from NASA Trek; a procedural surface is the offline fallback.
 import { MAP_LAYERS } from "./constants.js";
+import { addDeepSpace } from "./deep-space.js";
 import { lowPower, createGovernor } from "./perf.js";
 
 const VIKING_TILES = MAP_LAYERS.find(layer => layer.id === "viking").url + "/default/default028mm/";
@@ -30,7 +31,9 @@ const FEATURES = [
     { icon: "⚖", title: "Compare and decide", text: "Put routes side by side and follow a step-by-step analysis. Every number says how it was made." }
 ];
 
-const SOURCES = ["Viking MDIM 2.1 colour mosaic", "HiRISE Jezero orthomosaic · NASA / JPL / University of Arizona", "MOLA elevation · NASA / GSFC", "CTX DEM · USGS (Fergason et al., 2020)"];
+const TECH = [["Claude","AI assistant for code and docs","<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><rect width=\"24\" height=\"24\" rx=\"6\" fill=\"#d97757\"/><path d=\"M12 4 L13.6 10.4 L20 12 L13.6 13.6 L12 20 L10.4 13.6 L4 12 L10.4 10.4 Z\" fill=\"#fff\"/></svg>"],["Codex","AI coding assistant","<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><rect width=\"24\" height=\"24\" rx=\"6\" fill=\"#1f2937\"/><path d=\"M8 8 L4.5 12 L8 16 M16 8 L19.5 12 L16 16 M13 7 L11 17\" stroke=\"#fff\" stroke-width=\"1.8\" fill=\"none\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>"],["HTML5","Structure of every page","<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><rect width=\"24\" height=\"24\" rx=\"6\" fill=\"#e44d26\"/><path d=\"M5 4 L6.6 19 L12 20.5 L17.4 19 L19 4 Z\" fill=\"#fff\" opacity=\".95\"/><path d=\"M8 8 H16 M8.4 12 H15.6 M9 16 L12 17 L15 16 L15.3 13\" stroke=\"#e44d26\" stroke-width=\"1.4\" fill=\"none\"/></svg>"],["CSS3","Layout, themes and motion","<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><rect width=\"24\" height=\"24\" rx=\"6\" fill=\"#1572b6\"/><path d=\"M5 4 L6.6 19 L12 20.5 L17.4 19 L19 4 Z\" fill=\"#fff\" opacity=\".95\"/><path d=\"M8 8 H16 M8.4 12 H15.6 M9 16 L12 17 L15 16 L15.3 13\" stroke=\"#1572b6\" stroke-width=\"1.4\" fill=\"none\"/></svg>"],["JavaScript","Every feature, no build step","<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><rect width=\"24\" height=\"24\" rx=\"6\" fill=\"#f7df1e\"/><text x=\"12\" y=\"17\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"800\" fill=\"#000\" font-family=\"sans-serif\">JS</text></svg>"],["three.js","3D planet and globe","<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><rect width=\"24\" height=\"24\" rx=\"6\" fill=\"#111827\"/><path d=\"M12 4 L19 18 H5 Z M12 4 V18 M8.5 11 H15.5\" stroke=\"#fff\" stroke-width=\"1.4\" fill=\"none\" stroke-linejoin=\"round\"/></svg>"],["WebGL","Graphics in the browser","<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><rect width=\"24\" height=\"24\" rx=\"6\" fill=\"#990000\"/><circle cx=\"12\" cy=\"12\" r=\"6\" stroke=\"#fff\" stroke-width=\"1.6\" fill=\"none\"/><ellipse cx=\"12\" cy=\"12\" rx=\"6\" ry=\"2.4\" stroke=\"#fff\" stroke-width=\"1.2\" fill=\"none\"/></svg>"],["Supabase","Accounts and cloud missions","<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><rect width=\"24\" height=\"24\" rx=\"6\" fill=\"#1c1c1c\"/><path d=\"M13.5 3 L5 13.5 H11 L10.5 21 L19 10.5 H13 Z\" fill=\"#3ecf8e\"/></svg>"],["GitHub","Code, tests and releases","<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><rect width=\"24\" height=\"24\" rx=\"6\" fill=\"#24292f\"/><circle cx=\"12\" cy=\"12\" r=\"6.5\" fill=\"#fff\"/><path d=\"M10 17.5 V15 M14 17.5 V15\" stroke=\"#24292f\" stroke-width=\"1.6\"/></svg>"],["Vercel","Hosting","<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><rect width=\"24\" height=\"24\" rx=\"6\" fill=\"#000\"/><path d=\"M12 6 L19 18 H5 Z\" fill=\"#fff\"/></svg>"],["Netlify","Hosting","<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><rect width=\"24\" height=\"24\" rx=\"6\" fill=\"#0e1e25\"/><path d=\"M12 5 L19 12 L12 19 L5 12 Z\" fill=\"#00c7b7\"/></svg>"],["NASA Mars Trek","Maps and heights","<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><rect width=\"24\" height=\"24\" rx=\"6\" fill=\"#0b3d91\"/><circle cx=\"12\" cy=\"12\" r=\"6.5\" fill=\"#fff\"/><path d=\"M5.5 12 Q12 4 18.5 12 Q12 20 5.5 12\" stroke=\"#e03c31\" stroke-width=\"1.6\" fill=\"none\"/></svg>"]];
+
+const SOURCES = ["Viking MDIM 2.1 colour mosaic", "HiRISE Jezero orthomosaic · NASA / JPL / University of Arizona", "MOLA elevation · NASA / GSFC", "CTX DEM · USGS (Fergason et al., 2020)", "3D model of Mars · NASA/JPL-Caltech", "Photos · NASA Image and Video Library"];
 
 const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
@@ -299,7 +302,12 @@ function pageMarkup()
         </section>
         <section class="home-section">
             <h2 class="home-h2 reveal">Everything for a first plan</h2>
-            <div class="home-features">${FEATURES.map((item, index) => `<article class="home-card reveal" style="--i:${index}"><span class="home-card-icon" aria-hidden="true">${item.icon}</span><h3>${item.title}</h3><p>${item.text}</p></article>`).join("")}</div>
+            <div class="home-features">${FEATURES.map((item, index) => `<article class="home-card reveal glow-border" style="--i:${index}"><span class="home-card-icon" aria-hidden="true">${item.icon}</span><h3>${item.title}</h3><p>${item.text}</p></article>`).join("")}</div>
+        </section>
+        <section class="home-section home-tech reveal" aria-label="Tools used to build Mars Atlas">
+            <h2 class="home-h2">Built with</h2>
+            <div class="home-marquee"><div class="home-marquee-track">${[...TECH, ...TECH].map(([name, note, svg]) => `<span class="home-tool" title="${note}">${svg}<b>${name}</b><small>${note}</small></span>`).join("")}</div></div>
+            <p class="home-tech-note">Logos are simplified marks used only to name the tools; they belong to their owners.</p>
         </section>
         <section class="home-section">
             <h2 class="home-h2 reveal">Built on real data</h2>
@@ -550,6 +558,8 @@ export function mountHome({ onStart, onDemo, onTour, force = false } = {})
         };
         const farStars = makeStars(2600, 0.16, 90), nearStars = makeStars(420, 0.34, 60);
         scene.add(farStars, nearStars);
+        // The Milky Way, Andromeda, nebulae, comets, the asteroid belt and every planet, far behind Mars.
+        const deep = addDeepSpace(THREE, scene, { reduced: reducedMotion(), light });
 
         // Phobos and Deimos on faint orbit lines.
         const orbit = (radius, tiltAngle) =>
@@ -749,6 +759,7 @@ export function mountHome({ onStart, onDemo, onTour, force = false } = {})
             renderer.setPixelRatio(1);
             resize();
             clouds.visible = false;
+            deep.setVisible(false);
             dustPoints.visible = false;
             [orbiterOrbit, satelliteRing, relayOrbit, ...smallOrbits.map(item => item.holder)].forEach(group => { group.visible = false; });
             meteors.forEach(meteor => { meteor.wait = 1e9; meteor.line.visible = false; });
@@ -764,6 +775,7 @@ export function mountHome({ onStart, onDemo, onTour, force = false } = {})
             requestAnimationFrame(frame);
             if (document.hidden || (scrollProgress > 0.97 && !state.dive)) return;
             governor.tick(now);
+            deep.update(now);
             const delta = Math.min(0.05, (now - last) / 1000);
             last = now;
             const time = clock.getElapsedTime();
@@ -906,7 +918,7 @@ export function mountHome({ onStart, onDemo, onTour, force = false } = {})
                 if (delta2 < -Math.PI) delta2 += Math.PI * 2;
                 mars.rotation.y += delta2 * 0.08;
                 sun.material.opacity = 1 - e;
-                if (t >= 1) { state.dive = null; finish(); }
+                if (t >= 1) { state.dive = null; finish(); return; }
             }
             else
             {

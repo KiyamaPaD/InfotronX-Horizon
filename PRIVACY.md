@@ -21,7 +21,8 @@ As a guest, your missions, routes and notes exist only in the open page and are 
 
 When you open Mars Atlas your browser contacts these services, which can see your IP address and browser details. We do not control them.
 
-- **NASA Mars Trek** (trek.nasa.gov): map imagery tiles.
+- **NASA Mars Trek** (trek.nasa.gov): map imagery tiles and heights.
+- **NASA Image and Video Library** (images-api.nasa.gov and images-assets.nasa.gov): the photos shown when you open a place on the 3D planet. Nothing about your mission is sent.
 - **Google Fonts** (fonts.googleapis.com): the typefaces.
 - **jsDelivr** (cdn.jsdelivr.net) and **esm.sh**: the 3D library and the account library.
 - **Our hosting provider** (Netlify or Vercel): serves the site and keeps standard server logs.
@@ -36,6 +37,10 @@ We use **Supabase** to provide sign-in and storage. Depending on what you use, w
 - team chat messages in shared missions, and reports or blocks you make.
 
 Access is limited with row-level security, so you and the people you share with can see a mission and others cannot. Staff can access data only to run, secure and support the service.
+
+## Photos you add
+
+A photo you attach to a waypoint is shrunk in your browser and kept inside the mission, on your device or, if you are signed in, in your cloud mission. It is left out of share links. Do not add pictures of other people or pictures you do not have the right to use.
 
 ## Optional AI features
 
