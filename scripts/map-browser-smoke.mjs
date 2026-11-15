@@ -89,7 +89,7 @@ try
     await zoomUntil(8);
 
     await page.waitForFunction(() =>
-        [...document.querySelectorAll(".map-background-tile")].some(item => item.naturalWidth >= 240),
+        [...document.querySelectorAll(".map-background-tile")].some(item => item.dataset.state === "loaded"),
         null, { timeout: 25000 });
 
     const view8 = await inspect("HiRISE selector at zoom 8");
@@ -102,7 +102,7 @@ try
 
     await zoomUntil(11);
     await page.waitForFunction(() =>
-        [...document.querySelectorAll(".map-hires-tile")].some(item => item.naturalWidth >= 240),
+        [...document.querySelectorAll(".map-hires-tile")].some(item => item.dataset.state === "loaded"),
         null, { timeout: 25000 });
 
     const view11 = await inspect("HiRISE at zoom 11");
