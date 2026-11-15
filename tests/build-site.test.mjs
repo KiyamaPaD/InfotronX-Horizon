@@ -6,7 +6,7 @@ const build = readFileSync(new URL("../scripts/build-site.mjs", import.meta.url)
 
 test("the published site includes every page the app links to", () =>
 {
-    for (const page of ["index.html", "404.html", "legal.html", "checklist.html", "LICENSE", "src", "assets"])
+    for (const page of ["index.html", "404.html", "legal.html", "LICENSE", "src", "assets"])
     {
         assert.ok(build.includes(`'${page}'`), page + " must be in the build allowlist");
         assert.ok(existsSync(new URL("../" + page, import.meta.url)), page + " must exist");

@@ -16,7 +16,6 @@ Mars Atlas **does not set cookies** and does not use advertising or analytics tr
 | `mars-line-style` | Your line thickness, colour style and marker size | Remember your map look |
 | `mars-perf` | Your graphics choice (automatic, lighter or full) | Keep the 3D view smooth on your computer |
 | `mars-quick-waypoint` | Whether to ask for details when you add a waypoint | Respect your choice |
-| `mars-qa-checklist` | Ticks on the test checklist page | Let testers keep their progress |
 | `mars-atlas.workflow-step` | The last step you used (Explore, Plan, Analyze, All tools) | Return to where you were |
 | `mars-panel-left`, `mars-panel-right` | Whether a side panel is hidden | Remember your layout |
 | `mars-tutorial-seen` | That you have seen the tour | Do not repeat it |

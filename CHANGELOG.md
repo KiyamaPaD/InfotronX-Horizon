@@ -10,7 +10,6 @@ All notable changes to Mars Atlas. Format based on [Keep a Changelog](https://ke
 - 2D: a dot that travels along the active route in the Flowing line style, and a data-quality line under the pointer.
 - All tools: search across every tool and a tool count per group.
 - Start page: each NASA source says what it is used for and how good it is.
-- A test checklist page (checklist.html) with ticks kept in the browser.
 
 ### Changed
 - The start page no longer draws the Milky Way, Andromeda or nebula backdrop.

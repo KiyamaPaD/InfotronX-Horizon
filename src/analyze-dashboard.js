@@ -437,7 +437,6 @@ export function mountAnalyzeDashboard({ shell, store, getCloud, getDem })
             <header class="ad-head">
                 <div><span class="ad-eyebrow">ROUTE ANALYSIS · STEP BY STEP</span><h2>${escapeText(route.name)}</h2></div>
                 <div class="ad-actions">
-                    <button class="btn btn-accent" type="button" data-ad="3d">◈ View in 3D</button>
                     <button class="btn btn-outline" type="button" data-ad="guide">How to choose a route</button>
                     <button class="btn btn-quiet" type="button" data-ad="tools">Detailed tools</button>
                 </div>
