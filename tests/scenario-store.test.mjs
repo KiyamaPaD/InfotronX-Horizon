@@ -36,6 +36,7 @@ test("terrain metadata survives mission import but direct coordinate edits inval
     globalThis.localStorage = memoryStorage();
     const store = new MissionStore();
     const route = store.activeRoute;
+    store.addPoint({ lat: 18.44, lon: 77.45 });
     route.terrainModel = { source: "User-imported numeric DEM, not NASA-validated", stats: { distanceMeters: 900, ascentMeters: 10, descentMeters: 5, maxGradePercent: 12 } };
     store.save();
     const reloaded = new MissionStore();
