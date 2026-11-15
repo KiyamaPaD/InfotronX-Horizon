@@ -54,6 +54,25 @@ jobs:
           if-no-files-found: ignore
 
 
+  public-site-audit:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[public-audit]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Compare published Netlify assets to the repository commit
+        run: node scripts/public-site-audit.mjs
+      - name: Upload public-site audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mars-atlas-netlify-audit
+          path: public-site-audit.json
+          if-no-files-found: ignore
+
   nasa-context-probe:
     if: contains(github.event.head_commit.message, '[context-probe]')
     runs-on: ubuntu-latest
