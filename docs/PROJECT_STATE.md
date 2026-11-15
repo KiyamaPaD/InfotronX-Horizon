@@ -1,60 +1,48 @@
 # Mars Atlas — current project state
 
-**Team:** InfotronX Horizon · **Challenge:** NASA Space Apps Challenge 2026 · **Season:** 2026–2027  
-**Repo:** https://github.com/KiyamaPaD/Mars-Atlas  
-**Branch:** `main`  
-**Vercel project:** `mars-atlas`; production alias https://mars-atlas-mu.vercel.app
+Team: InfotronX Horizon
+GitHub: https://github.com/KiyamaPaD/Mars-Atlas (main)
+Production: https://mars-atlas-mu.vercel.app — Vercel project mars-atlas
+Backend: dedicated Supabase Mars Atlas project yuvdrjptwumbfzjsimoe
 
-## Verified on 14 November 2026
+## Product architecture
 
-- New repository has a single initial release commit (`ac7fa28`), copied from the earlier InfotronX Horizon V9 candidate.
-- GitHub Actions initial `Verify` run completed successfully on `main`.
-- The new Vercel project reports its production deployment as `READY` and tied to `ac7fa28`.
-- Vercel Authentication / Standard-style deployment protection is enabled. **Public access to the short production alias must be tested in an unauthenticated browser**, and a Shareable Link used if necessary.
-- A successful deploy and JS tests do **not** establish full desktop/mobile functionality.
+Mars Atlas is a manual-first Jezero mission planner. Routes, waypoints, observations, mission backups and comparisons work independently of AI. Native HTML, CSS and JavaScript are deployed from main to Vercel. Local mission saves and JSON/GeoJSON exports are available without an account. Supabase supports cloud missions, revision history and access roles protected by RLS. Invitation matching by verified email does not dispatch an actual email or implement real-time coediting.
 
-## Present in source code
+The numerical CTX DEM clip and scientific calculations are independent of which visual NASA basemap is selected. Route analysis is modeled, not certified for a real rover or EVA.
 
-Manual-first route and waypoint editing, mission-local persistence and exports, Jezero NASA/USGS map resources, a 104×96 numeric CTX DEM clip, routing algorithms (A*, D* Lite, bounded Pareto), and exploratory terrain/science calculations.
+## Verified map renderer — 15 November 2026
 
-## Not yet established or implemented
+The old CTX beta01 visual mosaic was retired because its source images contained strips without data. Current image layers:
 
-- Account-based cloud libraries and role-based access are implemented and schema deployed, but email redirects and real-account tests still require verification. Live simultaneous editing is not implemented.
-- No independently documented complete browser smoke test of the newly migrated production URL.
-- No measured rover safety or certified EVA/hazard model; modeled outputs must be labeled.
-- No purchased domain yet.
-- NASA Space Apps 2026 **eligibility is not validated**; the new Git commit must not be mistaken for the actual dates of prior development.
+| Layer | Display | Highest verified source zoom |
+| --- | --- | --- |
+| Viking Global | continuous global context | 7 |
+| HiRISE Jezero | detailed local grayscale PNG imagery with alpha | 11 |
+| MOLA / HRSC Relief | monochrome shaded relief (not numeric elevation) | 7 |
 
-## Immediate priorities
+HiRISE selection at zoom 3–8 uses the Viking background. For zoom 9–11 the renderer maintains ONE continuous geographically aligned Viking background, at source zoom 7, and native 256px HiRISE PNGs in a separate overlay. This replaces the old algorithm which downloaded and enlarged Viking imagery independently inside every HiRISE tile.
 
-1. Run the [beta testing checklist](BETA_TESTING.md) from fresh desktop/mobile sessions.
-2. Confirm external access to the short production URL, then invite teammates to report reproducible defects.
-3. Fix actual high-severity bugs, performance and mobile accessibility issues before adding more research panels.
-4. Review the official challenge Resources and build/submission timing rules with the organizers; disclose previous code and tools accurately.
-5. Buy a domain only after the beta site works reliably.
+**Confirmed root cause:** A real Chromium network trace showed Viking zoom-8 tile requests returning HTTP 404 around Jezero. The same area at Viking zoom 7 returned 200. Our Viking maximum is now 7, including in the HiRISE fallback. Arrival of WMTS metadata no longer cancels requests already in flight.
 
-Historical V3–V9 research reports remain under `docs/` for reference; the instructions referring to retired branches/PR numbers in those documents are archival.
+**Browser QA:** GitHub Actions run https://github.com/KiyamaPaD/Mars-Atlas/actions/runs/43664589796 passed 167 Node tests and real Chromium image tests. At view zoom 8, 4/4 visible Viking tiles loaded. At view zoom 11, 2/2 Viking background tiles and 12/12 native HiRISE detail tiles loaded. No NASA HTTP failures, duplicate background requests during 11→7→8→11, or uncaught browser JS errors.
 
-## Cloud connection — November 2026
+**Pan QA:** https://github.com/KiyamaPaD/Mars-Atlas/actions/runs/43664904388 passed a 320px map drag at zoom 11 with 2/2 background and 12/12 detail tiles visible. Browser screenshots are available as GitHub run artifacts. Testing was on a locally served GitHub checkout with real NASA network requests, not the deployed production host.
 
-The dedicated Mars Atlas Supabase project (`yuvdrjptwumbfzjsimoe`) is active. Four tables have RLS policies for mission owners, editors and viewers. Database RLS and simulated email-invitation tests passed; the Auth advisor currently warns that leaked-password protection is disabled and simulated multi-user tests passed with full rollback. A public publishable key is configured in the frontend, but real-account cloud saving and email sharing still need end-to-end browser verification. MathHard was paused separately, without data migration or deletion.
+Details: [Map engine](MAP_ENGINE.md) and [Beta testing](BETA_TESTING.md).
 
-## Map and Analytics performance
+## Other implementation state and limitations
 
-Wheel zoom events are batched, canvas overlay updates are coalesced to animation frames, tile requests reuse verified formats and successful cached imagery, and failed tiles can be retried. Dragging a waypoint now persists its position and refreshes full analytics when the drag ends rather than for every pointer event. Analytics groups calculations into Overview, Terrain, Models and Mission, with data-source labels corrected. These are code-level fixes; measured browser performance and high-zoom coverage still require desktop/mobile testing.
+- Analytics navigation groups Overview, Terrain, Models and Mission.
+- Mission Center consolidates local autosave, checkpoints, cloud library and exports.
+- Supabase missions and sharing have RLS safeguards; simulated database access tests passed. Test full sharing from two real accounts independently.
+- No custom domain has been purchased. Validate the Vercel production URL in an unauthenticated browser.
+- NASA Space Apps challenge eligibility for pre-existing code is not established; changing Git commit history does not alter original development timing.
+- The Viking zoom-7 context appears increasingly soft beyond zoom 7. Where HiRISE has no coverage, high-resolution visual information is unavailable; do not invent Mars terrain to conceal it.
+- Additional browser/device QA is still needed for mobile GPU, long panning sessions and the full geographic footprint.
 
-## NASA map loading and gap recovery — November 2026
+## Next acceptance steps
 
-NASA WMTS GetCapabilities is consulted before initial tile requests, with a short timeout fallback to documented tile paths if metadata is unavailable. A failed or delayed tile can show a geographically aligned parent tile from up to two lower zoom levels until the detailed imagery becomes available. Tiles load only after attachment to the DOM, a working image format is preferred per zoom level without removing alternatives, and incomplete NASA coverage has a visible lower-resolution label. These are code and automated-test verified changes; real browser network traces and field visual QA remain necessary.
+Confirm the map in the user's desktop and mobile browser, then finish the overall product review. After the map is accepted, evaluate optional AI functionality and prepare the complete Mars Atlas technical handoff covering data, GitHub, Vercel, Supabase and testing. Do not mix documentation from unrelated projects.
 
-## Basemap source replacement
-
-Removed the old CTX beta01 image mosaic from the map. The default is now NASA Viking Global (native maximum zoom 8). HiRISE Jezero is offered as a local high-detail mode (zoom up to 10) with published geographic coverage and a Viking fallback for out-of-coverage map tiles. MOLA Relief remains separate. Mission routes, location calculations and the bundled numeric CTX DEM do not depend on which visual map layer is selected. Real-browser validation of HiRISE tile availability and appearance is still required.
-
-## HiRISE level 11
-
-Verified NASA HiRISE Jezero zoom 11 tile with HTTP 200 and native 256×256 PNG. Enabled zoom 11 on the dedicated HiRISE selection while preserving previous Viking and MOLA native zoom limits. Tested source URL and parent-grid crop math; still requires manual visual check on the live website.
-
-## Confirmed map bug and fix
-
-Real Chromium network trace revealed the source of the zoom 8–11 failures: Viking tiles requested at zoom 8 returned HTTP 404 across the Jezero viewport, whereas zoom-7 tiles were HTTP 200. The previous implementation assumed native Viking max 8 and magnified/retried those missing images in multiple places. Viking's verified native max is now set to 7. Shared lower-resolution Viking background tiles are cached once and never repeatedly requested per HiRISE tile; HiRISE zoom 9–11 remains available for real detailed coverage.
+Historical research reports elsewhere in docs are archives; this file describes the current implementation.

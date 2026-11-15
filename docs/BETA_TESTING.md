@@ -98,7 +98,7 @@ The default Viking Global layer supports zoom 3–7. The HiRISE Jezero layer sup
 
 - **Viking Global:** consistent color context for planet-wide exploration, default zoom 3–7
 - **HiRISE Jezero:** controlled Mars 2020 ortho mosaic (25 cm/pixel source), limited to its published geographic bounds; zoom 9–11 shows detail only where genuinely available
-- **MOLA Relief:** regional color hillshade, a separate visualization and not a substitute for numeric DEM measurements
+- **MOLA Relief:** regional monochrome MOLA/HRSC hillshade, a separate visualization and not a substitute for numeric DEM measurements
 
 The old Caltech CTX beta01 global image layer was removed from normal map selection because its native missing-data strips, striping and mismatched seams remain visible at multiple scales. A separate numerical CTX elevation clip in the Terrain panel is unaffected and remains a valid data source for its documented extent.
 
@@ -120,3 +120,7 @@ NASA Mars Trek responded with a real 256 × 256 HiRISE PNG at Jezero zoom 11 dur
 ## Native Viking coverage correction (Chromium verified)
 
 In a real browser test, all twelve visible Viking WMTS zoom-8 tiles over Jezero failed, while zoom-7 requests succeeded (NASA returned JPEG 256×256). Viking Global has been capped at zoom 7 accordingly. In HiRISE mode, the separate background reuses zoom-7 Viking imagery across zoom 8–11, with high-resolution transparent PNG imagery only where HiRISE data exists. Test 7 → 8 → 9 → 10 → 11 → 7 without blank map warnings. Background context above zoom 7 is enlarged and must not be mistaken for new surface detail.
+
+## Verified native browser map test
+
+The [zoom QA run](https://github.com/KiyamaPaD/Mars-Atlas/actions/runs/43664589796) and [panning QA run](https://github.com/KiyamaPaD/Mars-Atlas/actions/runs/43664904388) used headless Chromium with real NASA imagery. At HiRISE view zoom 8, the four visible Viking background tiles loaded; at zoom 11, two Viking and twelve HiRISE tiles loaded. No duplicate Viking downloads occurred on repeated zoom cycles, and a 320px pan preserved the map. Screenshots are available as workflow artifacts. The test ran against a locally served checkout rather than the production Vercel domain.
