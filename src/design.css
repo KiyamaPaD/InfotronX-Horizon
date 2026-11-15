@@ -2458,3 +2458,8 @@ a:not(.source-link):hover
 .route-flow { animation: route-flow 1.2s linear infinite; }
 @keyframes route-flow { to { stroke-dashoffset: -21; } }
 @media (prefers-reduced-motion: reduce) { .route-flow { animation: none; } }
+
+/* 3D: the panel scrolls inside the space above the compass, so the two never overlap */
+.map-3d-panel { max-height: calc(100% - 190px); overflow-y: auto; scrollbar-width: thin; }
+.map-3d-nav { bottom: 16px; }
+@media (max-height: 640px) { .map-3d-panel { max-height: calc(100% - 32px); } .map-3d-nav { display: none; } }
