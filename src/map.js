@@ -256,6 +256,23 @@ export class MarsMap
         this.activeTiles.clear();
         this.backgroundActiveTiles.clear();
         this.activeContextTiles.clear();
+
+        // If Viking failed just before switching basemaps, do not instantly request
+        // the same failing URLs as HiRISE backdrop. Honor the existing 16 s cooldown.
+        if (id === "hirise" && this.layer.id === "viking")
+        {
+            this.vikingFailures ??= new Map();
+
+            for (const [key, tile] of this.tiles)
+            {
+                if (key.startsWith("viking-") && tile.dataset.state === "error")
+                {
+                    this.vikingFailures.set(key.slice("viking-".length),
+                        Number(tile.dataset.failedAt) || Date.now());
+                }
+            }
+        }
+
         clearTimeout(this.highDetailRecoveryTimer);
         this.highDetailRecoveryTimer = null;
         this.highDetailFailures?.clear();
@@ -480,35 +497,34 @@ export class MarsMap
         this.options.onMapClick?.(this.screenToGeo(event.clientX, event.clientY), this.mode);
     }
 
-    // Viking tiles are reused as the HiRISE backdrop; a detached image keeps an in-flight request alive so the browser
-    // serves the backdrop from its memory cache instead of aborting and downloading the same tile again.
+    // Transfer the actual image, not a new Image(src) clone. A second Image would generate
+    // a simultaneous request under NASA errors and can double HTTP traffic.
     keepVikingRequest(image)
     {
-        if (typeof Image === "undefined")
+        if (this.layer.id !== "hirise")
         {
-            return;
+            return false;
         }
 
         const url = image.getAttribute?.("src") ?? image.src;
         const viking = MAP_LAYERS.find(item => item.id === "viking");
 
-        if (!url || image.complete || !url.includes(viking.dataset))
+        if (!url || !url.includes(viking.dataset) || image.complete && image.naturalWidth < 240)
         {
-            return;
+            return false;
         }
 
-        this.vikingKeepers ??= new Set();
+        this.vikingKeepers ??= new Map();
 
         if (this.vikingKeepers.size >= 48)
         {
-            return;
+            return false;
         }
 
-        const keeper = new Image();
-        keeper.decoding = "async";
-        keeper.onload = keeper.onerror = () => this.vikingKeepers.delete(keeper);
-        keeper.src = url;
-        this.vikingKeepers.add(keeper);
+        image.onload = null;
+        image.onerror = null;
+        this.vikingKeepers.set(url, image);
+        return true;
     }
 
     releaseTile(tile)
@@ -812,8 +828,13 @@ export class MarsMap
             detail.onerror = null;
             preview.onload = null;
             preview.onerror = null;
-            this.keepVikingRequest(detail);
-            detail.removeAttribute("src");
+            const retained = this.keepVikingRequest(detail);
+
+            if (!retained)
+            {
+                detail.removeAttribute("src");
+            }
+
             preview.removeAttribute("src");
         };
 
@@ -823,15 +844,23 @@ export class MarsMap
     createBackgroundTile(x, y, zoom)
     {
         const source = MAP_LAYERS.find(item => item.id === "viking");
-        const tile = document.createElement("img");
+        const candidates = this.tileCandidates(x, y, zoom, source);
+        const retainedUrl = candidates.find(url => this.vikingKeepers?.has(url));
+        const retained = retainedUrl ? this.vikingKeepers.get(retainedUrl) : null;
+
+        if (retainedUrl)
+        {
+            this.vikingKeepers.delete(retainedUrl);
+        }
+
+        const tile = retained || document.createElement("img");
         tile.className = "map-background-tile";
         tile.alt = "";
         tile.draggable = false;
         tile.decoding = "async";
         tile.dataset.state = "loading";
         tile.style.opacity = "0";
-        const candidates = this.tileCandidates(x, y, zoom, source);
-        let attempt = 0;
+        let attempt = retainedUrl ? candidates.indexOf(retainedUrl) : 0;
         let disposed = false;
 
         const report = () =>
@@ -878,13 +907,34 @@ export class MarsMap
             }
 
             tile.dataset.state = "loaded";
+            this.vikingFailures?.delete(zoom + "-" + x + "-" + y);
             tile.style.opacity = "1";
             report();
             this.onTileOutcome(true);
         };
 
         tile.onerror = next;
-        tile.startLoading = () => { tile.src = candidates[0]; };
+        tile.startLoading = () =>
+        {
+            if (retained)
+            {
+                if (tile.complete)
+                {
+                    if (tile.naturalWidth >= 240 && tile.naturalHeight >= 240)
+                    {
+                        tile.onload();
+                    }
+                    else
+                    {
+                        tile.onerror();
+                    }
+                }
+
+                return;
+            }
+
+            tile.src = candidates[0];
+        };
         tile.dispose = () =>
         {
             disposed = true;
@@ -937,7 +987,17 @@ export class MarsMap
                     tile = this.createBackgroundTile(x, y, level);
                     this.backgroundTiles.set(key, tile);
                     this.backgroundTileContainer.appendChild(tile);
-                    tile.startLoading();
+                    const recentFailure = this.vikingFailures?.get(key) || 0;
+
+                    if (recentFailure && Date.now() - recentFailure < 16000)
+                    {
+                        tile.dataset.state = "error";
+                        tile.dataset.failedAt = String(recentFailure);
+                    }
+                    else
+                    {
+                        tile.startLoading();
+                    }
                 }
 
                 tile.style.left = Math.round(x * size - center.x + width / 2) + "px";
