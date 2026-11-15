@@ -4,6 +4,7 @@
 import { loadJezeroDem } from "./bundled-dem.js";
 import { MAP_LAYERS, JEZERO_CTX_CONTEXT } from "./constants.js";
 import { addSpaceDecor } from "./space-decor.js";
+import { lowPower, createGovernor } from "./perf.js";
 
 const R = 3396190;
 const THREE_URL = "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
@@ -142,7 +143,7 @@ async function craterTexture(THREE, maxSize, anisotropy, onProgress)
     const bounds = CRATER_BOUNDS;
     const canvas = document.createElement("canvas");
     const aspect = (bounds.north - bounds.south) / ((bounds.east - bounds.west) * Math.cos(18.45 * Math.PI / 180));
-    canvas.width = Math.min(maxSize, 3072);
+    canvas.width = Math.min(maxSize, lowPower() ? 2048 : 3072);
     canvas.height = Math.round(canvas.width * aspect);
     const context = canvas.getContext("2d");
     context.fillStyle = "#3a2b26";
@@ -270,6 +271,10 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
     let disposed = false;
     let renderer = null;
     let hud = null;
+    let decorHandle = null;
+    let skipFrames = false;
+    let frameToggle = false;
+    const light = lowPower();
     let scene = null;
     let session = 0;
 
@@ -411,10 +416,30 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
             renderer.setViewport(0, 0, width, height);
         };
 
-        buildHud();
+        if (!light) buildHud();
         const tickers = new Set();
+        // If frames stay slow, drop the decoration first (level 1), then the extra animation (level 2).
+        const governor = createGovernor(level =>
+        {
+            renderer.setPixelRatio(1);
+            resize();
+            decorHandle?.setVisible(false);
+            hud = null;
+
+            if (level >= 2)
+            {
+                tickers.clear();
+                controls.autoRotate = false;
+                get("spin").setAttribute("aria-pressed", "false");
+                skipFrames = true;
+            }
+
+            status.textContent = "Effects reduced to keep the view smooth.";
+        });
         renderer.setAnimationLoop(now =>
         {
+            if (skipFrames && (frameToggle = !frameToggle)) return;
+            governor.tick(now);
             controls.update();
             for (const tick of tickers) tick(now);
             renderer.clear();
@@ -481,8 +506,12 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
             controls.maxDistance = spanX * 3;
 
             // Faded space around the little planet: stars, other planets, shooting stars, satellites and a rocket.
-            const decor = addSpaceDecor(THREE, scene, { radius: spanX, center: new THREE.Vector3(0, -spanX, 0), reduced: reducedMotion() });
-            tickers.add(now => decor.update(now));
+            if (!light)
+            {
+                decorHandle = addSpaceDecor(THREE, scene, { radius: spanX, center: new THREE.Vector3(0, -spanX, 0), reduced: reducedMotion() });
+                tickers.add(now => decorHandle.update(now));
+            }
+
             // The Sun and two moons, plus dust on the wind.
             const sunDirection = sun.position.clone().normalize();
             const skySun = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(THREE, [[0, "rgba(255,255,255,1)"], [0.1, "rgba(255,236,190,.95)"], [0.3, "rgba(255,170,90,.35)"], [1, "rgba(255,110,50,0)"]]), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, fog: false }));
@@ -567,7 +596,7 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
                 body.quaternion.setFromRotationMatrix(target.multiply(local.transpose()));
             }
             // Real Viking colour for the whole planet, with MOLA relief shading as bumps (sharper than the old flat colour).
-            Promise.all([globalMosaic(VIKING_URL, 3), globalMosaic(MOLA_SHADE_URL, 2)]).then(([colour, relief]) =>
+            Promise.all([globalMosaic(VIKING_URL, light ? 2 : 3), globalMosaic(MOLA_SHADE_URL, light ? 1 : 2)]).then(([colour, relief]) =>
             {
                 if (disposed || id !== session) return;
                 const map = new THREE.CanvasTexture(colour);

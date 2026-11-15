@@ -70,6 +70,8 @@ function earthTexture(THREE)
 
 export function addSpaceDecor(THREE, scene, { radius, center, reduced = false, fade = 0.5 })
 {
+    const root = new THREE.Group();
+    scene.add(root);
     const glowTexture = glow(THREE, [[0, "rgba(255,255,255,1)"], [0.4, "rgba(255,255,255,.35)"], [1, "rgba(255,255,255,0)"]]);
     const sprite = (colour, size, opacity = 1) =>
     {
@@ -91,13 +93,13 @@ export function addSpaceDecor(THREE, scene, { radius, center, reduced = false, f
     const starGeometry = new THREE.BufferGeometry();
     starGeometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
     const stars = new THREE.Points(starGeometry, new THREE.PointsMaterial({ color: 0xdfe8ff, size: radius * 0.035, sizeAttenuation: true, transparent: true, opacity: 0.9 * fade, depthWrite: false, fog: false }));
-    scene.add(stars);
+    root.add(stars);
 
     for (const [colour, x, y, z] of [[0x5a4a9a, -8, 5, -9], [0x2a6a8a, 9, -3, -8], [0x9a4a3a, 2, 7, 9]])
     {
         const cloud = sprite(colour, radius * 12, 0.07 * fade * 2);
         cloud.position.set(x * radius, y * radius, z * radius);
-        scene.add(cloud);
+        root.add(cloud);
     }
 
     // Distant planets, each turning slowly.
@@ -107,7 +109,7 @@ export function addSpaceDecor(THREE, scene, { radius, center, reduced = false, f
     {
         const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius * size, 48, 32), material);
         mesh.position.set(...direction).normalize().multiplyScalar(radius * distance);
-        scene.add(mesh);
+        root.add(mesh);
         planets.push({ mesh, spin, home: mesh.position.clone() });
         return mesh;
     };
@@ -143,7 +145,7 @@ export function addSpaceDecor(THREE, scene, { radius, center, reduced = false, f
         const geometry = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
         const line = new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: 0xffe9d0, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
         line.frustumCulled = false;
-        scene.add(line);
+        root.add(line);
         return { line, geometry, life: 0, wait: 1 + Math.random() * 5, start: new THREE.Vector3(), direction: new THREE.Vector3() };
     });
 
@@ -183,7 +185,7 @@ export function addSpaceDecor(THREE, scene, { radius, center, reduced = false, f
             holder.add(satellite);
             return satellite;
         });
-        scene.add(holder);
+        root.add(holder);
         orbits.push({ holder, satellites, speed });
     };
     addOrbit(radius * 1.3, 0.55, 5, radius * 0.04, 0.09, 0xff7a5c);
@@ -202,8 +204,8 @@ export function addSpaceDecor(THREE, scene, { radius, center, reduced = false, f
     rocket.add(flame);
     rocket.scale.setScalar(radius * 0.22);
     rocket.visible = false;
-    scene.add(rocket);
-    const trail = Array.from({ length: 30 }, () => { const item = sprite(0xffb070, 0.1, 0); item.visible = false; scene.add(item); return { item, life: 0 }; });
+    root.add(rocket);
+    const trail = Array.from({ length: 30 }, () => { const item = sprite(0xffb070, 0.1, 0); item.visible = false; root.add(item); return { item, life: 0 }; });
     const flight = { t: -1, wait: 3, emitted: 0, next: 0 };
     const flightPoint = (t, target) =>
     {
@@ -214,11 +216,12 @@ export function addSpaceDecor(THREE, scene, { radius, center, reduced = false, f
     let previous = 0;
 
     return {
+        setVisible(visible) { root.visible = visible; },
         update(now)
         {
             const delta = Math.min(0.05, (now - previous) / 1000);
             previous = now;
-            if (reduced) return;
+            if (reduced || !root.visible) return;
             const time = now / 1000;
             stars.rotation.y = time * 0.004;
 

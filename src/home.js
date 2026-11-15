@@ -1,6 +1,7 @@
 // Welcome screen: a 3D Mars with its Sun, two moons and the Jezero landing site, then a short introduction.
 // The globe is wrapped in the real Viking colour mosaic with MOLA relief shading from NASA Trek; a procedural surface is the offline fallback.
 import { MAP_LAYERS } from "./constants.js";
+import { lowPower, createGovernor } from "./perf.js";
 
 const VIKING_TILES = MAP_LAYERS.find(layer => layer.id === "viking").url + "/default/default028mm/";
 const MOLA_TILES = MAP_LAYERS.find(layer => layer.id === "mola").url + "/default/default028mm/";
@@ -443,7 +444,8 @@ export function mountHome({ onStart, onDemo, onTour } = {})
     {
         if (state.disposed) return;
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+        const light = lowPower();
+        renderer.setPixelRatio(light ? 1 : Math.min(devicePixelRatio, 1.5));
         renderer.outputColorSpace = THREE.SRGBColorSpace;
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
         renderer.toneMappingExposure = 1.05;
@@ -480,9 +482,9 @@ export function mountHome({ onStart, onDemo, onTour } = {})
         };
         // Quick low-resolution globe first, then the sharp one; if NASA Trek cannot be reached, a painted surface is used.
         tileMosaic(VIKING_TILES, 1)
-            .then(preview => { applySurface(preview, null, 0); return Promise.all([tileMosaic(VIKING_TILES, 3), tileMosaic(MOLA_TILES, 2)]); })
+            .then(preview => { applySurface(preview, null, 0); return Promise.all([tileMosaic(VIKING_TILES, light ? 2 : 3), tileMosaic(MOLA_TILES, light ? 1 : 2)]); })
             .then(([colour, relief]) => applySurface(colour, relief, 0.05))
-            .catch(() => marsTextures(1280, 640).then(({ colour, bump }) => applySurface(colour, bump, 0.1)));
+            .catch(() => marsTextures(light ? 768 : 1280, light ? 384 : 640).then(({ colour, bump }) => applySurface(colour, bump, 0.1)));
         tilt.add(mars);
 
         const atmosphere = new THREE.Mesh(new THREE.SphereGeometry(2.22, 96, 64), new THREE.ShaderMaterial({
@@ -601,7 +603,8 @@ export function mountHome({ onStart, onDemo, onTour } = {})
         for (let i = 0; i < dustCount; i++) dustPositions.set([(Math.random() - 0.5) * 18, (Math.random() - 0.5) * 9, Math.random() * 6 - 1], i * 3);
         const dustGeometry = new THREE.BufferGeometry();
         dustGeometry.setAttribute("position", new THREE.BufferAttribute(dustPositions, 3));
-        scene.add(new THREE.Points(dustGeometry, new THREE.PointsMaterial({ color: 0xffb890, size: 0.035, transparent: true, opacity: 0.38, depthWrite: false })));
+        const dustPoints = new THREE.Points(dustGeometry, new THREE.PointsMaterial({ color: 0xffb890, size: 0.035, transparent: true, opacity: 0.38, depthWrite: false }));
+        scene.add(dustPoints);
 
         // Occasional shooting stars.
         const meteors = Array.from({ length: 2 }, () =>
@@ -739,12 +742,27 @@ export function mountHome({ onStart, onDemo, onTour } = {})
         const clock = new THREE.Clock();
         root.classList.add("has-webgl");
         let last = performance.now();
+        // On a slow computer the extras go first: clouds, dust, satellites, shooting stars and the rocket.
+        const lighten = () =>
+        {
+            renderer.setPixelRatio(1);
+            resize();
+            clouds.visible = false;
+            dustPoints.visible = false;
+            [orbiterOrbit, satelliteRing, relayOrbit, ...smallOrbits.map(item => item.holder)].forEach(group => { group.visible = false; });
+            meteors.forEach(meteor => { meteor.wait = 1e9; meteor.line.visible = false; });
+            flight.wait = 1e9;
+            rocket.visible = false;
+        };
+        if (light) lighten();
+        const governor = createGovernor(() => lighten());
 
         const frame = now =>
         {
             if (state.disposed) return;
             requestAnimationFrame(frame);
             if (document.hidden || (scrollProgress > 0.97 && !state.dive)) return;
+            governor.tick(now);
             const delta = Math.min(0.05, (now - last) / 1000);
             last = now;
             const time = clock.getElapsedTime();
