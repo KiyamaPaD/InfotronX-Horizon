@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { MarsMap } from "../src/map.js";
 import { MissionStore } from "../src/store.js";
-import { JEZERO, MAP_LAYERS } from "../src/constants.js";
+import { JEZERO, JEZERO_CTX_CONTEXT, MAP_LAYERS } from "../src/constants.js";
 import { project } from "../src/geo.js";
 
 test("rapid wheel events result in one bounded zoom change", async () =>
@@ -309,6 +309,7 @@ test("native useful zoom limits avoid enlarging regional relief imagery", () =>
     map.tiles = new Map();
     map.activeTiles = new Set();
     map.backgroundActiveTiles = new Set();
+    map.activeContextTiles = new Set();
     map.capabilityRequest = 0;
     map.tileContainer = { replaceChildren() {} };
     map.notice = { hidden: false, textContent: "" };
@@ -647,6 +648,10 @@ function activeHiRISEMap()
     map.backgroundActiveTiles = new Set();
     map.backgroundTileCacheLimit = 24;
     map.backgroundTileContainer = { style: {}, appendChild() {} };
+    map.contextTiles = new Map();
+    map.activeContextTiles = new Set();
+    map.contextTileCacheLimit = 84;
+    map.contextTileContainer = { style: {}, appendChild() {} };
     map.tileContainer = { appendChild() {} };
     map.container = { classList: { toggle() {} } };
     map.notice = { classList: { remove() {} }, hidden: false, textContent: "" };
@@ -706,7 +711,7 @@ test("zoom 11 → 10 → 11 reuses the same Viking backdrop without new download
     });
 });
 
-test("HiRISE zoom 8 uses verified Viking zoom 7 imagery without HiRISE downloads", () =>
+test("HiRISE zoom 8 uses native Jezero CTX over the Viking background", () =>
 {
     withFakeTiles(requests =>
     {
@@ -716,8 +721,10 @@ test("HiRISE zoom 8 uses verified Viking zoom 7 imagery without HiRISE downloads
 
         assert.equal(map.activeTiles.size, 0);
         assert.ok(map.backgroundActiveTiles.size > 0);
-        assert.ok(requests.every(item => item.name === "map-background-tile"));
-        assert.ok(requests.every(item => /\/7\/\d+\/\d+\.jpg$/.test(item.url)));
+        assert.ok(map.activeContextTiles.size > 0);
+        assert.ok(requests.every(item => item.name !== "map-hires-tile"));
+        assert.ok(requests.filter(item => item.name === "map-background-tile").every(item => /\/7\/\d+\/\d+\.jpg$/.test(item.url)));
+        assert.ok(requests.filter(item => item.name === "map-context-tile").every(item => /JEZ_ctx_B_soc_008_orthoMosaic_6m/.test(item.url)));
     });
 });
 
@@ -755,4 +762,75 @@ test("Viking stops at confirmed native zoom 7; HiRISE never requests missing Vik
         assert.ok(vikingRequests.length > 0);
         assert.ok(vikingRequests.every(item => /\/7\/\d+\/\d+\.jpg$/.test(item.url)));
     });
+});
+
+
+test("NASA controlled CTX native context is available at both screenshot coordinates and all high zooms", () =>
+{
+    const layer = JEZERO_CTX_CONTEXT;
+    const map = activeHiRISEMap();
+    assert.deepEqual(layer.extensions, ["png"]);
+    assert.equal(layer.maxUsefulZoom, 11);
+    assert.ok(!MAP_LAYERS.some(item => item.id === layer.id));
+
+    for (const zoom of [8, 9, 10, 11])
+    {
+        const point = { lat: 18.39862, lon: 77.57575 };
+        const x = Math.floor((point.lon + 180) / 360 * 2 ** (zoom + 1));
+        const y = Math.floor((90 - point.lat) / 180 * 2 ** zoom);
+
+        assert.equal(map.tileIntersectsCoverage(layer.coverage, zoom, x, y), true);
+        assert.match(map.tileCandidates(x, y, zoom, layer)[0], new RegExp("/" + zoom + "/\\d+/\\d+\\.png$"));
+    }
+});
+
+test("the CTX grid is cached independently, aligned and not re-downloaded on rerenders", () =>
+{
+    withFakeTiles(requests =>
+    {
+        const map = activeHiRISEMap();
+        map.renderHiRISETiles(760, 420, project(map.center, 11));
+
+        const viking = requests.filter(item => item.name === "map-background-tile");
+        const context = requests.filter(item => item.name === "map-context-tile");
+        const hirise = requests.filter(item => item.name === "map-hires-tile");
+
+        assert.ok(viking.length >= 1 && viking.length <= 4);
+        assert.ok(context.length >= 6);
+        assert.ok(hirise.length >= 6);
+        assert.ok(context.every(item => /JEZ_ctx_B_soc_008_orthoMosaic_6m/.test(item.url)));
+        assert.ok(context.every(item => /\/11\/\d+\/\d+\.png$/.test(item.url)));
+
+        const count = requests.length;
+        map.renderHiRISETiles(760, 420, project(map.center, 11));
+        assert.equal(requests.length, count);
+        assert.ok([...map.contextTiles.values()].every(tile => tile.style.width === undefined));
+    });
+});
+
+test("CTX and HiRISE don't trigger image requests outside their geographic footprints", () =>
+{
+    withFakeTiles(requests =>
+    {
+        const map = activeHiRISEMap();
+        map.center = { lat: 18.4, lon: 76.8 };
+        map.zoom = 10;
+        map.renderHiRISETiles(720, 400, project(map.center, map.zoom));
+
+        assert.equal(map.activeContextTiles.size, 0);
+        assert.equal(map.activeTiles.size, 0);
+        assert.ok(requests.length > 0);
+        assert.ok(requests.every(item => item.name === "map-background-tile"));
+    });
+});
+
+test("Viking, controlled CTX and HiRISE layers render in scientific-resolution order", () =>
+{
+    const source = readFileSync(new URL("../src/map.js", import.meta.url), "utf8");
+    const viking = source.indexOf('<div class="map-background-tiles"></div>');
+    const context = source.indexOf('<div class="map-context-tiles"></div>');
+    const hirise = source.indexOf('<div class="map-tiles"></div>');
+    const routes = source.indexOf('<svg class="map-overlays"');
+
+    assert.ok(viking >= 0 && viking < context && context < hirise && hirise < routes);
 });
