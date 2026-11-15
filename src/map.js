@@ -1237,7 +1237,10 @@ export class MarsMap
         }
 
         const center = project(this.center, this.zoom);
-        this.container.dataset.mapZoom = String(this.zoom);
+        if (this.container.dataset)
+        {
+            this.container.dataset.mapZoom = String(this.zoom);
+        }
 
         if (this.layer.id === "hirise")
         {
