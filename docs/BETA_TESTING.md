@@ -13,7 +13,7 @@ Record the **device, browser/version, screen width, site URL, and date**. Prefer
 ## Essential test path
 
 - [ ] **Start:** Home page loads without errors or a forced login. Layout and buttons are legible.
-- [ ] **Explore Jezero:** Pan and zoom the map. Switch NASA imagery between CTX, MOLA and Viking. Note blank tiles, network warnings or slow loading.
+- [ ] **Explore Jezero:** Pan and zoom the map. Switch NASA imagery between Viking Global, HiRISE Jezero and MOLA Relief. Note blank tiles, network warnings or slow loading.
 - [ ] **Manual-first:** Create a mission and route **without AI**. Add at least two waypoints. Drag/move one; edit coordinates if available; reorder or delete another.
 - [ ] **Planning:** Compare alternative routes. Check that recalculation completes and any selected route remains manually editable.
 - [ ] **What-if:** Add or change a hypothetical no-go zone and replan. Confirm it is presented as a scenario, not a measured hazard.
@@ -74,7 +74,7 @@ The top bar's **Mission Center** groups three areas: **On device** (saved missio
 - [ ] Reload and sign in again to check the cloud mission can be opened from a separate session.
 - [ ] Create and restore a checkpoint from **On device**; check that its data survives a reload.
 - [ ] Export a JSON backup and create a shareable link from **Share & export**.
-- [ ] At the maximum available CTX zoom (10), verify the map remains stable with no oversized pixel tiles. Switch to MOLA and Viking, whose native imagery has lower resolution; verify the app avoids falsely implying zoomed-in detail.
+- [ ] At Viking zoom 3–8, verify continuous global imagery. Switch to HiRISE Jezero and zoom to 9–10 near the crater; outside its footprint, confirm Viking fallback is labelled and not presented as HiRISE detail.
 
 ## RLS cloud save regression
 
@@ -84,16 +84,22 @@ The live SQL SELECT policy was updated to permit owners to read a mission row du
 
 Email sharing matches the exact confirmed email of a **Mars Atlas account**. An invitation to an address without a confirmed account appears as pending, even if someone is signed into a different address. It does **not** send an actual email; the owner can use **Copy invite** and deliver the instructions to the intended teammate, or cancel an incorrect pending address.
 
-For the current public CTX basemap, the maximum supported zoom is **10**. Level 11 was removed after failed tile loading during beta testing. NASA basemap tile coverage varies by region and native resolution. Do not request zoom 11 or treat enlarged fallback imagery as fresh surface detail. MOLA and Viking retain their lower useful zoom limits.
+The default Viking Global layer supports zoom 3–8. The HiRISE Jezero layer supports zoom 9–10 within its mapped footprint (approximately 77.223–77.584° E, 18.307–18.669° N); Viking remains visible where HiRISE has no imagery. NASA basemap tile coverage varies; never present resampled lower-resolution context as new surface detail. MOLA and Viking retain their lower useful zoom limits.
 
 ## Mars map loading stress test
 
-- [ ] Hard-refresh the site on a clean browser profile. At initial CTX zoom 10, no permanent solid-color squares should appear while images load.
-- [ ] Repeatedly zoom 10 → 9 → 10 and pan across Jezero. Images may temporarily use authentic lower-resolution NASA preview tiles. Check that the route overlays stay aligned and no blank gaps persist where parent tiles exist.
+- [ ] Hard-refresh the site on a clean browser profile. At initial Viking zoom 8, no black CTX strips or permanently empty tiles should appear.
+- [ ] Select HiRISE Jezero, then repeatedly zoom 8 → 9 → 10 → 9 while panning around Jezero. Images may temporarily use authentic lower-resolution Viking previews. Check that the route overlays stay aligned and no blank gaps persist where parent tiles exist.
 - [ ] With network throttling (or intermittent connectivity), verify that a missing detail tile retains a correctly cropped lower-zoom preview and its resolution is clearly disclosed.
-- [ ] Switch to MOLA and Viking; inspect positions, attribution, mobile map controls and gaps.
+- [ ] Switch to Viking Global and MOLA Relief; inspect positions, attribution, mobile map controls and gaps.
 - [ ] Report any persistent tile holes with layer, zoom, latitude/longitude from the map, browser and screenshot. NASA data gaps cannot be filled with invented imagery.
 
-## Global overview imagery
+## NASA basemap provenance and coverage
 
-The legacy CTX beta01 global mosaic contains genuine no-data strips that are visible at planet-scale zoom. To keep the map readable, **CTX selection uses NASA Viking global mosaic at zoom 3–4**, with the image-source badge identifying **Viking Overview**. CTX returns at zoom 5–10. MOLA and explicit Viking selection remain unchanged. Verify that transitioning zoom 4 ↔ 5 changes source cleanly without shifting coordinates or route overlays. Neither source represents a certified terrain-hazard map.
+- **Viking Global:** consistent color context for planet-wide exploration, default zoom 3–8
+- **HiRISE Jezero:** controlled Mars 2020 ortho mosaic (25 cm/pixel source), limited to its published geographic bounds; zoom 9–10 shows detail only where genuinely available
+- **MOLA Relief:** regional color hillshade, a separate visualization and not a substitute for numeric DEM measurements
+
+The old Caltech CTX beta01 global image layer was removed from normal map selection because its native missing-data strips, striping and mismatched seams remain visible at multiple scales. A separate numerical CTX elevation clip in the Terrain panel is unaffected and remains a valid data source for its documented extent.
+
+When selecting HiRISE at zoom 9–10, image tiles outside the local mosaic coverage show cropped Viking context instead. Check that source attribution updates after panning and that point coordinates and routes do not move when basemaps change. Do not expect native high-resolution imagery in regions beyond HiRISE's coverage.

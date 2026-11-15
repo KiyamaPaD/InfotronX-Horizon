@@ -46,3 +46,7 @@ Wheel zoom events are batched, canvas overlay updates are coalesced to animation
 ## NASA map loading and gap recovery — November 2026
 
 NASA WMTS GetCapabilities is consulted before initial tile requests, with a short timeout fallback to documented tile paths if metadata is unavailable. A failed or delayed tile can show a geographically aligned parent tile from up to two lower zoom levels until the detailed imagery becomes available. Tiles load only after attachment to the DOM, a working image format is preferred per zoom level without removing alternatives, and incomplete NASA coverage has a visible lower-resolution label. These are code and automated-test verified changes; real browser network traces and field visual QA remain necessary.
+
+## Basemap source replacement
+
+Removed the old CTX beta01 image mosaic from the map. The default is now NASA Viking Global (native maximum zoom 8). HiRISE Jezero is offered as a local high-detail mode (zoom up to 10) with published geographic coverage and a Viking fallback for out-of-coverage map tiles. MOLA Relief remains separate. Mission routes, location calculations and the bundled numeric CTX DEM do not depend on which visual map layer is selected. Real-browser validation of HiRISE tile availability and appearance is still required.
