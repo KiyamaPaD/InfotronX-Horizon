@@ -264,9 +264,32 @@ function renderLayers()
 function renderWaypoints()
 {
     get("#point-summary").textContent = `${store.activeRoute.points.length} PLACED`;
-    get("#waypoint-list").innerHTML = store.activeRoute.points.length ? store.activeRoute.points.map((point, index) => `<div class="waypoint-row"><span class="waypoint-index">${String(index + 1).padStart(2, "0")}</span><div class="waypoint-coordinates"><strong>${safe(waypointLabel(point, index))}</strong><small>${safe(categoryLabel(point.category))} · ${formatCoordinate(point.lat, "lat")} · ${formatCoordinate(point.lon, "lon")}</small></div><button class="edit-point-btn point-order-btn" title="Move waypoint earlier" aria-label="Move waypoint earlier" data-move-point="${safe(point.id)}" data-point-direction="-1" ${index === 0 ? "disabled" : ""}>↑</button><button class="edit-point-btn point-order-btn" title="Move waypoint later" aria-label="Move waypoint later" data-move-point="${safe(point.id)}" data-point-direction="1" ${index === store.activeRoute.points.length - 1 ? "disabled" : ""}>↓</button><select class="marker-icon-select" data-point-icon="${safe(point.id)}" title="Change marker icon" aria-label="Change waypoint ${index + 1} marker icon">${MARKER_ICONS.map(icon => `<option value="${icon.id}" ${normalizeMarkerIcon(point.icon) === icon.id ? "selected" : ""}>${icon.symbol} ${icon.label}</option>`).join("")}</select><button class="edit-point-btn" title="Edit exact coordinates" aria-label="Edit exact coordinates" data-edit-point="${safe(point.id)}">Edit</button><button class="remove-btn" title="Delete waypoint" aria-label="Delete waypoint" data-delete-point="${safe(point.id)}">×</button></div>`).join("") : `<div class="empty-inline">Draw your first waypoint on the map.</div>`;
-}
+    get("#waypoint-list").innerHTML = store.activeRoute.points.length ? store.activeRoute.points.map((point, index) =>
+    {
+        const name = waypointLabel(point, index);
+        const coordinates = `${formatCoordinate(point.lat, "lat")} · ${formatCoordinate(point.lon, "lon")}`;
 
+        return `<article class="waypoint-row" data-waypoint-row="${safe(point.id)}">
+            <div class="waypoint-main">
+                <span class="waypoint-index">${String(index + 1).padStart(2, "0")}</span>
+                <div class="waypoint-coordinates">
+                    <strong title="${safe(name)}">${safe(name)}</strong>
+                    <small>${safe(categoryLabel(point.category))}</small>
+                    <span class="waypoint-location" title="${safe(coordinates)}">${safe(coordinates)}</span>
+                </div>
+            </div>
+            <div class="waypoint-actions" aria-label="Actions for ${safe(name)}">
+                <button class="edit-point-btn point-order-btn" title="Move waypoint earlier" aria-label="Move waypoint earlier" data-move-point="${safe(point.id)}" data-point-direction="-1" ${index === 0 ? "disabled" : ""}>↑</button>
+                <button class="edit-point-btn point-order-btn" title="Move waypoint later" aria-label="Move waypoint later" data-move-point="${safe(point.id)}" data-point-direction="1" ${index === store.activeRoute.points.length - 1 ? "disabled" : ""}>↓</button>
+                <select class="marker-icon-select" data-point-icon="${safe(point.id)}" title="Change marker icon" aria-label="Change ${safe(name)} icon">
+                    ${MARKER_ICONS.map(icon => `<option value="${icon.id}" ${normalizeMarkerIcon(point.icon) === icon.id ? "selected" : ""}>${icon.symbol} ${icon.label}</option>`).join("")}
+                </select>
+                <button class="edit-point-btn waypoint-edit" title="Edit waypoint details" aria-label="Edit ${safe(name)}" data-edit-point="${safe(point.id)}">Edit</button>
+                <button class="remove-btn" title="Delete waypoint" aria-label="Delete ${safe(name)}" data-delete-point="${safe(point.id)}">×</button>
+            </div>
+        </article>`;
+    }).join("") : `<div class="empty-inline">Draw your first waypoint on the map.</div>`;
+}
 function renderObservations()
 {
     get("#observation-list").innerHTML = store.current.observations.length ? store.current.observations.map(observation => `<div class="note-card"><div class="note-head"><strong>${safe(observation.title)}</strong><button class="edit-point-btn" data-edit-observation="${safe(observation.id)}" title="Edit observation" aria-label="Edit observation">Edit</button><select class="marker-icon-select" data-observation-icon="${safe(observation.id)}" title="Change observation icon" aria-label="Change observation marker icon">${MARKER_ICONS.map(icon => `<option value="${icon.id}" ${normalizeMarkerIcon(observation.icon || "diamond") === icon.id ? "selected" : ""}>${icon.symbol} ${icon.label}</option>`).join("")}</select><button class="remove-btn" title="Delete note" aria-label="Delete note" data-delete-observation="${safe(observation.id)}">×</button></div><p>${safe(observation.note || "No details provided.")}</p><small>${formatCoordinate(observation.lat, "lat")} · ${formatCoordinate(observation.lon, "lon")}</small><div class="note-origin">${safe(observation.source)} · USER-REPORTED / UNVERIFIED</div><button class="btn btn-outline note-waypoint" data-observation-waypoint="${safe(observation.id)}" title="Append this observation to the active route">＋ Use as waypoint</button></div>`).join("") : `<div class="empty-inline">No observations yet. Mark something worth investigating.</div>`;

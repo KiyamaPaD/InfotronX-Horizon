@@ -1094,3 +1094,114 @@
     margin-right:auto;
     color:#ffb5ab;
 }
+
+/* Layout QA 2026-11: do not force seven controls into one narrow line. */
+#waypoint-list
+{
+    max-height:min(440px,55vh);
+    scrollbar-gutter:stable;
+    overflow-x:hidden;
+}
+#waypoint-list .waypoint-row
+{
+    display:grid;
+    grid-template-columns:minmax(0,1fr);
+    gap:10px;
+    padding:14px 0;
+    width:100%;
+    min-width:0;
+    border-bottom:1px solid #2a3c49;
+}
+#waypoint-list .waypoint-main
+{
+    display:grid;
+    grid-template-columns:28px minmax(0,1fr);
+    gap:10px;
+    align-items:start;
+    min-width:0;
+}
+#waypoint-list .waypoint-index
+{
+    flex:none;
+    width:auto;
+    padding-top:2px;
+    font-weight:800;
+    font-size:12px;
+}
+#waypoint-list .waypoint-coordinates
+{
+    min-width:0;
+    width:100%;
+    overflow:hidden;
+}
+#waypoint-list .waypoint-coordinates strong
+{
+    display:block;
+    overflow-wrap:normal;
+    word-break:normal;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    font-size:13px;
+    line-height:1.45;
+}
+#waypoint-list .waypoint-coordinates small
+{
+    display:block;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    color:#9bdcc9;
+    line-height:1.4;
+    margin-top:2px;
+}
+#waypoint-list .waypoint-location
+{
+    display:block;
+    color:#bdd0df;
+    font-size:11px;
+    line-height:1.5;
+    margin-top:5px;
+    overflow-wrap:normal;
+    word-break:normal;
+}
+#waypoint-list .waypoint-actions
+{
+    display:grid;
+    grid-template-columns:34px 34px minmax(84px,1fr) 48px 34px;
+    align-items:center;
+    gap:6px;
+    min-width:0;
+}
+#waypoint-list .waypoint-actions :is(button,select)
+{
+    margin:0;
+    min-width:0;
+    width:100%;
+    min-height:36px;
+    max-width:none;
+}
+#waypoint-list .waypoint-actions .marker-icon-select
+{
+    display:block;
+    min-width:0;
+    padding:5px 6px;
+    font-size:11px;
+}
+#waypoint-list .waypoint-actions .remove-btn
+{
+    padding:0;
+}
+#waypoint-list .waypoint-actions button:focus-visible
+{
+    outline:2px solid #8fe5d8;
+    outline-offset:2px;
+}
+@media(max-width:340px)
+{
+    #waypoint-list .waypoint-actions
+    {
+        grid-template-columns:32px 32px minmax(68px,1fr) 43px 32px;
+        gap:4px;
+    }
+}
