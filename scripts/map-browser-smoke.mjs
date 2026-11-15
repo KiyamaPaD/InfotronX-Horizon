@@ -817,6 +817,43 @@ try
     await page.locator("#terrain-v2-clear").click();
     assert.equal(await page.locator(".map-overlays .terrain-probe-marker").count(), 0);
 
+    // Judge-facing A* explanation: same DEM and anchors, three preferences, no AI scoring.
+    await page.locator("#terrain-grade").fill("100");
+    await page.locator("#terrain-grade").dispatchEvent("change");
+    await page.locator("#terrain-compare").click();
+    await page.waitForFunction(() =>
+    {
+        const report = document.querySelector("#terrain-why-report");
+        return report?.querySelector(".why-verdict") || /No valid modeled alternatives/.test(report?.textContent || "");
+    }, null, { timeout: 20000 });
+    const resultState = await page.locator("#terrain-why-report").textContent();
+    assert.match(resultState, /minimum|equivalent|no valid modeled alternatives/i);
+    assert.equal(await page.locator("#terrain-why-preference").isDisabled(), false);
+    assert.equal(await page.locator("#terrain-strategies .strategy-card").count(), 3);
+
+    if (await page.locator("#terrain-why-report .why-verdict").count())
+    {
+        assert.equal(await page.locator("#terrain-why-report .why-data-table tbody tr").count() >= 1, true);
+        assert.equal(await page.locator("#terrain-why-report .why-bar-row").count() >= 1, true);
+        assert.equal(await page.locator("#terrain-why-report .why-scatter svg").count(), 1);
+        const beforePreference = await page.locator("#terrain-why-report .why-verdict").textContent();
+        await page.locator("#terrain-why-preference").selectOption("distance");
+        assert.match(await page.locator("#terrain-why-report .why-verdict").textContent(), /λ = 0/);
+        await page.locator("#terrain-why-preference").selectOption("gentle");
+        assert.match(await page.locator("#terrain-why-report .why-verdict").textContent(), /λ = 24/);
+        assert.equal(await page.locator("#waypoint-list [data-waypoint-row]").count(), 2,
+            "Changing preference must not add or move user waypoints");
+        await page.locator("#terrain-why").screenshot({ path: "browser-map-evidence/why-this-route-v2.png" });
+        console.log(JSON.stringify({ label: "WHY THIS ROUTE checks", feasible: true, beforePreference }));
+    }
+    else
+    {
+        assert.match(resultState, /no valid modeled alternatives/i);
+        console.log(JSON.stringify({ label: "WHY THIS ROUTE checks", feasible: false,
+            note: "Bundled DEM route contains no valid path; the UI correctly declines to recommend a route." }));
+    }
+
+
     // Analytics usability audit: the V2 waypoint list must not squeeze names into vertical letters.
     await page.locator('.analytics-categories [data-group="overview"]').click();
     const layout = await page.locator('[data-waypoint-row]').first().evaluate(row =>
