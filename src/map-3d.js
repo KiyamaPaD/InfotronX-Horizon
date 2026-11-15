@@ -316,6 +316,7 @@ export async function openMap3d({ host, points = [], groundAt, getPoints, getRou
             <p class="map-3d-copy" data-3d="copy"></p>
             <div class="map-3d-group"><span class="map-3d-label">VIEW</span>
                 <label class="map-3d-surface">Surface<select data-3d="surface" aria-label="Surface map"><option value="nasa">NASA 3D model (one texture)</option><option value="viking">Viking colour map</option><option value="mola">MOLA shaded relief</option><option value="mola-color">MOLA colour relief</option></select></label>
+                <label class="map-3d-surface"><input type="checkbox" data-3d="slope-tint"> Slope colours (illustrative: slope of the exaggerated model)</label>
                 <label class="map-3d-range">Vertical ×<span data-3d="ex-value">3</span><input data-3d="ex" type="range" min="1" max="12" step="0.5" value="6" /></label>
                 <div class="map-3d-actions">
                     <button type="button" class="btn btn-accent compact" data-3d="fit" title="Frame the whole route">Fit route</button>
@@ -680,7 +681,32 @@ export async function openMap3d({ host, points = [], groundAt, getPoints, getRou
 
                 geometry.attributes.normal.needsUpdate = true;
                 geometry.computeBoundingSphere();
+                paintSlope();
             };
+            let slopeOn = false;
+            const paintSlope = () =>
+            {
+                if (!slopeOn)
+                {
+                    if (material.vertexColors) { material.vertexColors = false; material.needsUpdate = true; }
+                    return;
+                }
+
+                const colours = new Float32Array(vertexCount * 3), normals = geometry.attributes.normal.array;
+
+                for (let i = 0; i < vertexCount; i++)
+                {
+                    const tilt = Math.acos(Math.min(1, Math.max(-1, normals[i * 3] * nasa.directions[i * 3] + normals[i * 3 + 1] * nasa.directions[i * 3 + 1] + normals[i * 3 + 2] * nasa.directions[i * 3 + 2]))) * 180 / Math.PI;
+                    const t = Math.min(1, tilt / 12);
+                    if (t < 0.5) { colours[i * 3] = 0.55 + 0.9 * t; colours[i * 3 + 1] = 1; colours[i * 3 + 2] = 0.6 + 0.4 * t; }
+                    else { colours[i * 3] = 1; colours[i * 3 + 1] = 1.9 - 1.8 * t; colours[i * 3 + 2] = 0.5 - 0.3 * t; }
+                }
+
+                geometry.setAttribute("color", new THREE.BufferAttribute(colours, 3));
+                material.vertexColors = true;
+                material.needsUpdate = true;
+            };
+            get("slope-tint").addEventListener("change", event => { slopeOn = event.target.checked; paintSlope(); });
 
             // The surface: NASA's own model, or a flat NASA map wrapped on a latitude-longitude sphere (same relief, same route).
             const SURFACES = { nasa: null, viking: VIKING_URL, mola: MOLA_SHADE_URL, "mola-color": MOLA_COLOR_URL };

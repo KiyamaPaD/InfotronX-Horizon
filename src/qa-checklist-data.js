@@ -37,7 +37,7 @@ export const PHASES = [
             { id: "2.12", built: "no", text: "Surface and zoom behaviour in 3D like the Astra team's project (martian-map-project-astra)." },
             { id: "2.13", built: "yes", test: "Click pins on the planet: there are now 29 real places (landers, rovers, volcanoes, canyons, basins, fractures), each with facts and NASA photos.", text: "More photos and more places, some of them random, from online sources." },
             { id: "2.14", built: "yes", text: "Animations on the 2D and 3D routes.", test: "3D has a travelling marker and pulsing rings; 2D has the Flowing line style. 2D now also has a white dot that travels along the active route when the line style is Flowing (not with reduced motion)." },
-            { id: "2.16", built: "no", text: "Slope colours on the 3D surface and a ground view like the projects we reviewed (idea only)." },
+            { id: "2.16", built: "partly", text: "Slope colours on the 3D surface (done, illustrative) and a ground view like the projects we reviewed (idea only).", test: "In the 3D panel tick Slope colours: green is gentle, red is steep on the exaggerated model." },
             { id: "2.15", built: "yes", text: "A control panel to change the lines: thickness and more.", test: "Open Lines on the 2D map or in the 3D panel: thickness, opacity, style, colour, outline, marker size." }
         ]
     },
