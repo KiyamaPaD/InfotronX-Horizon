@@ -32,7 +32,7 @@ app.innerHTML = `
         <header class="header" role="banner">
             <div class="brand"><div class="brand-symbol"><span></span></div><div><div class="brand-wordmark">MARS <strong>ATLAS</strong></div><div class="brand-subline">INFOTRONX HORIZON · MISSION INTELLIGENCE</div></div></div>
             <div class="header-center"><span class="header-center-label">MISSION WORKSPACE</span><span class="header-center-title">Mission Control <span class="header-divider"></span> Jezero Crater</span><span class="header-coordinates">18.44° N · 77.45° E</span></div>
-            <div class="header-actions"><span class="edition-pill">NASA SPACE APPS · 2026</span><button class="btn btn-quiet compact header-help" data-action="show-guide" aria-label="Open help and keyboard shortcuts">? <span>Help</span></button><button class="btn btn-outline compact header-library" data-action="open-library">Mission library</button><button class="btn btn-accent compact header-share" data-action="share">Share mission <span aria-hidden="true">↗</span></button></div>
+            <div class="header-actions"><span class="edition-pill">NASA SPACE APPS · 2026</span><button class="btn btn-quiet compact header-help" data-action="show-guide" aria-label="Open help and keyboard shortcuts">? <span>Help</span></button><button class="btn btn-accent compact header-share" data-action="share">Share mission <span aria-hidden="true">↗</span></button></div>
         </header>
         <div class="workspace">
             <aside class="sidebar sidebar-left" id="left-sidebar">

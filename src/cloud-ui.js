@@ -440,6 +440,14 @@ export function mountCloudWorkspace({ store, notify })
 
     account.addEventListener("click", () =>
     {
+        // Every save, share and export action lives in Mission Center; the science report button is moved here with its listeners.
+        const scienceExport = document.querySelector("#terrain-evidence-export");
+
+        if (scienceExport && !exports.contains(scienceExport))
+        {
+            exports.append(scienceExport);
+        }
+
         dialog.showModal();
         showHubTab("device");
         get("#hub-status").textContent = store.lastSaveSucceeded
