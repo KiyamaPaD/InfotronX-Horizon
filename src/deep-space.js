@@ -102,33 +102,6 @@ export function addDeepSpace(THREE, scene, { reduced = false, light = false } = 
     scene.add(root);
     const faded = 0.8;
 
-    // The Milky Way, seen from inside: a huge sphere with the band tilted across the sky.
-    const sky = new THREE.Mesh(new THREE.SphereGeometry(160, 48, 24), new THREE.MeshBasicMaterial({ map: milkyWayTexture(THREE), side: THREE.BackSide, depthWrite: false, transparent: true, opacity: 0.85 }));
-    sky.rotation.set(0.5, 0.8, 0.35);
-    sky.renderOrder = -20;
-    root.add(sky);
-
-    // The Andromeda galaxy: a tilted, glowing ellipse, far away and faint.
-    const andromeda = new THREE.Group();
-    for (const [scale, colour, opacity] of [[26, "255,214,170", 0.5], [15, "255,236,205", 0.7], [5, "255,250,235", 0.9]])
-    {
-        const layer = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow(THREE, [[0, `rgba(${colour},1)`], [0.4, `rgba(${colour},.35)`], [1, `rgba(${colour},0)`]]), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: opacity * faded, fog: false }));
-        layer.scale.set(scale, scale * 0.32, 1);
-        andromeda.add(layer);
-    }
-    andromeda.position.set(-70, 42, -110);
-    andromeda.rotation.z = 0.55;
-    root.add(andromeda);
-
-    // Distant nebulae in soft colours.
-    for (const [colour, x, y, z, size] of [["120,90,220", 60, 28, -100, 46], ["60,150,200", -40, -30, -120, 52], ["220,100,140", 85, -34, -90, 38], ["90,200,170", -95, 8, -80, 34]])
-    {
-        const cloud = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow(THREE, [[0, `rgba(${colour},.55)`], [0.5, `rgba(${colour},.18)`], [1, `rgba(${colour},0)`]]), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.45 * faded, fog: false }));
-        cloud.position.set(x, y, z);
-        cloud.scale.set(size, size * 0.7, 1);
-        root.add(cloud);
-    }
-
     // The planets, from Mercury to Neptune, in a loose line far behind Mars, each turning slowly.
     const planets = [];
     SOLAR_SYSTEM.forEach(planet =>
@@ -202,8 +175,6 @@ export function addDeepSpace(THREE, scene, { reduced = false, light = false } = 
             if (reduced || !root.visible) return;
 
             const time = now / 1000;
-            sky.rotation.y = 0.8 + time * 0.0006;
-            andromeda.rotation.y = time * 0.01;
             planets.forEach((planet, index) => { planet.rotation.y = time * (0.05 + index * 0.01); });
             asteroids.rotation.y = time * 0.01;
             kuiper.rotation.y = time * 0.004;

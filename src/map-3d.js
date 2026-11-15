@@ -764,6 +764,18 @@ export async function openMap3d({ host, points = [], groundAt, getPoints, getRou
             const surfaceSelect = get("surface");
             surfaceSelect.value = getPref("3d-surface", "nasa");
             surfaceSelect.addEventListener("change", () => setSurface(surfaceSelect.value));
+            // Close up, the single NASA texture goes soft: borrow the sharper Viking map until the camera backs away again.
+            let sharpened = false, switching = false;
+            surfaceSelect.addEventListener("change", () => { sharpened = false; });
+            tickers.add(async () =>
+            {
+                if (light || switching || surfaceSelect.value !== "nasa" && !sharpened) return;
+
+                const distance = camera.position.length();
+
+                if (!sharpened && distance < 1.3 && surfaceSelect.value === "nasa") { switching = true; await setSurface("viking"); sharpened = true; surfaceSelect.value = "nasa"; setPref("3d-surface", "nasa"); status.textContent = "Close up: sharper Viking colour map. Zoom out for the NASA model."; switching = false; }
+                else if (sharpened && distance > 1.9) { switching = true; sharpened = false; await setSurface("nasa"); switching = false; }
+            });
 
             const toVector = (lat, lon) =>
             {

@@ -2612,3 +2612,15 @@ a:not(.source-link):hover
 .lab-field input { padding: 8px 10px; border-radius: 10px; border: 1px solid #3c4d5c; background: #0b121b; color: #eef3f8; font: inherit; font-weight: 400; }
 .lab-out { margin: 10px 0 0; padding: 10px 12px; border-radius: 10px; background: #0b121b; color: #bfeee8; font-size: 12px; line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
 .lab-out:empty { display: none; }
+
+/* 3D: compass and tools sit side by side in the bottom-left corner so they stay clear of the panel */
+.map-3d-nav { grid-template-columns: auto 1fr; align-items: end; column-gap: 12px; row-gap: 6px; bottom: 12px; }
+.map-3d-nav .map-3d-compass { grid-column: 1; grid-row: 1 / span 4; width: 72px; height: 72px; align-self: center; }
+.map-3d-nav > :not(.map-3d-compass) { grid-column: 2; }
+.map-3d-panel { max-height: calc(100% - 215px); }
+@media (max-height: 760px) { .map-3d-nav .map-3d-pegman { display: none; } .map-3d-panel { max-height: calc(100% - 150px); } }
+
+/* All tools: group buttons keep the count on the same line */
+.analytics-categories button { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: nowrap; line-height: 1.2; min-width: 0; }
+.analytics-count { flex: none; margin-left: 0; }
+.analytics-categories { grid-template-columns: repeat(2, minmax(0, 1fr)); }
