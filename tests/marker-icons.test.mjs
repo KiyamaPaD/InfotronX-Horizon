@@ -32,3 +32,32 @@ test("edge masks fade the exterior but leave loaded neighbor edges solid", () =>
     assert.match(mask, /transparent 100%/);
     assert.doesNotMatch(edgeFadeMask(false, false, false, false), /transparent/);
 });
+
+test("marker choices survive mission persistence, checkpoints and import validation", async () =>
+{
+    const { MissionStore, validateMission } = await import("../src/store.js");
+    const memory = new Map();
+    globalThis.localStorage = {
+        getItem: key => memory.get(key) ?? null,
+        setItem: (key, value) => memory.set(key, value)
+    };
+
+    const store = new MissionStore();
+    const pointId = store.activeRoute.points[0].id;
+    const noteId = store.current.observations[0].id;
+
+    assert.equal(store.setPointIcon(pointId, "star"), true);
+    assert.equal(store.setObservationIcon(noteId, "triangle"), true);
+    assert.equal(store.setPointIcon(pointId, "bad-value"), false);
+
+    const saved = new MissionStore();
+    assert.equal(saved.activeRoute.points[0].icon, "star");
+    assert.equal(saved.current.observations[0].icon, "triangle");
+
+    saved.saveCheckpoint("Marker styles");
+    const imported = validateMission(JSON.parse(JSON.stringify(saved.current)));
+    assert.equal(imported.routes[0].points[0].icon, "star");
+    assert.equal(imported.observations[0].icon, "triangle");
+    assert.equal(imported.checkpoints[0].routes[0].points[0].icon, "star");
+    assert.equal(imported.checkpoints[0].observations[0].icon, "triangle");
+});
