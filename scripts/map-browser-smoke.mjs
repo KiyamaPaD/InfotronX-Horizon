@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { appendFile, mkdir, writeFile } from "node:fs/promises";
 import { chromium } from "playwright";
-import { unproject } from "../src/geo.js";
+import { project, unproject } from "../src/geo.js";
 
 const browser = await chromium.launch({ headless: true, args: ["--no-sandbox"] });
 const page = await browser.newPage({ viewport: { width: 1480, height: 960 }, deviceScaleFactor: 1 });
@@ -488,6 +488,322 @@ async function largePanScenario()
     return { scenario: "large-pan-z11-recenter", viewport: VIEWPORTS[2], steps, ...summarize(log) };
 }
 
+const HIRISE_CORNERS = [
+    { name: "south-west", lat: HIRISE_ENVELOPE.south, lon: HIRISE_ENVELOPE.west },
+    { name: "south-east", lat: HIRISE_ENVELOPE.south, lon: HIRISE_ENVELOPE.east },
+    { name: "north-west", lat: HIRISE_ENVELOPE.north, lon: HIRISE_ENVELOPE.west },
+    { name: "north-east", lat: HIRISE_ENVELOPE.north, lon: HIRISE_ENVELOPE.east }
+];
+
+// Decodes the original NASA bytes through a data URL so the canvas is not tainted by the cross-origin tile.
+async function transparentShare(context, target, url)
+{
+    const response = await context.request.get(url);
+
+    if (!response.ok())
+    {
+        return { status: response.status(), share: null };
+    }
+
+    const data = (await response.body()).toString("base64");
+    const share = await target.evaluate(async ({ data, type }) =>
+    {
+        const image = new Image();
+        image.src = "data:" + type + ";base64," + data;
+        await image.decode();
+        const canvas = document.createElement("canvas");
+        canvas.width = image.naturalWidth;
+        canvas.height = image.naturalHeight;
+        const context = canvas.getContext("2d");
+        context.drawImage(image, 0, 0);
+        const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+        let transparent = 0;
+
+        for (let index = 3; index < pixels.length; index += 4)
+        {
+            if (pixels[index] === 0) transparent++;
+        }
+
+        return transparent / (pixels.length / 4);
+    }, { data, type: response.headers()["content-type"] || "image/png" });
+
+    return { status: 200, share };
+}
+
+async function visibleTiles(target)
+{
+    return target.evaluate(() =>
+    {
+        const root = document.querySelector("#map-root").getBoundingClientRect();
+        const layers = { "map-hires-tile": "hirise", "map-context-tile": "ctx", "map-background-tile": "viking" };
+
+        return Object.entries(layers).flatMap(([className, layer]) => [...document.querySelectorAll("." + className)].filter(tile =>
+        {
+            const rect = tile.getBoundingClientRect();
+            return tile.style.display !== "none" && tile.dataset.state === "loaded"
+                && rect.right > root.left && rect.left < root.right && rect.bottom > root.top && rect.top < root.bottom;
+        }).map(tile =>
+        {
+            const rect = tile.getBoundingClientRect();
+            return { layer, url: tile.src, left: rect.left, top: rect.top, width: rect.width };
+        }));
+    });
+}
+
+async function hiriseEdgeScenario()
+{
+    const { context, target, log } = await openScenario(VIEWPORTS[2]);
+    const steps = [];
+    const checks = [];
+
+    try
+    {
+        await selectLayer(target, "hirise");
+        await zoomTo(target, 11);
+
+        for (const corner of HIRISE_CORNERS)
+        {
+            const before = log.requests.length;
+            await target.locator('[data-action="add-coordinates"]').click();
+            await target.locator("#latitude-input").fill(String(corner.lat));
+            await target.locator("#longitude-input").fill(String(corner.lon));
+            await target.locator('#coordinate-form button[type="submit"]').click();
+            await capture(target, log, steps, "edge-" + corner.name);
+
+            const tiles = await visibleTiles(target);
+            const requested = log.requests.slice(before).filter(item => item.url.includes("JEZ_hirise")).map(item => tileBounds(item.url)).filter(Boolean);
+            const requestedOutside = requested.filter(tile => !intersects(tile, HIRISE_ENVELOPE)).map(tile => tile.url);
+
+            // Every layer must share one screen origin: origin = screen position minus grid position, scaled by the tile's rendered width.
+            const origins = tiles.map(tile =>
+            {
+                const match = tile.url.match(/\/(\d+)\/(\d+)\/(\d+)\.(png|jpg)/);
+                return match ? { layer: tile.layer, x: tile.left - Number(match[3]) * tile.width, y: tile.top - Number(match[2]) * tile.width, scale: tile.width / 256 * 2 ** Number(match[1]) } : null;
+            }).filter(Boolean);
+            const spreadX = Math.max(...origins.map(item => item.x)) - Math.min(...origins.map(item => item.x));
+            const spreadY = Math.max(...origins.map(item => item.y)) - Math.min(...origins.map(item => item.y));
+            const scales = [...new Set(origins.map(item => Math.round(item.scale)))];
+
+            const expected = project(corner, 11);
+            const marker = await target.evaluate(({ x, y }) =>
+            {
+                return Math.min(...[...document.querySelectorAll(".map-overlays .route-node")].map(node =>
+                {
+                    const rect = node.getBoundingClientRect();
+                    return Math.hypot(rect.left + rect.width / 2 - x, rect.top + rect.height / 2 - y);
+                }));
+            }, { x: origins[0].x + expected.x, y: origins[0].y + expected.y });
+
+            const hirise = tiles.filter(tile => tile.layer === "hirise");
+            const content = [];
+
+            for (const tile of hirise)
+            {
+                const bounds = tileBounds(tile.url);
+                const alpha = await transparentShare(context, target, tile.url);
+                content.push({ url: tile.url, insideEnvelope: intersects(bounds, HIRISE_ENVELOPE), status: alpha.status, transparentShare: alpha.share === null ? null : Number(alpha.share.toFixed(3)) });
+            }
+
+            const sourceGaps = content.filter(item => item.insideEnvelope && item.transparentShare === 1).length;
+            const partial = content.filter(item => item.transparentShare > 0 && item.transparentShare < 1).length;
+            steps.push({ step: "edge-" + corner.name + "-analysis", hiriseTiles: hirise.length, requestedOutside, originSpreadPx: [Number(spreadX.toFixed(2)), Number(spreadY.toFixed(2))], scales, markerOffsetPx: Number(marker.toFixed(2)), sourceGaps, partialTiles: partial, content });
+
+            checks.push({ name: corner.name + ": HiRISE requests intersect envelope", ok: requestedOutside.length === 0, detail: requestedOutside.length + " outside of " + requested.length, hard: true });
+            checks.push({ name: corner.name + ": all layers share one origin", ok: spreadX <= 1.5 && spreadY <= 1.5 && scales.length === 1, detail: "spread " + spreadX.toFixed(1) + "/" + spreadY.toFixed(1) + " px, scales " + scales.join(","), hard: true });
+            checks.push({ name: corner.name + ": waypoint marker on its coordinate", ok: marker <= 2, detail: marker.toFixed(1) + " px", hard: true });
+            checks.push({ name: corner.name + ": HiRISE source content", ok: true, detail: hirise.length + " tiles, " + sourceGaps + " fully transparent inside envelope (source gap), " + partial + " partly transparent", hard: false });
+        }
+    }
+    finally
+    {
+        await context.close();
+    }
+
+    return { scenario: "hirise-edges-z11", viewport: VIEWPORTS[2], steps, checks, ...summarize(log) };
+}
+
+async function openWatchedScenario(viewport, beforeLoad)
+{
+    const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, deviceScaleFactor: 1 });
+    await context.addInitScript(() =>
+    {
+        window.__mapMessages = [];
+        let lastNotice = null;
+        const record = () =>
+        {
+            const notice = document.querySelector("#map-root .map-load-notice");
+            const text = notice && !notice.hidden ? notice.textContent : null;
+
+            if (text !== lastNotice)
+            {
+                window.__mapMessages.push({ at: Math.round(performance.now()), kind: "notice", text });
+                lastNotice = text;
+            }
+        };
+
+        new MutationObserver(mutations =>
+        {
+            for (const mutation of mutations)
+            {
+                for (const node of mutation.addedNodes)
+                {
+                    if (node.classList?.contains("toast")) window.__mapMessages.push({ at: Math.round(performance.now()), kind: "toast", text: node.textContent });
+                }
+            }
+
+            record();
+        }).observe(document, { subtree: true, childList: true, attributes: true, attributeFilter: ["hidden"] });
+    });
+    const target = await context.newPage();
+    const log = trackPage(target);
+    await beforeLoad?.(context, target);
+    await target.goto(APP_URL, { waitUntil: "domcontentloaded", timeout: 90000 });
+    await target.waitForSelector("#map-root", { timeout: 90000 });
+    return { context, target, log };
+}
+
+async function readMessages(target)
+{
+    return target.evaluate(() => window.__mapMessages.slice());
+}
+
+async function allVisibleTilesLoaded(target, timeout)
+{
+    try
+    {
+        await target.waitForFunction(() =>
+        {
+            const root = document.querySelector("#map-root").getBoundingClientRect();
+            const tiles = [...document.querySelectorAll(".map-tile, .map-background-tile, .map-context-tile, .map-hires-tile")].filter(tile =>
+            {
+                const rect = tile.getBoundingClientRect();
+                return tile.style.display !== "none" && rect.right > root.left && rect.left < root.right && rect.bottom > root.top && rect.top < root.bottom;
+            });
+            return tiles.length > 0 && tiles.every(tile => tile.dataset.state === "loaded");
+        }, null, { timeout, polling: 500 });
+        return true;
+    }
+    catch
+    {
+        return false;
+    }
+}
+
+function attemptsPerUrl(requests)
+{
+    const counts = new Map();
+
+    for (const item of requests)
+    {
+        counts.set(item.url, (counts.get(item.url) || 0) + 1);
+    }
+
+    return Math.max(0, ...counts.values());
+}
+
+async function slowNetworkScenario()
+{
+    const steps = [];
+    const checks = [];
+    let firstImageMs = null;
+    const { context, target, log } = await openWatchedScenario(VIEWPORTS[2], async (context, target) =>
+    {
+        // Chrome DevTools "Slow 3G" preset: 400 ms latency, 400 kbit/s down and up.
+        const session = await context.newCDPSession(target);
+        await session.send("Network.enable");
+        await session.send("Network.emulateNetworkConditions", { offline: false, latency: 400, downloadThroughput: 50000, uploadThroughput: 50000 });
+    });
+
+    try
+    {
+        const start = Date.now();
+        await target.waitForFunction(() => [...document.querySelectorAll(".map-tile, .map-background-tile, .map-context-tile, .map-hires-tile")].some(tile => tile.dataset.state === "loaded"), null, { timeout: 90000 });
+        firstImageMs = Date.now() - start;
+        await selectLayer(target, "hirise");
+        await zoomTo(target, 10);
+        const loaded = await allVisibleTilesLoaded(target, 90000);
+        await capture(target, log, steps, "slow-3g-hirise-z10");
+        const messages = await readMessages(target);
+        const toasts = messages.filter(item => item.kind === "toast");
+        steps.push({ step: "slow-3g-messages", firstImageMs, messages });
+
+        checks.push({ name: "slow 3G: first real image", ok: true, detail: firstImageMs + " ms after DOM ready", hard: false });
+        checks.push({ name: "slow 3G: zoom 10 fully loads", ok: loaded, detail: loaded ? "all visible tiles loaded" : "still loading after 90 s", hard: false });
+        checks.push({ name: "slow 3G: no repeated pop-ups", ok: toasts.length <= 1, detail: toasts.length + " toasts", hard: false });
+    }
+    finally
+    {
+        await context.close();
+    }
+
+    return { scenario: "network-slow-3g", viewport: VIEWPORTS[2], steps, checks, ...summarize(log) };
+}
+
+async function offlineScenario()
+{
+    const steps = [];
+    const checks = [];
+    const { context, target, log } = await openWatchedScenario(VIEWPORTS[2]);
+
+    try
+    {
+        await selectLayer(target, "hirise");
+        await zoomTo(target, 11);
+        await capture(target, log, steps, "offline-before");
+        const messagesBefore = (await readMessages(target)).length;
+        const offlineFrom = log.requests.length;
+        const offlineAt = Date.now();
+        await context.setOffline(true);
+
+        const box = await target.locator("#map-root").boundingBox();
+
+        for (let drag = 0; drag < 2; drag++)
+        {
+            await target.mouse.move(box.x + box.width * 0.75, box.y + box.height * 0.5);
+            await target.mouse.down();
+            await target.mouse.move(box.x + box.width * 0.25, box.y + box.height * 0.45, { steps: 12 });
+            await target.mouse.up();
+        }
+
+        // Stay offline past one 16 s retry window, nudging renders with zoom changes.
+        await target.waitForTimeout(9000);
+        await zoomTo(target, 10);
+        await target.waitForTimeout(9000);
+        await zoomTo(target, 11);
+        await target.waitForTimeout(3000);
+        const offlineRequests = log.requests.slice(offlineFrom);
+        const offlineSeconds = (Date.now() - offlineAt) / 1000;
+        const offlineMessages = (await readMessages(target)).slice(messagesBefore);
+        await target.screenshot({ path: "browser-map-evidence/offline-during.png" });
+
+        const onlineFrom = log.requests.length;
+        const onlineAt = Date.now();
+        await context.setOffline(false);
+        const recovered = await allVisibleTilesLoaded(target, 45000);
+        const recoveryMs = Date.now() - onlineAt;
+        await capture(target, log, steps, "offline-after-online");
+        const afterMessages = (await readMessages(target)).slice(messagesBefore + offlineMessages.length);
+        const noticeEpisodes = offlineMessages.filter(item => item.kind === "notice" && item.text).length;
+        const toasts = [...offlineMessages, ...afterMessages].filter(item => item.kind === "toast");
+        const maxAttempts = attemptsPerUrl(offlineRequests);
+        const allowedAttempts = 1 + Math.floor(offlineSeconds / 16);
+        const noticeHiddenAfter = await target.evaluate(() => document.querySelector("#map-root .map-load-notice").hidden);
+
+        steps.push({ step: "offline-analysis", offlineSeconds, offlineRequests: offlineRequests.length, maxAttemptsPerUrl: maxAttempts, allowedAttempts, onlineRequests: log.requests.length - onlineFrom, recovered, recoveryMs, offlineMessages, afterMessages, noticeHiddenAfter });
+
+        checks.push({ name: "offline: no retry storm", ok: maxAttempts <= allowedAttempts, detail: offlineRequests.length + " requests in " + offlineSeconds.toFixed(0) + " s, max " + maxAttempts + " per tile (allowed " + allowedAttempts + ")", hard: false });
+        checks.push({ name: "offline: one clear degradation message", ok: noticeEpisodes + toasts.length === 1, detail: noticeEpisodes + " notice episodes, " + toasts.length + " toasts", hard: false });
+        checks.push({ name: "online again: recovers without user action", ok: recovered, detail: recovered ? recoveryMs + " ms" : "not recovered after 45 s", hard: false });
+        checks.push({ name: "online again: message cleared", ok: noticeHiddenAfter, detail: noticeHiddenAfter ? "notice hidden" : "notice still visible", hard: false });
+    }
+    finally
+    {
+        await context.close();
+    }
+
+    return { scenario: "network-offline-online", viewport: VIEWPORTS[2], steps, checks, gateDuplicates: false, ...summarize(log) };
+}
+
 function countBy(items, key)
 {
     const counts = {};
@@ -534,6 +850,14 @@ async function writeStepSummary(report)
             "", "</details>", "");
     }
 
+    const checks = report.scenarios.flatMap(item => (item.checks || []).map(check => ({ scenario: item.scenario, ...check })));
+
+    if (checks.length)
+    {
+        lines.push("### Map checks", "", "| Scenario | Check | Result | Detail |", "|---|---|---|---|",
+            ...checks.map(check => "| " + [check.scenario, check.name, check.ok ? "✅ pass" : check.hard ? "❌ fail" : "⚠️ finding (soft)", check.detail].join(" | ") + " |"), "");
+    }
+
     lines.push(...report.notes.map(note => "> " + note), "");
     await appendFile(process.env.GITHUB_STEP_SUMMARY, lines.join("\n") + "\n");
 }
@@ -544,6 +868,8 @@ async function runStabilityScenarios()
         browser: "Chromium",
         notes: [
             "Cold load opens a fresh browser context on the default view (Viking zoom 7, set in src/map.js). It is not a URL deep link: no ?z=&layer= parameter exists yet.",
+            "Offline scenario duplicates are reported but not gated: tiles that failed while offline are expected to be requested again.",
+            "Checks marked soft are findings that need a src/ change; they are reported here and do not fail the test.",
             "Duplicates are tile URLs requested more than once in one scenario. retry-after-error means every repeat followed an HTTP error or failed request by at least 15 s (the map retries after 16 s)."
         ],
         scenarios: []
@@ -559,6 +885,9 @@ async function runStabilityScenarios()
         report.scenarios.push(await rapidZoomScenario("buttons"));
         report.scenarios.push(await rapidZoomScenario("wheel"));
         report.scenarios.push(await largePanScenario());
+        report.scenarios.push(await hiriseEdgeScenario());
+        report.scenarios.push(await slowNetworkScenario());
+        report.scenarios.push(await offlineScenario());
     }
     finally
     {
@@ -571,6 +900,7 @@ async function runStabilityScenarios()
             reissueAfterAbort: item.duplicates.filter(entry => entry.kind === "reissue-after-abort").length,
             retries: item.duplicates.filter(entry => entry.kind === "retry-after-error").length,
             failedRequests: item.failedRequests.length,
+            checks: (item.checks || []).filter(check => !check.ok).map(check => (check.hard ? "FAIL " : "SOFT ") + check.name + ": " + check.detail),
             jsErrors: item.jsErrors.length, networkConsoleErrors: item.networkConsoleErrors.length
         }))));
 
@@ -589,11 +919,13 @@ async function runStabilityScenarios()
     }
 
     const notFound = report.scenarios.flatMap(item => item.httpErrors.filter(entry => entry.status === 404).map(entry => item.scenario + " " + entry.url));
-    const duplicates = report.scenarios.flatMap(item => item.duplicates.filter(entry => entry.kind === "real-duplicate").map(entry => item.scenario + " " + entry.count + "x " + entry.url));
+    const duplicates = report.scenarios.filter(item => item.gateDuplicates !== false).flatMap(item => item.duplicates.filter(entry => entry.kind === "real-duplicate").map(entry => item.scenario + " " + entry.count + "x " + entry.url));
     const jsErrors = report.scenarios.flatMap(item => item.jsErrors.map(text => item.scenario + " " + text));
     assert.deepEqual(notFound, [], "Tile 404s on used levels");
     assert.deepEqual(duplicates, [], "Duplicate tile requests");
     assert.deepEqual(jsErrors, [], "JavaScript console errors");
+    const hardFailures = report.scenarios.flatMap(item => (item.checks || []).filter(check => check.hard && !check.ok).map(check => item.scenario + " " + check.name + ": " + check.detail));
+    assert.deepEqual(hardFailures, [], "Map checks");
 }
 
 try
