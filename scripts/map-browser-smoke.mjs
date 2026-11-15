@@ -36,6 +36,7 @@ async function inspect(label)
         };
         const backdrop = [...document.querySelectorAll(".map-background-tile")].filter(visible);
         const detail = [...document.querySelectorAll(".map-hires-tile")].filter(visible);
+        const context = [...document.querySelectorAll(".map-context-tile")].filter(visible);
         const loaded = image => image.naturalWidth >= 240 && image.dataset.state === "loaded";
         const banner = document.querySelector("#map-root .map-load-notice");
 
@@ -45,8 +46,11 @@ async function inspect(label)
             backdropLoaded: backdrop.filter(loaded).length,
             detailVisible: detail.length,
             detailLoaded: detail.filter(loaded).length,
+            contextVisible: context.length,
+            contextLoaded: context.filter(loaded).length,
             backdropWidths: [...new Set(backdrop.map(item => Math.round(item.getBoundingClientRect().width)))],
             detailWidths: [...new Set(detail.map(item => Math.round(item.getBoundingClientRect().width)))],
+            contextWidths: [...new Set(context.map(item => Math.round(item.getBoundingClientRect().width)))],
             bannerHidden: banner.hidden,
             bannerText: banner.textContent
         };
@@ -130,10 +134,24 @@ try
     const view8 = await inspect("HiRISE selector at zoom 8");
     assert.ok(view8.backdropLoaded > 0);
     assert.equal(view8.detailVisible, 0);
+    assert.ok(view8.contextVisible > 0);
+    await page.waitForFunction(() =>
+        [...document.querySelectorAll(".map-context-tile")].some(item => item.dataset.state === "loaded" && item.style.display !== "none"),
+        null, { timeout: 20000 });
+    assert.ok((await inspect("CTX at zoom 8")).contextLoaded > 0);
     assert.ok(view8.bannerHidden);
     await page.locator("#map-root").screenshot({ path: "browser-map-evidence/zoom8.png" });
 
     const requestsAt8 = network.filter(url => url.includes("Mars_Viking_MDIM21")).length;
+
+    await zoomUntil(9);
+    await page.waitForFunction(() =>
+        [...document.querySelectorAll(".map-context-tile")].some(item => item.dataset.state === "loaded" && item.style.display !== "none"),
+        null, { timeout: 20000 });
+    const view9 = await inspect("NASA controlled CTX at zoom 9");
+    assert.ok(view9.contextLoaded > 0);
+    assert.ok(view9.contextWidths.every(width => width === 256));
+    await page.locator("#map-root").screenshot({ path: "browser-map-evidence/zoom9-context.png" });
 
     await zoomUntil(11);
     await page.waitForFunction(() =>
@@ -143,6 +161,12 @@ try
     const view11 = await inspect("HiRISE at zoom 11");
     assert.ok(view11.backdropLoaded > 0);
     assert.ok(view11.detailLoaded > 0);
+    await page.waitForFunction(() =>
+        [...document.querySelectorAll(".map-context-tile")].some(item => item.dataset.state === "loaded" && item.style.display !== "none"),
+        null, { timeout: 20000 });
+    const full11 = await inspect("CTX under HiRISE at zoom 11");
+    assert.ok(full11.contextLoaded > 0);
+    assert.ok(full11.contextWidths.every(width => width === 256));
     assert.ok(view11.bannerHidden);
     assert.ok(view11.detailWidths.every(width => width === 256));
     await page.locator("#map-root").screenshot({ path: "browser-map-evidence/zoom11.png" });
@@ -190,12 +214,17 @@ try
     assert.ok(afterPan.detailWidths.every(width => width === 256));
     await page.locator("#map-root").screenshot({ path: "browser-map-evidence/zoom11-panned.png" });
 
+    const failedContext = responses.filter(item =>
+        item.url.includes("JEZ_ctx_B_soc_008_orthoMosaic_6m") && item.status !== 200);
+    assert.deepEqual(failedContext, [], "NASA Jezero CTX tiles must load without HTTP errors");
+
     const unique = new Set(network);
     console.log(JSON.stringify({
         browser: "Chromium", totalNasaRequests: network.length,
         uniqueNasaUrls: unique.size, vikingRequestsAt8: requestsAt8,
         vikingRequestsAt11: requestsAt11, vikingRequestsAfterReturn: requestsAfter,
-        pageErrors: errors
+        controlledCtxRequests: network.filter(url => url.includes("JEZ_ctx_B_soc_008_orthoMosaic_6m")).length,
+        contextFailures: failedContext.length, pageErrors: errors
     }));
 
     assert.ok(!errors.some(item => /map\.js|Cannot read properties|Uncaught SyntaxError/.test(item)),
