@@ -1,4 +1,7 @@
 // The visual explanation is derived from deterministic numeric model results.
+import { compareAlternatives } from "./route-decision.js";
+
+const TAG = { measured: '<span class="why-tag why-tag-measured">Measured</span>', calculated: '<span class="why-tag why-tag-calculated">Calculated</span>', scenario: '<span class="why-tag why-tag-scenario">Scenario</span>' };
 function html(value)
 {
     return String(value ?? "").replace(/[&<>"']/g, character =>
@@ -35,15 +38,20 @@ export function renderRouteDecision(target, decision, context = {})
     const formula = '<p class="why-equation"><strong>C = D + λ × (A + H)</strong>' +
         '<span>D = grid distance; A = total ascent; H = total descent; λ = selected slope penalty.</span></p>';
     const explanation = '<p class="why-explanation">' + html(decision.explanation) + '</p>';
-    const source = '<p class="why-provenance"><strong>Input:</strong> ' +
+    const source = '<p class="why-provenance"><strong>Input:</strong> ' + TAG.measured + ' ' +
         html(context.source || 'Unspecified numeric DEM') +
         ' · maximum allowed adjacent-grid grade ' + html(context.maxSlopePercent ?? 'unknown') +
-        '% · ' + html(context.exclusionCount || 0) + ' hypothetical exclusion zones. ' +
+        '% · ' + TAG.scenario + ' ' + html(context.exclusionCount || 0) + ' hypothetical exclusion zones. ' +
         'All rows use identical DEM, waypoint anchors and constraints.</p>';
     const warning = '<p class="why-warning">' + html(decision.warning) +
         ' The human-drawn route is not evaluated under the same cell-by-cell slope rules; ' +
         'its straight-line distance is shown separately and must not be used as a safety ranking.</p>';
-    const verdict = '<div class="why-verdict"><span>' + winnerLabel + '</span><strong>' +
+    const sentences = compareAlternatives(decision);
+    const comparison = sentences.length ? '<div class="why-compare"><h4>Why this route? ' + TAG.calculated + '</h4><ul>' +
+        sentences.map(text => '<li>' + html(text) + '</li>').join("") + '</ul></div>' : '';
+    const legend = '<p class="why-tag-legend">' + TAG.measured + ' NASA/USGS data · ' + TAG.calculated +
+        ' derived by Mars Atlas from measured data · ' + TAG.scenario + ' hypothetical input you entered</p>';
+    const verdict = '<div class="why-verdict"><span>' + winnerLabel + ' ' + TAG.calculated + '</span><strong>' +
         html(selected.label) + '</strong><small>' + meters(selected.costMeters) +
         ' modeled cost · ' + meters(selected.distanceMeters) + ' grid distance + ' +
         meters(selected.penaltyMeters) + ' elevation penalty (λ = ' +
@@ -64,8 +72,8 @@ export function renderRouteDecision(target, decision, context = {})
             '</div></div>';
     }).join("");
     const table = '<div class="why-table-scroll"><table class="why-data-table"><thead><tr>' +
-        '<th>Candidate</th><th>Grid D</th><th>Ascent</th><th>Descent</th>' +
-        '<th>Max adjacent grade</th><th>Cost at λ = ' + decision.slopePenalty + '</th><th>Pareto D / |Δh|</th></tr></thead>' +
+        '<th>Candidate</th><th>Grid D ' + TAG.calculated + '</th><th>Ascent ' + TAG.calculated + '</th><th>Descent ' + TAG.calculated + '</th>' +
+        '<th>Max adjacent grade ' + TAG.calculated + '</th><th>Cost at λ = ' + decision.slopePenalty + '</th><th>Pareto D / |Δh|</th></tr></thead>' +
         '<tbody>' + alternatives.map(item =>
             '<tr' + (winners.has(item.id) ? ' class="why-selected"' : '') + '><th scope="row">' +
             html(item.label) + '</th><td>' + meters(item.distanceMeters) + '</td><td>' +
@@ -100,7 +108,7 @@ export function renderRouteDecision(target, decision, context = {})
         'Overlapping points may represent identical results.</p></div>';
     const inconsistent = alternatives.filter(item => item.costConsistent === false);
 
-    target.innerHTML = verdict + formula + explanation + '<div class="why-legend">' +
+    target.innerHTML = verdict + comparison + formula + explanation + legend + '<div class="why-legend">' +
         '<span><i class="why-legend-distance"></i>Grid distance</span>' +
         '<span><i class="why-legend-height"></i>λ × absolute height change</span></div>' +
         '<div class="why-bars">' + bars + '</div>' + table + scatter + source + warning +

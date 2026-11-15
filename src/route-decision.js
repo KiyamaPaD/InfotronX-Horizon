@@ -129,3 +129,42 @@ export function explainTerrainRouteChoice(candidates, preference = "balanced")
         warning: "An A* optimum is defined only for this numeric DEM grid, waypoint anchors, slope threshold and hypothetical exclusions. It is NOT a NASA-certified safe route."
     };
 }
+
+function signedMeters(value)
+{
+    return Math.abs(value).toLocaleString("en-US", { maximumFractionDigits: 0 }) + " m";
+}
+
+// Plain sentences comparing each alternative with the selected route, built only from the computed numbers.
+export function compareAlternatives(decision)
+{
+    const selected = decision.alternatives.find(item => item.id === decision.winners[0]);
+
+    if (!selected)
+    {
+        return [];
+    }
+
+    return decision.alternatives.filter(item => item.id !== selected.id).map(item =>
+    {
+        const distance = item.distanceMeters - selected.distanceMeters;
+        const climb = item.verticalMeters - selected.verticalMeters;
+        const parts = [];
+
+        parts.push(Math.abs(distance) < 0.5 ? "the same length" : signedMeters(distance) + (distance > 0 ? " longer" : " shorter"));
+
+        if (item.maxGradePercent !== null && selected.maxGradePercent !== null && Math.abs(item.maxGradePercent - selected.maxGradePercent) >= 0.05)
+        {
+            parts.push("maximum grade " + (item.maxGradePercent < selected.maxGradePercent ? "drops" : "rises") + " from " +
+                selected.maxGradePercent.toFixed(1) + "% to " + item.maxGradePercent.toFixed(1) + "%");
+        }
+
+        if (Math.abs(climb) >= 0.5)
+        {
+            parts.push(signedMeters(climb) + (climb > 0 ? " more" : " less") + " total climb and descent");
+        }
+
+        const connector = Math.abs(distance) < 0.5 ? " as " : " than ";
+        return item.label + " is " + parts[0] + connector + selected.label + (parts.length > 1 ? "; " + parts.slice(1).join("; ") : "") + ".";
+    });
+}
