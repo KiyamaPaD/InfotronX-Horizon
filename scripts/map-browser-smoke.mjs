@@ -97,9 +97,35 @@ try
 
     await zoomUntil(8);
 
-    await page.waitForFunction(() =>
-        [...document.querySelectorAll(".map-background-tile")].some(item => item.dataset.state === "loaded" && item.style.display !== "none" && item.getBoundingClientRect().right > document.querySelector("#map-root").getBoundingClientRect().left && item.getBoundingClientRect().left < document.querySelector("#map-root").getBoundingClientRect().right),
-        null, { timeout: 25000 });
+    try
+    {
+        await page.waitForFunction(() =>
+            [...document.querySelectorAll(".map-background-tile")].some(item => item.dataset.state === "loaded" && item.style.display !== "none" && item.getBoundingClientRect().right > document.querySelector("#map-root").getBoundingClientRect().left && item.getBoundingClientRect().left < document.querySelector("#map-root").getBoundingClientRect().right),
+            null, { timeout: 12000 });
+    }
+    catch (error)
+    {
+        const diagnostic = await page.evaluate(() =>
+        {
+            const root = document.querySelector("#map-root").getBoundingClientRect();
+            return [...document.querySelectorAll(".map-background-tile")].map(img =>
+            {
+                const rect = img.getBoundingClientRect();
+                return {
+                    state: img.dataset.state, width: img.naturalWidth,
+                    complete: img.complete, display: img.style.display,
+                    visible: rect.right > root.left && rect.left < root.right && rect.bottom > root.top && rect.top < root.bottom && img.style.display !== "none",
+                    url: img.src, position: [Math.round(rect.left), Math.round(rect.top)]
+                };
+            });
+        });
+
+        console.log("BROWSER_TILE_DIAGNOSTIC " + JSON.stringify(diagnostic));
+        console.log("NASA_RESPONSE_DIAGNOSTIC " + JSON.stringify(responses.slice(-45)));
+        console.log("PAGE_ERRORS " + JSON.stringify(errors));
+        await page.locator("#map-root").screenshot({ path: "browser-map-evidence/zoom8-failed.png" });
+        throw error;
+    }
 
     const view8 = await inspect("HiRISE selector at zoom 8");
     assert.ok(view8.backdropLoaded > 0);
