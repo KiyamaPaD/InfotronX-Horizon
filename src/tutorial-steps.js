@@ -11,6 +11,10 @@ export const TUTORIAL_STEPS = [
     { chapter: "1 · EXPLORE", view: "explore", element: ".live-coordinate", position: "top", title: "Live coordinates", text: "Shows the latitude and longitude under your pointer, in degrees on Mars." },
     { chapter: "1 · EXPLORE", view: "explore", element: ".panel-toggle-left", position: "right", title: "Hide the panel", text: "Use this tab to hide the side panel and give the map the whole screen. Click it again to bring the panel back." },
 
+    { chapter: "THE 3D PLANET", element: ".map-3d-panel", position: "right", title: "The planet in 3D", text: "The app opens on NASA's 3D model of Mars. Drag to turn it and scroll to zoom right down to the surface. The slider raises the relief: 1 is true scale, higher is exaggerated." },
+    { chapter: "THE 3D PLANET", title: "Real places, always there", text: "The glowing pins are real places: where rovers and landers touched down, and the biggest volcanoes, canyons and basins. Click a pin to read about it, see NASA photos, fly there or add it to your route." },
+    { chapter: "THE 3D PLANET", element: "[data-3d='fit']", position: "right", title: "Fit route", text: "Frames your whole route in the view, however long it is. With no route yet, it returns to the whole planet." },
+    { chapter: "THE 3D PLANET", element: "[data-3d='add']", position: "right", title: "Add waypoint", text: "Switch this on, then click the planet to drop a waypoint. A small window opens so you can name it and pick a kind of place, with a ready-made plan for each." },
     { chapter: "2 · PLAN", view: "plan", element: ".mode-switcher", position: "right", title: "Map tools", text: "Explore moves the map. Draw adds waypoints when you click. Move drags a waypoint. Observe drops a field note on the map." },
     { chapter: "2 · PLAN", view: "plan", element: "#route-list", position: "right", title: "Your routes", text: "Each route is a list of waypoints. Click a route to make it the active one. Distances are calculated on the real radius of Mars." },
     { chapter: "2 · PLAN", view: "plan", element: "[data-action='add-coordinates']", position: "right", title: "Type coordinates", text: "Add a waypoint by typing an exact latitude and longitude instead of clicking." },
@@ -35,6 +39,7 @@ export const TUTORIAL_STEPS = [
 
     { chapter: "SHARE & HELP", element: ".header-cloud", position: "bottom", title: "Mission Center", text: "Save and open missions, export a backup, keep checkpoints, use the cloud library and share with teammates by email." },
     { chapter: "SHARE & HELP", element: ".header-share", position: "bottom", title: "Share mission", text: "Create a link to your mission. Anyone with the link can see its data, so share it only with people you trust." },
-    { chapter: "SHARE & HELP", element: ".header-help", position: "bottom", title: "Help", text: "Keyboard shortcuts and a short guide. You can also open it any time with the ? button." },
+    { chapter: "SHARE & HELP", title: "Keyboard shortcuts", text: "D draws, M moves, E explores and N adds a field note. Ctrl+Z undoes and Ctrl+Y redoes. Right-click the map for more actions, and Esc closes a panel. Routes are planning aids, not certified for real navigation." },
+    { chapter: "SHARE & HELP", element: "#start-tutorial", position: "bottom", title: "Help & tour", text: "This button replays the tour at any time. The Start button at the left of the step bar takes you back to the welcome page without reloading." },
     { chapter: "READY", title: "You're ready", text: "Start by drawing a route on the map. Mars Atlas is a planning aid, not a navigation tool, and nothing in it is approved by NASA. Replay this tour from the Tutorial button whenever you like." }
 ];

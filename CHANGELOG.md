@@ -13,6 +13,9 @@ All notable changes to Mars Atlas. Format based on [Keep a Changelog](https://ke
 - Low-power mode and an automatic watchdog that reduce effects when frames stay slow.
 - 3D view of the whole planet using NASA's 3D model of Mars (NASA/JPL-Caltech): one texture, denser mesh lifted by real MOLA heights, the route anywhere on Mars, a space backdrop with moons, satellites and a rocket.
 - Sign-in window at the start with guest mode. Guests are never saved and are warned before leaving; signed-in users are saved automatically to their account.
+- Real places always on the planet (rover and lander sites, volcanoes, canyons, basins) with facts and NASA photos, a Fit route button, deeper zoom, and waypoints that can be dropped on the 3D planet.
+- A quick window after each new waypoint with ready-made kinds (base camp, sample site, science target, photo stop, hazard and more) that fill in name, type, symbol, colour and a plan.
+- The start page is one click away from the step bar; the Help button and the tour are now one.
 - Legal pages: Terms of Use, Privacy Policy, Cookies and local storage, Credits.
 
 ### Changed
