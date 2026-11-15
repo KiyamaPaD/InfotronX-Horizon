@@ -16,6 +16,7 @@ A manual-first Mars mission-planning workspace developed by **InfotronX Horizon*
 ## What you can do
 
 - **Plan directly on the map:** create missions, draw and edit routes, move/reorder waypoints, and attach observations and references. AI is not required.
+- **Waypoint & Mission Editor V2:** edit point names, categories, notes, shapes, colors and precise coordinates; use map context actions and mission-scoped Undo/Redo. [Editing guide](docs/WAYPOINT_EDITOR_V2.md).
 - **Compare route alternatives:** inspect A*, D* Lite replanning, bounded multi-objective route searches, and user-defined hypothetical exclusion zones.
 - **Explore real terrain data:** study a limited-area USGS/NASA Mars Reconnaissance Orbiter CTX elevation clip near Jezero alongside NASA Mars Trek imagery layers.
 - **Analyze terrain:** elevation and slope profiles, local roughness, line of sight, reachability, contours, and experimental scientific models.
@@ -23,7 +24,7 @@ A manual-first Mars mission-planning workspace developed by **InfotronX Horizon*
 
 ## Explore and analyze
 
-The map uses the NASA Viking global color mosaic as its default (zoom 3–7). In the HiRISE Jezero mode it layers the **controlled NASA CTX Jezero 6 m/pixel orthomosaic** at zoom 8–11, then HiRISE 25 cm/pixel photographs at zoom 9–11; MOLA Relief is a separate basemap. The legacy CTX beta imagery was retired from the map because its original strips and color seams persisted at all zoom levels. NASA WMTS metadata, caching and progressive tile previews remain supported. Outside HiRISE's mapped footprint, Viking imagery appears as clearly identified lower-resolution context; enlarged imagery is not a new observation. Science tools are organized into **Overview**, **Terrain**, **Models** and **Mission**, with quick access to individual calculations. Route geometry remains fully editable without an AI assistant.
+The map uses the NASA Viking global color mosaic as its default (zoom 3–7). In the HiRISE Jezero mode, zoom 8 remains a continuous Viking overview without an isolated CTX rectangle; from zoom 9–11, NASA CTX Jezero 6 m/pixel and HiRISE 25 cm/pixel images provide higher-resolution context with feathered geographic coverage boundaries. MOLA Relief is a separate basemap. The legacy CTX beta imagery was retired from the map because its original strips and color seams persisted at all zoom levels. NASA WMTS metadata, caching and progressive tile previews remain supported. Outside HiRISE's mapped footprint, Viking imagery appears as clearly identified lower-resolution context; enlarged imagery is not a new observation. Science tools are organized into **Overview**, **Terrain**, **Models** and **Mission**, with quick access to individual calculations. Route geometry remains fully editable without an AI assistant.
 
 ## Current product status
 

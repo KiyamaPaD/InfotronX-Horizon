@@ -1,6 +1,6 @@
 import { JEZERO, MAP_LAYERS, MAX_POINTS_PER_ROUTE } from "./constants.js";
 import { MARKER_ICONS, normalizeMarkerIcon } from "./marker-icons.js";
-import { WAYPOINT_CATEGORIES, MARKER_COLORS, waypointLabel, categoryLabel } from "./waypoint-editor.js";
+import { WAYPOINT_CATEGORIES, waypointLabel, categoryLabel } from "./waypoint-editor.js";
 import { analyzeRoute, formatCoordinate, formatDistance, generateDetour } from "./geo.js";
 import { MissionStore } from "./store.js";
 import { MarsMap } from "./map.js";
@@ -76,7 +76,6 @@ const get = selector => document.querySelector(selector);
 let currentMode = "pan";
 let modalAction = "new-mission";
 let observationCoordinate = null;
-let pointBeingEdited = null;
 let editingWaypointId = null;
 let mapContextTarget = null;
 
@@ -646,7 +645,7 @@ document.addEventListener("click", event =>
                 editingWaypointId = null;
             }
             break;
-        case "add-coordinates": pointBeingEdited = null; get("#coordinate-form").reset(); get("#coordinate-modal h2").textContent = "Enter coordinates"; get("#coordinate-submit-label").textContent = "Add waypoint"; get("#coordinate-modal").showModal(); break;
+        case "add-coordinates": get("#coordinate-form").reset(); get("#coordinate-modal h2").textContent = "Enter coordinates"; get("#coordinate-submit-label").textContent = "Add waypoint"; get("#coordinate-modal").showModal(); break;
         case "delete-route": if (store.current.routes.length < 2) { notify("Keep at least one route in the mission."); } else if (confirm("Delete the active route?")) { store.deleteRoute(store.activeRoute.id); } break;
         case "new-route": if (store.addRoute(`Route ${store.current.routes.length + 1}`)) { setMode("draw"); notify("New route created. Click the map to add waypoints."); } else { notify("Route limit reached (15). Export or start another mission."); } break;
         case "duplicate-route": if (store.duplicateRoute()) { setMode("edit"); notify("Route duplicated. Drag waypoints to create a comparison."); } else { notify("Route limit reached (15)."); } break;
@@ -822,14 +821,13 @@ get("#coordinate-form").addEventListener("submit", event =>
     const lat = Number(get("#latitude-input").value);
     const lon = Number(get("#longitude-input").value);
 
-    const changed = pointBeingEdited ? store.updatePoint(pointBeingEdited, { lat, lon }) : store.addPoint({ lat, lon });
+    const changed = store.addPoint({ lat, lon });
 
     if (changed)
     {
         get("#coordinate-modal").close();
         map.flyTo({ lat, lon });
-        notify(pointBeingEdited ? "Waypoint coordinates updated." : "Coordinate added to the active route.");
-        pointBeingEdited = null;
+        notify("Coordinate added to the active route.");
     }
     else
     {
