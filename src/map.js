@@ -332,6 +332,7 @@ export class MarsMap
 
     changeZoom(delta)
     {
+        this.flightToken = null;
         const nextZoom = clamp(this.zoom + delta, 3, this.layerMaxZoom);
 
         if (nextZoom === this.zoom)
@@ -346,10 +347,47 @@ export class MarsMap
 
     flyTo(point, zoom = this.zoom)
     {
-        this.center = { lat: point.lat, lon: point.lon };
+        const target = { lat: point.lat, lon: point.lon };
         this.zoom = clamp(zoom, 3, this.layerMaxZoom);
-        this.render();
-        this.options.onViewChange?.(this.center, this.zoom);
+        const reduced = typeof matchMedia !== "function" || matchMedia("(prefers-reduced-motion: reduce)").matches;
+        const from = project(this.center, this.zoom);
+        const to = project(target, this.zoom);
+        const distance = Math.hypot(to.x - from.x, to.y - from.y);
+
+        // Glide only over short hops; long jumps would stream every tile on the way.
+        if (reduced || typeof requestAnimationFrame !== "function" || distance < 2 || distance > 4000)
+        {
+            this.center = target;
+            this.render();
+            this.options.onViewChange?.(this.center, this.zoom);
+            return;
+        }
+
+        const start = performance.now();
+        const token = this.flightToken = start;
+        const step = now =>
+        {
+            if (this.flightToken !== token)
+            {
+                return;
+            }
+
+            const t = Math.min(1, (now - start) / 450);
+            const ease = 1 - Math.pow(1 - t, 3);
+            this.center = t < 1 ? unproject({ x: from.x + (to.x - from.x) * ease, y: from.y + (to.y - from.y) * ease }, this.zoom) : target;
+            this.render();
+
+            if (t < 1)
+            {
+                requestAnimationFrame(step);
+            }
+            else
+            {
+                this.options.onViewChange?.(this.center, this.zoom);
+            }
+        };
+
+        requestAnimationFrame(step);
     }
 
     focusRoute()
@@ -466,6 +504,8 @@ export class MarsMap
         {
             return;
         }
+
+        this.flightToken = null;
 
         if (event.pointerType === "touch")
         {

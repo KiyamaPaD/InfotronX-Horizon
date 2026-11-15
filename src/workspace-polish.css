@@ -2261,3 +2261,39 @@
         transition:none;
     }
 }
+
+/* Subtle depth on interactive cards */
+.metric-card,
+.layer-btn,
+.route-item,
+.analytics-ready-item,
+.evidence-item
+{
+    transition:transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+.metric-card:hover,
+.layer-btn:hover,
+.route-item:hover,
+.analytics-ready-item:hover
+{
+    transform:translateY(-2px);
+    box-shadow:0 10px 24px #0006;
+}
+@media(prefers-reduced-motion:reduce)
+{
+    .metric-card,
+    .layer-btn,
+    .route-item,
+    .analytics-ready-item,
+    .evidence-item
+    {
+        transition:none;
+    }
+    .metric-card:hover,
+    .layer-btn:hover,
+    .route-item:hover,
+    .analytics-ready-item:hover
+    {
+        transform:none;
+    }
+}

@@ -1026,7 +1026,8 @@ async function touchScenario()
             document.querySelector("#coordinate-form").requestSubmit();
         });
         await target.waitForSelector(".map-overlays .route-node");
-        await target.waitForTimeout(400);
+        // Wait for the 450 ms glide to the new waypoint before measuring screen positions.
+        await target.waitForTimeout(900);
 
         const start = await markerCenter(target);
         await touchSequence(session, interpolate([start], [{ x: start.x - 120, y: start.y - 40 }], 10));

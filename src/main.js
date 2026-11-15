@@ -14,6 +14,7 @@ import { setupAnalyticsNavigation } from "./workspace-ux.js";
 import { mountCloudWorkspace } from "./cloud-ui.js";
 import { mountMissionCopilot } from "./mission-copilot-ui.js";
 import { mountWorkflowSteps } from "./workflow-steps.js";
+import { animateNumber } from "./motion.js";
 
 const store = new MissionStore();
 const imported = readSharedMission();
@@ -355,10 +356,11 @@ function render()
     const analysis = analyzeRoute(route.points);
     get("#mission-heading").textContent = mission.title;
     get("#mission-description").textContent = mission.description;
-    get("#metric-distance").textContent = formatDistance(analysis.totalDistance);
-    get("#metric-waypoints").textContent = String(analysis.count).padStart(2, "0");
-    get("#metric-routes").textContent = String(mission.routes.length).padStart(2, "0");
-    get("#metric-observations").textContent = String(mission.observations.length).padStart(2, "0");
+    const twoDigits = value => String(Math.round(value)).padStart(2, "0");
+    animateNumber(get("#metric-distance"), analysis.totalDistance, formatDistance);
+    animateNumber(get("#metric-waypoints"), analysis.count, twoDigits, 400);
+    animateNumber(get("#metric-routes"), mission.routes.length, twoDigits, 400);
+    animateNumber(get("#metric-observations"), mission.observations.length, twoDigits, 400);
     renderRoutes();
     renderLayers();
     renderWaypoints();
