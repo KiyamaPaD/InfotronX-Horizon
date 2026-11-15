@@ -30,7 +30,7 @@ Optional: test Firefox/Safari, slow Wi-Fi, page reload after changing layers, ke
 
 These checks use real Supabase email accounts and two separate browsers or devices. Test with fictional mission names and coordinates only. **Do not send a password, access token or cookie to anyone.** Use the teammate's verified email address for sharing; do not exchange passwords.
 
-- [ ] **Account:** Create an account, confirm the email, then sign in. Confirm that the Account panel shows your email.
+- [ ] **Account:** Create an account, confirm the email, then sign in. Confirm that Mission Center → Cloud library shows your signed-in email.
 - [ ] **Local first:** Sign out and verify that routes saved on this device still open without cloud access.
 - [ ] **Cloud save:** Sign in, create a new mission, add waypoints, then choose **Account → Save current mission**.
 - [ ] **Reload:** Sign in on a second clean device or browser. Select your mission in the cloud library and choose **Open selected mission**. Check that its route and notes are identical.
@@ -41,7 +41,7 @@ These checks use real Supabase email accounts and two separate browsers or devic
 - [ ] **Revoke access:** A selects the cloud mission and clicks **Revoke** for B (or **Cancel** for a pending email invitation). After B refreshes, the shared mission should no longer be accessible from the cloud.
 - [ ] **Backup:** Export JSON and import it before running destructive test scenarios. Do not use private real mission data for testing.
 
-**What the two sharing modes mean:** Header **Share mission** creates an exported-link copy. **Account → Share selected mission** grants authenticated access to a mission in Supabase. These are separate operations; neither provides simultaneous live cursor editing. Email-based access does not send an invitation email automatically; the owner must share the site link separately.
+**What the two sharing modes mean:** Mission Center → Share & export creates an exported-link copy. Mission Center → Cloud library → Share selected mission grants authenticated access to a mission in Supabase. These are separate operations; neither provides simultaneous live cursor editing. Email-based access does not send an invitation email automatically; the owner must share the site link separately.
 
 If any step fails, create a GitHub Issue with the exact step, browser, expected versus actual result and a sanitized screenshot. Don't publish account email addresses, full access tokens or mission contents in bug reports.
 
@@ -74,8 +74,14 @@ The top bar's **Mission Center** groups three areas: **On device** (saved missio
 - [ ] Reload and sign in again to check the cloud mission can be opened from a separate session.
 - [ ] Create and restore a checkpoint from **On device**; check that its data survives a reload.
 - [ ] Export a JSON backup and create a shareable link from **Share & export**.
-- [ ] At CTX zoom 11, look for blank tiles, isolated one-color squares, seams and sharpness differences. Switch to MOLA and Viking, whose native imagery has lower resolution; verify the app avoids falsely implying zoomed-in detail.
+- [ ] At the maximum available CTX zoom (10), verify the map remains stable with no oversized pixel tiles. Switch to MOLA and Viking, whose native imagery has lower resolution; verify the app avoids falsely implying zoomed-in detail.
 
 ## RLS cloud save regression
 
 The live SQL SELECT policy was updated to permit owners to read a mission row during `INSERT ... RETURNING`. Sign in, open **Mission Center → Cloud library** and use **Save current mission**. The result must appear in the cloud dropdown and persist after reloading the page. A second, uninvited account must still be unable to see that mission. If a browser still displays an RLS error, report the complete error message and the step that triggered it; never share a password or access token.
+
+## Verified account matching and map zoom
+
+Email sharing matches the exact confirmed email of a **Mars Atlas account**. An invitation to an address without a confirmed account appears as pending, even if someone is signed into a different address. It does **not** send an actual email; the owner can use **Copy invite** and deliver the instructions to the intended teammate, or cancel an incorrect pending address.
+
+For the current public CTX basemap, the maximum supported zoom is **10**. Level 11 was removed after failed tile loading during beta testing. NASA basemap tile coverage varies by region and native resolution. Do not request zoom 11 or treat enlarged fallback imagery as fresh surface detail. MOLA and Viking retain their lower useful zoom limits.
