@@ -379,96 +379,230 @@ export class MarsMap
         tile.remove?.();
     }
 
-    createTile(x, y, zoom, left, top)
+    tileCandidates(x, y, zoom, layer = this.layer)
     {
-        const image = document.createElement("img");
-        image.className = "map-tile";
-        image.alt = "";
-        image.draggable = false;
-        image.decoding = "async";
-        image.style.opacity = "0";
-        image.style.left = `${Math.round(left)}px`;
-        image.style.top = `${Math.round(top)}px`;
-
-        const capabilities = this.tileTemplates.get(this.layer.id);
-        const matrixId = capabilities?.matrixLookup.get(`${2 ** (zoom + 1)}-${2 ** zoom}`) || String(zoom);
-        const verifiedTemplate = capabilities?.template?.replaceAll("{TileMatrix}", matrixId).replaceAll("{TileRow}", String(y)).replaceAll("{TileCol}", String(x)).replaceAll("{Style}", "default");
+        const capabilities = this.tileTemplates.get(layer.id);
+        const dimensions = String(2 ** (zoom + 1)) + "-" + String(2 ** zoom);
+        const matrixId = capabilities?.matrixLookup.get(dimensions) || String(zoom);
+        const template = capabilities?.template
+            ?.replaceAll("{TileMatrix}", matrixId)
+            .replaceAll("{TileRow}", String(y))
+            .replaceAll("{TileCol}", String(x))
+            .replaceAll("{Style}", "default");
         const candidates = [...new Set([
-            ...(verifiedTemplate ? [verifiedTemplate] : []),
-            ...this.layer.extensions.map(extension => `${this.layer.url}/default/default028mm/${zoom}/${y}/${x}.${extension}`),
-            ...this.layer.extensions.map(extension => `${this.layer.url}/default/default/${zoom}/${y}/${x}.${extension}`)
+            ...(template ? [template] : []),
+            ...layer.extensions.map(extension => layer.url + "/default/default028mm/" + zoom + "/" + y + "/" + x + "." + extension),
+            ...layer.extensions.map(extension => layer.url + "/default/default/" + zoom + "/" + y + "/" + x + "." + extension)
         ])];
-        const preferred = this.preferredTileSuffix.get(this.layer.id);
+        const preferred = this.preferredTileSuffix.get(layer.id + ":" + zoom);
 
         if (preferred)
         {
-            const verifiedCandidates = candidates.filter(candidate =>
-                candidate.includes(`/default/${preferred.matrixSet}/`) && candidate.endsWith(`.${preferred.extension}`));
-
-            if (verifiedCandidates.length)
-            {
-                candidates.splice(0, candidates.length, ...verifiedCandidates);
-            }
+            const matches = candidate =>
+                candidate.includes("/default/" + preferred.matrixSet + "/")
+                && candidate.endsWith("." + preferred.extension);
+            candidates.sort((left, right) => Number(matches(right)) - Number(matches(left)));
         }
 
-        image.dataset.state = "loading";
-        let candidateIndex = 0;
+        return candidates;
+    }
 
-        const sourceLayerId = this.layer.id;
+    createTile(x, y, zoom, left, top)
+    {
+        const layer = this.layer;
+        const tile = document.createElement("div");
+        tile.className = "map-tile";
+        tile.dataset.state = "loading";
+        tile.dataset.preview = "loading";
+        tile.style.left = Math.round(left) + "px";
+        tile.style.top = Math.round(top) + "px";
 
-        const nextCandidate = () =>
+        const preview = document.createElement("img");
+        preview.className = "map-tile-preview";
+        preview.alt = "";
+        preview.draggable = false;
+        preview.decoding = "async";
+        preview.style.opacity = "0";
+
+        const detail = document.createElement("img");
+        detail.className = "map-tile-detail";
+        detail.alt = "";
+        detail.draggable = false;
+        detail.decoding = "async";
+        detail.style.opacity = "0";
+        tile.append(preview, detail);
+
+        const primaryCandidates = this.tileCandidates(x, y, zoom, layer);
+        let primaryIndex = 0;
+        let previewDepth = 1;
+        let previewIndex = 0;
+        let previewCandidates = [];
+        let disposed = false;
+
+        const isCurrent = () => !disposed && layer.id === this.layer.id && tile.isConnected;
+
+        const report = () =>
         {
-            candidateIndex++;
-
-            if (candidateIndex < candidates.length)
+            if (isCurrent())
             {
-                image.src = candidates[candidateIndex];
+                this.updateImageryStatus();
+            }
+        };
+
+        const nextPrimary = () =>
+        {
+            if (!isCurrent())
+            {
+                return;
+            }
+
+            primaryIndex++;
+
+            if (primaryIndex < primaryCandidates.length)
+            {
+                detail.src = primaryCandidates[primaryIndex];
                 return;
             }
 
             this.imageErrors++;
-            image.dataset.state = "error";
-            image.dataset.failedAt = String(Date.now());
-            image.style.display = "none";
-            this.updateImageryStatus();
+            tile.dataset.state = "error";
+            tile.dataset.failedAt = String(Date.now());
+            detail.style.opacity = "0";
+            report();
         };
 
-        image.onload = () =>
-{
-            if (sourceLayerId !== this.layer.id || !image.isConnected)
+        detail.onload = () =>
+        {
+            if (!isCurrent())
             {
                 return;
             }
 
-            if (image.naturalWidth < 240 || image.naturalHeight < 240)
+            if (detail.naturalWidth < 240 || detail.naturalHeight < 240)
             {
-                nextCandidate();
+                nextPrimary();
                 return;
             }
 
-            image.dataset.state = "loaded";
+            tile.dataset.state = "loaded";
             this.loadedImages++;
-            image.style.opacity = "1";
-            const match = candidates[candidateIndex].match(/\/default\/(default028mm|default)\/\d+\/\d+\/\d+\.(png|jpg)$/);
+            detail.style.opacity = "1";
+            preview.style.opacity = "0";
+            const source = primaryCandidates[primaryIndex];
+            const match = source.match(/\/default\/(default028mm|default)\/[^/]+\/\d+\/\d+\.(png|jpg)$/);
 
             if (match)
             {
-                this.preferredTileSuffix.set(this.layer.id, { matrixSet: match[1], extension: match[2] });
+                this.preferredTileSuffix.set(layer.id + ":" + zoom, {
+                    matrixSet: match[1], extension: match[2]
+                });
             }
 
-            this.updateImageryStatus();
+            report();
         };
-        image.onerror = () =>
-{
-            if (sourceLayerId !== this.layer.id || !image.isConnected)
+
+        detail.onerror = nextPrimary;
+
+        const loadPreview = () =>
+        {
+            if (!isCurrent() || zoom - previewDepth < 3 || tile.dataset.state === "loaded")
+            {
+                tile.dataset.preview = "error";
+                report();
+                return;
+            }
+
+            const ratio = 2 ** previewDepth;
+            const parentZoom = zoom - previewDepth;
+            const parentX = Math.floor(x / ratio);
+            const parentY = Math.floor(y / ratio);
+            const size = 256 * ratio;
+            preview.style.width = size + "px";
+            preview.style.height = size + "px";
+            preview.style.left = -((x % ratio) * 256) + "px";
+            preview.style.top = -((y % ratio) * 256) + "px";
+            previewCandidates = this.tileCandidates(parentX, parentY, parentZoom, layer);
+            previewIndex = 0;
+            preview.src = previewCandidates[0];
+        };
+
+        const nextPreview = () =>
+        {
+            if (!isCurrent())
             {
                 return;
             }
 
-            nextCandidate();
+            previewIndex++;
+
+            if (previewIndex < previewCandidates.length)
+            {
+                preview.src = previewCandidates[previewIndex];
+                return;
+            }
+
+            if (previewDepth < 2)
+            {
+                previewDepth++;
+                loadPreview();
+                return;
+            }
+
+            tile.dataset.preview = "error";
+            report();
         };
-        image.src = candidates[0];
-        return image;
+
+        preview.onload = () =>
+        {
+            if (!isCurrent())
+            {
+                return;
+            }
+
+            if (preview.naturalWidth < 240 || preview.naturalHeight < 240)
+            {
+                nextPreview();
+                return;
+            }
+
+            tile.dataset.preview = "loaded";
+            preview.style.opacity = tile.dataset.state === "loaded" ? "0" : "1";
+            report();
+        };
+
+        preview.onerror = nextPreview;
+
+        tile.startLoading = () =>
+        {
+            if (!isCurrent())
+            {
+                return;
+            }
+
+            detail.src = primaryCandidates[0];
+
+            if (zoom > 3)
+            {
+                loadPreview();
+            }
+            else
+            {
+                tile.dataset.preview = "error";
+            }
+        };
+
+        tile.dispose = () =>
+        {
+            disposed = true;
+            detail.onload = null;
+            detail.onerror = null;
+            preview.onload = null;
+            preview.onerror = null;
+            detail.removeAttribute("src");
+            preview.removeAttribute("src");
+        };
+
+        return tile;
     }
 
     renderTiles()
@@ -504,14 +638,13 @@ export class MarsMap
                     continue;
                 }
 
-                const key = `${this.layer.id}-${this.zoom}-${x}-${y}`;
+                const key = this.layer.id + "-" + this.zoom + "-" + x + "-" + y;
                 active.add(key);
                 const left = x * 256 - center.x + width / 2;
                 const top = y * 256 - center.y + height / 2;
-
                 let tile = this.tiles.get(key);
 
-                if (tile?.dataset.state === "error" && Date.now() - Number(tile.dataset.failedAt) > 15000)
+                if (tile?.dataset.state === "error" && Date.now() - Number(tile.dataset.failedAt) > 18000)
                 {
                     this.releaseTile(tile);
                     this.tiles.delete(key);
@@ -523,11 +656,12 @@ export class MarsMap
                     tile = this.createTile(x, y, this.zoom, left, top);
                     this.tiles.set(key, tile);
                     this.tileContainer.appendChild(tile);
+                    tile.startLoading?.();
                 }
 
-                tile.style.left = `${Math.round(left)}px`;
-                tile.style.top = `${Math.round(top)}px`;
-                tile.style.display = tile.dataset.state === "error" ? "none" : "";
+                tile.style.left = Math.round(left) + "px";
+                tile.style.top = Math.round(top) + "px";
+                tile.style.display = "";
             }
         }
 
@@ -565,26 +699,36 @@ export class MarsMap
 
     updateImageryStatus()
     {
-        let loaded = 0;
-        let loading = 0;
+        let detail = 0;
+        let preview = 0;
+        let pending = 0;
 
         for (const key of this.activeTiles)
         {
-            const image = this.tiles.get(key);
+            const tile = this.tiles.get(key);
 
-            if (image?.dataset.state === "loaded" && image.naturalWidth > 0)
+            if (tile?.dataset.state === "loaded")
             {
-                loaded++;
+                detail++;
             }
-            else if (image?.dataset.state !== "error")
+            else if (tile?.dataset.preview === "loaded")
             {
-                loading++;
+                preview++;
+            }
+            else if (tile?.dataset.state !== "error" || tile?.dataset.preview !== "error")
+            {
+                pending++;
             }
         }
 
-        this.container.classList.toggle("map-has-imagery", loaded > 0);
-        this.notice.hidden = loaded > 0;
-        this.notice.textContent = loading ? "Loading Mars imagery…" : "NASA imagery is unavailable at this zoom. Zoom out or change the layer.";
+        const anyImagery = detail + preview > 0;
+        const showingPreview = preview > 0;
+        this.container.classList.toggle("map-has-imagery", anyImagery);
+        this.notice.classList.toggle("map-preview-notice", showingPreview);
+        this.notice.hidden = !showingPreview && (detail > 0 || !this.activeTiles.size);
+        this.notice.textContent = showingPreview
+            ? "Lower-resolution context is shown where detailed NASA tiles are unavailable."
+            : pending ? "Loading Mars imagery…" : "NASA imagery is unavailable at this view. Try another basemap.";
     }
 
     renderOverlays()
