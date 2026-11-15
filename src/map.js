@@ -1,6 +1,6 @@
 import { JEZERO, JEZERO_CTX_CONTEXT, MAP_LAYERS } from "./constants.js";
 import { clamp, formatCoordinate, project, unproject } from "./geo.js";
-import { edgeFadeMask, normalizeMarkerIcon, spreadNearbyMarkers } from "./marker-icons.js";
+import { normalizeMarkerIcon } from "./marker-icons.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -953,11 +953,6 @@ export class MarsMap
             tile.dataset.state = "loaded";
             tile.style.opacity = source.id === "ctx-jezero" ? "0.91" : "1";
 
-            if (source.id === "ctx-jezero")
-            {
-                this.updateContextTileMasks();
-            }
-
             report();
         };
 
@@ -974,31 +969,27 @@ export class MarsMap
         return tile;
     }
 
-    updateContextTileMasks()
+    blendCoverage(container, bounds, width, height, center, fadePixels)
     {
-        const zoom = this.zoom;
-        const loaded = (x, y) =>
-        {
-            const key = `ctx-jezero-${zoom}-${x}-${y}`;
-            const neighbor = this.contextTiles.get(key);
-            return this.activeContextTiles.has(key) && neighbor?.dataset.state === "loaded";
-        };
+        const northwest = project({ lat: bounds.north, lon: bounds.west }, this.zoom);
+        const southeast = project({ lat: bounds.south, lon: bounds.east }, this.zoom);
+        const left = northwest.x - center.x + width / 2;
+        const top = northwest.y - center.y + height / 2;
+        const right = southeast.x - center.x + width / 2;
+        const bottom = southeast.y - center.y + height / 2;
+        const fade = Math.min(fadePixels, Math.max(1, right - left) * .46, Math.max(1, bottom - top) * .46);
+        const px = value => Number(value.toFixed(2)) + "px";
+        const mask = [
+            `linear-gradient(to right, transparent ${px(left)}, black ${px(left + fade)})`,
+            `linear-gradient(to left, transparent ${px(width - right)}, black ${px(width - right + fade)})`,
+            `linear-gradient(to bottom, transparent ${px(top)}, black ${px(top + fade)})`,
+            `linear-gradient(to top, transparent ${px(height - bottom)}, black ${px(height - bottom + fade)})`
+        ].join(", ");
 
-        for (const [key, tile] of this.contextTiles)
-        {
-            if (!this.activeContextTiles.has(key) || tile.dataset.state !== "loaded")
-            {
-                continue;
-            }
-
-            const x = Number(tile.dataset.tileX);
-            const y = Number(tile.dataset.tileY);
-            const fade = zoom === 8 ? 56 : 36;
-            tile.style.maskImage = edgeFadeMask(!loaded(x - 1, y), !loaded(x + 1, y),
-                !loaded(x, y - 1), !loaded(x, y + 1), fade);
-            tile.style.maskComposite = "intersect";
-            tile.style.webkitMaskComposite = "source-in";
-        }
+        container.style.maskImage = mask;
+        container.style.webkitMaskImage = mask;
+        container.style.maskComposite = "intersect";
+        container.style.webkitMaskComposite = "source-in";
     }
 
     renderContextTiles(width, height, center)
@@ -1006,8 +997,10 @@ export class MarsMap
         const active = new Set();
         const source = JEZERO_CTX_CONTEXT;
         this.contextTileContainer.style.display = "";
+        this.contextTileContainer.style.maskImage = "";
+        this.contextTileContainer.style.webkitMaskImage = "";
 
-        if (this.zoom >= 8 && this.viewportIntersectsCoverage(source.coverage, width, height, center))
+        if (this.zoom >= 9 && this.viewportIntersectsCoverage(source.coverage, width, height, center))
         {
             const minX = Math.floor((center.x - width / 2) / 256);
             const maxX = Math.floor((center.x + width / 2) / 256);
@@ -1053,7 +1046,11 @@ export class MarsMap
         }
 
         this.activeContextTiles = active;
-        this.updateContextTileMasks();
+
+        if (active.size)
+        {
+            this.blendCoverage(this.contextTileContainer, source.coverage, width, height, center, 170);
+        }
 
         for (const [key, tile] of this.contextTiles)
         {
@@ -1135,6 +1132,11 @@ export class MarsMap
         }
 
         this.activeTiles = active;
+
+        if (active.size)
+        {
+            this.blendCoverage(this.tileContainer, this.layer.coverage, width, height, center, 125);
+        }
 
         for (const [key, tile] of this.tiles)
         {
@@ -1249,6 +1251,8 @@ export class MarsMap
         }
 
         this.backgroundTileContainer.style.display = "none";
+        this.tileContainer.style.maskImage = "";
+        this.tileContainer.style.webkitMaskImage = "";
         if (this.contextTileContainer)
         {
             this.contextTileContainer.style.display = "none";
@@ -1399,7 +1403,7 @@ export class MarsMap
         {
             const active = route.id === this.store.current.activeRouteId;
             const coordinates = route.points.map(point => this.geoToScreen(point));
-            const displayed = active ? spreadNearbyMarkers(coordinates) : coordinates;
+            const displayed = coordinates;
 
             if (coordinates.length > 1)
             {
@@ -1416,16 +1420,10 @@ export class MarsMap
                     const point = route.points[index];
                     const actual = coordinates[index];
 
-                    if (position.shifted)
-                    {
-                        const tether = svgElement("line", { x1: actual.x, y1: actual.y, x2: position.x, y2: position.y,
-                            stroke: route.color, "stroke-opacity": 0.7, "stroke-width": 1.3,
-                            "stroke-dasharray": "3 4", "pointer-events": "none" });
-                        this.overlay.appendChild(tether);
-                    }
-
-                    const halo = svgElement("circle", { cx: position.x, cy: position.y, r: 12, fill: route.color, opacity: 0.2 });
+                    const radius = Math.max(3, Math.min(7, 3 + (this.zoom - 3) * 0.5));
+                    const halo = svgElement("circle", { cx: position.x, cy: position.y, r: radius + 3, fill: route.color, opacity: 0.16 });
                     const marker = markerShape(position, point.icon, route.color, { class: "route-node", "data-point": point.id });
+                    marker.setAttribute("transform", `translate(${position.x} ${position.y}) scale(${radius / 7}) translate(${-position.x} ${-position.y})`);
                     const title = svgElement("title", {});
                     title.textContent = `Waypoint ${index + 1} · ${formatCoordinate(point.lat, "lat")}, ${formatCoordinate(point.lon, "lon")}`;
                     marker.appendChild(title);
@@ -1437,8 +1435,10 @@ export class MarsMap
         for (const observation of this.store.current.observations)
         {
             const position = this.geoToScreen(observation);
-            const halo = svgElement("circle", { cx: position.x, cy: position.y, r: 12, fill: "#7ed4c5", opacity: 0.15 });
+            const radius = Math.max(3, Math.min(7, 3 + (this.zoom - 3) * 0.5));
+            const halo = svgElement("circle", { cx: position.x, cy: position.y, r: radius + 3, fill: "#7ed4c5", opacity: 0.15 });
             const marker = markerShape(position, observation.icon || "diamond", "#8fe5d8");
+            marker.setAttribute("transform", `translate(${position.x} ${position.y}) scale(${radius / 7}) translate(${-position.x} ${-position.y})`);
             const title = svgElement("title", {});
             title.textContent = observation.title;
             marker.appendChild(title);
