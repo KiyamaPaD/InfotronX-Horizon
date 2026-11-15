@@ -18,10 +18,11 @@ The old CTX beta01 visual mosaic was retired because its source images contained
 | Layer | Display | Highest verified source zoom |
 | --- | --- | --- |
 | Viking Global | continuous global context | 7 |
-| HiRISE Jezero | detailed local grayscale PNG imagery with alpha | 11 |
+| Jezero CTX photo context (internal) | controlled 6 m/pixel grayscale PNG behind HiRISE | 8–11 |
+| HiRISE Jezero | detailed local grayscale PNG imagery with alpha | 9–11 |
 | MOLA / HRSC Relief | monochrome shaded relief (not numeric elevation) | 7 |
 
-HiRISE selection at zoom 3–8 uses the Viking background. For zoom 9–11 the renderer maintains ONE continuous geographically aligned Viking background, at source zoom 7, and native 256px HiRISE PNGs in a separate overlay. This replaces the old algorithm which downloaded and enlarged Viking imagery independently inside every HiRISE tile.
+HiRISE selection at zoom 3–7 uses Viking, zoom 8 adds a native controlled CTX Jezero 6 m/pixel context layer, and zoom 9–11 adds native HiRISE detail over CTX and Viking. The renderer maintains one continuous geographically aligned Viking background at source zoom 7 and separate transparent 256px CTX and HiRISE tiles. This replaces the old algorithm which downloaded and enlarged Viking imagery independently inside every HiRISE tile.
 
 **Confirmed root cause:** A real Chromium network trace showed Viking zoom-8 tile requests returning HTTP 404 around Jezero. The same area at Viking zoom 7 returned 200. Our Viking maximum is now 7, including in the HiRISE fallback. Arrival of WMTS metadata no longer cancels requests already in flight.
 
@@ -46,3 +47,7 @@ Details: [Map engine](MAP_ENGINE.md) and [Beta testing](BETA_TESTING.md).
 Confirm the map in the user's desktop and mobile browser, then finish the overall product review. After the map is accepted, evaluate optional AI functionality and prepare the complete Mars Atlas technical handoff covering data, GitHub, Vercel, Supabase and testing. Do not mix documentation from unrelated projects.
 
 Historical research reports elsewhere in docs are archives; this file describes the current implementation.
+
+## Photo context rework — controlled CTX between Viking and HiRISE
+
+The November 15 user screenshot showed sharp HiRISE detail with a visibly pixelated Viking background at zoom 9. A NASA Mars Trek controlled CTX mosaic `JEZ_ctx_B_soc_008_orthoMosaic_6m_Eqc_latTs0_lon0` supplies genuine 6 m/pixel detail around Jezero, with broader geographic coverage than HiRISE. It is now layered transparently between Viking and HiRISE, with its own 84-tile cache and viewport-aware coverage rejection. It is not the artifact-prone retired global CTX beta mosaic. NASA PNG tiles responded HTTP 200 at zooms 8–11 at Jezero and the reported edge coordinates. See [Map engine](MAP_ENGINE.md) for implementation and screenshots in the GitHub browser test artifacts. Final visual validation on the user device is pending.

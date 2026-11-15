@@ -61,6 +61,22 @@ async function inspect(label)
     return info;
 }
 
+async function waitForLoadedTiles(selector)
+{
+    await page.waitForFunction(selector =>
+    {
+        const map = document.querySelector("#map-root").getBoundingClientRect();
+        const tiles = [...document.querySelectorAll(selector)].filter(tile =>
+        {
+            const rect = tile.getBoundingClientRect();
+            return tile.style.display !== "none" && rect.right > map.left
+                && rect.left < map.right && rect.bottom > map.top && rect.top < map.bottom;
+        });
+
+        return tiles.length > 0 && tiles.every(tile => tile.dataset.state === "loaded");
+    }, selector, { timeout: 25000 });
+}
+
 async function zoomUntil(target)
 {
     for (let attempts = 0; attempts < 8; attempts++)
@@ -148,6 +164,7 @@ try
     await page.waitForFunction(() =>
         [...document.querySelectorAll(".map-context-tile")].some(item => item.dataset.state === "loaded" && item.style.display !== "none"),
         null, { timeout: 20000 });
+    await waitForLoadedTiles(".map-context-tile");
     const view9 = await inspect("NASA controlled CTX at zoom 9");
     assert.ok(view9.contextLoaded > 0);
     assert.ok(view9.contextWidths.every(width => width === 256));
@@ -164,8 +181,11 @@ try
     await page.waitForFunction(() =>
         [...document.querySelectorAll(".map-context-tile")].some(item => item.dataset.state === "loaded" && item.style.display !== "none"),
         null, { timeout: 20000 });
+    await waitForLoadedTiles(".map-context-tile");
+    await waitForLoadedTiles(".map-hires-tile");
     const full11 = await inspect("CTX under HiRISE at zoom 11");
-    assert.ok(full11.contextLoaded > 0);
+    assert.equal(full11.contextLoaded, full11.contextVisible);
+    assert.equal(full11.detailLoaded, full11.detailVisible);
     assert.ok(full11.contextWidths.every(width => width === 256));
     assert.ok(view11.bannerHidden);
     assert.ok(view11.detailWidths.every(width => width === 256));

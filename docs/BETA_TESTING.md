@@ -124,3 +124,14 @@ In a real browser test, all twelve visible Viking WMTS zoom-8 tiles over Jezero 
 ## Verified native browser map test
 
 The [zoom QA run](https://github.com/KiyamaPaD/Mars-Atlas/actions/runs/43664589796) and [panning QA run](https://github.com/KiyamaPaD/Mars-Atlas/actions/runs/43664904388) used headless Chromium with real NASA imagery. At HiRISE view zoom 8, the four visible Viking background tiles loaded; at zoom 11, two Viking and twelve HiRISE tiles loaded. No duplicate Viking downloads occurred on repeated zoom cycles, and a 320px pan preserved the map. Screenshots are available as workflow artifacts. The test ran against a locally served checkout rather than the production Vercel domain.
+
+## Jezero photographic-context acceptance (controlled CTX)
+
+- [ ] Select HiRISE Jezero and inspect zoom 7 → 8 → 9 → 10 → 11; at zoom 8 a controlled CTX mosaic should sharpen the Viking backdrop without requiring HiRISE coverage.
+- [ ] At zoom 9–11, compare inside and outside the HiRISE mosaic footprint. Where the **controlled 6 m/pixel CTX** mosaic covers the map, terrain outside HiRISE should no longer look like an enlarged, blurry Viking background.
+- [ ] Check around 18.39862 N, 77.57575 E and at the HiRISE landing-region edges, including repeated panning, to check for seams, transparent NoData and stable overlay alignment.
+- [ ] Outside both the HiRISE and CTX local mosaics, the global Viking zoom-7 data may remain visibly low resolution; do not synthesize geological detail.
+- [ ] If the CTX source fails, Viking must remain visible without black rectangles. Check the Network panel for PNG URL responses before changing source or retry behavior.
+- [ ] Route and waypoint coordinates and numeric CTX DTM calculations must stay unchanged by basemap source switches.
+
+All directly sampled controlled CTX PNG tile requests at view zooms 8–11 returned valid NASA imagery on 15 November 2026. The selected HiRISE option now composes three independent photographic sources; the current user interface intentionally does not add a fourth basemap button.
