@@ -14,7 +14,7 @@ export const MAP_LAYERS = [
         dataset: "Mars_Viking_MDIM21_ClrMosaic_global_232m",
         description: "Continuous Viking color mosaic for global Mars exploration. Native detail is limited to its map resolution.",
         url: "https://trek.nasa.gov/tiles/Mars/EQ/Mars_Viking_MDIM21_ClrMosaic_global_232m/1.0.0",
-        extensions: ["jpg", "png"],
+        extensions: ["jpg"],
         maxUsefulZoom: 8
     },
     {
@@ -23,9 +23,9 @@ export const MAP_LAYERS = [
         short: "HIRISE",
         agency: "NASA / MRO",
         dataset: "JEZ_hirise_soc_006_orthoMosaic_25cm_Eqc_latTs0_lon0_first_dd",
-        description: "Controlled 25 cm HiRISE mosaic of Jezero. Outside its coverage, the map displays lower-resolution Viking context.",
+        description: "Grayscale HiRISE Jezero imagery with transparent gaps over grayscale Viking context.",
         url: "https://trek.nasa.gov/tiles/Mars/EQ/JEZ_hirise_soc_006_orthoMosaic_25cm_Eqc_latTs0_lon0_first_dd/1.0.0",
-        extensions: ["png", "jpg"],
+        extensions: ["png"],
         coverage: { south: 18.3067994, north: 18.669315, west: 77.2229331, east: 77.583964 },
         maxUsefulZoom: 10
     },
@@ -33,11 +33,11 @@ export const MAP_LAYERS = [
         id: "mola",
         name: "MOLA Relief",
         short: "MOLA",
-        agency: "NASA / MGS",
-        dataset: "Mars_MGS_MOLA_ClrShade_merge_global_463m",
-        description: "Mars Global Surveyor MOLA color hillshade. Regional relief overview; not a local elevation profile.",
-        url: "https://trek.nasa.gov/tiles/Mars/EQ/Mars_MGS_MOLA_ClrShade_merge_global_463m/1.0.0",
-        extensions: ["png", "jpg"],
+        agency: "NASA / MGS / ESA",
+        dataset: "Mars_MOLA_blend200ppx_HRSC_Shade_clon0dd_200mpp_lzw",
+        description: "Monochrome MOLA and HRSC hillshade blend. Visual relief shading, not numeric elevation.",
+        url: "https://trek.nasa.gov/tiles/Mars/EQ/Mars_MOLA_blend200ppx_HRSC_Shade_clon0dd_200mpp_lzw/1.0.0",
+        extensions: ["jpg"],
         maxUsefulZoom: 7
     }
 ];

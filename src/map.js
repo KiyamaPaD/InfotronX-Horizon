@@ -398,14 +398,21 @@ export class MarsMap
             return fallback;
         }
 
-        const point = Number.isInteger(tileX) && Number.isInteger(tileY)
-            ? unproject({ x: (tileX + 0.5) * 256, y: (tileY + 0.5) * 256 }, zoom)
-            : this.center;
         const bounds = this.layer.coverage;
 
+        if (Number.isInteger(tileX) && Number.isInteger(tileY))
+        {
+            const northwest = unproject({ x: tileX * 256, y: tileY * 256 }, zoom);
+            const southeast = unproject({ x: (tileX + 1) * 256, y: (tileY + 1) * 256 }, zoom);
+            const intersects = northwest.lon < bounds.east && southeast.lon > bounds.west
+                && northwest.lat > bounds.south && southeast.lat < bounds.north;
+
+            return intersects ? this.layer : fallback;
+        }
+
+        const point = this.center;
         return point.lon >= bounds.west && point.lon <= bounds.east
-            && point.lat >= bounds.south && point.lat <= bounds.north
-            ? this.layer : fallback;
+            && point.lat >= bounds.south && point.lat <= bounds.north ? this.layer : fallback;
     }
 
     tileCandidates(x, y, zoom, layer = this.getImageryLayer(zoom))
@@ -417,7 +424,8 @@ export class MarsMap
             ?.replaceAll("{TileMatrix}", matrixId)
             .replaceAll("{TileRow}", String(y))
             .replaceAll("{TileCol}", String(x))
-            .replaceAll("{Style}", "default");
+            .replaceAll("{Style}", "default")
+            .replace(/\/{2,}(?=default\/)/g, "/");
         const candidates = [...new Set([
             ...(template ? [template] : []),
             ...layer.extensions.map(extension => layer.url + "/default/default028mm/" + zoom + "/" + y + "/" + x + "." + extension),
@@ -452,7 +460,7 @@ export class MarsMap
         tile.dataset.source = layer.id;
         tile.dataset.lowDetail = String(sourceDepth > 0);
 
-        if (selectedLayerId === "hirise" && layer.id === "viking")
+        if (selectedLayerId === "hirise")
         {
             tile.style.filter = "grayscale(1)";
         }
@@ -542,7 +550,8 @@ export class MarsMap
             tile.dataset.state = "loaded";
             this.loadedImages++;
             detail.style.opacity = "1";
-            preview.style.opacity = selectedLayerId === "hirise" && layer.id === "hirise" ? "1" : "0";
+            preview.style.opacity = selectedLayerId === "hirise" && layer.id === "hirise"
+                && tile.dataset.preview === "loaded" ? "1" : "0";
             const source = primaryCandidates[primaryIndex];
             const match = source.match(/\/default\/(default028mm|default)\/[^/]+\/\d+\/\d+\.(png|jpg)$/);
 
@@ -623,7 +632,8 @@ export class MarsMap
             }
 
             tile.dataset.preview = "loaded";
-            preview.style.opacity = tile.dataset.state === "loaded" ? "0" : "1";
+            preview.style.opacity = selectedLayerId === "hirise" && layer.id === "hirise"
+                ? "1" : tile.dataset.state === "loaded" ? "0" : "1";
             report();
         };
 
@@ -638,7 +648,7 @@ export class MarsMap
 
             detail.src = primaryCandidates[0];
 
-            if (zoom > 3)
+            if (zoom > 3 && !(selectedLayerId === "hirise" && layer.id === "viking"))
             {
                 loadPreview();
             }

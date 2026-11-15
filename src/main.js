@@ -88,7 +88,8 @@ function updateImageryLabel(map)
 {
     const source = map.getImageryLayer();
     const overview = source.id !== map.layer.id;
-    get("#map-source-name").textContent = source.name.toUpperCase();
+    get("#map-source-name").textContent = map.layer.id === "hirise" && map.zoom >= 9
+        ? "HIRISE + VIKING" : source.name.toUpperCase();
     get(".map-source-eyebrow").textContent = overview ? "GLOBAL OVERVIEW" : "CURRENT IMAGERY";
     get(".map-data-badge").title = overview
         ? "Viking global imagery. HiRISE Jezero is available only within its mapped coverage."
