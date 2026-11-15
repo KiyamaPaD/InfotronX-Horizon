@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { appendFile, mkdir, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { chromium } from "playwright";
 import { project, unproject } from "../src/geo.js";
 
@@ -1320,6 +1320,19 @@ try
     assert.match(resultState, /minimum|equivalent|no valid modeled alternatives/i);
     assert.equal(await page.locator("#terrain-why-preference").isDisabled(), false);
     assert.equal(await page.locator("#terrain-strategies .strategy-card").count(), 3);
+
+    assert.equal(await page.locator("#terrain-evidence-export").isDisabled(), false);
+    const [scientificDownload] = await Promise.all([
+        page.waitForEvent("download"),
+        page.locator("#terrain-evidence-export").click()
+    ]);
+    assert.equal(scientificDownload.suggestedFilename(), "mars-atlas-scientific-comparison.md");
+    const scientificEvidence = await readFile(await scientificDownload.path(), "utf8");
+    assert.match(scientificEvidence, /MARS ATLAS — Scientific route comparison/);
+    assert.match(scientificEvidence, /Numeric elevation source:/);
+    assert.match(scientificEvidence, /Cost identity verified/);
+    assert.match(scientificEvidence, /NOT NASA telemetry/);
+    assert.doesNotMatch(scientificEvidence, /NaN|Infinity/);
 
     if (await page.locator("#terrain-why-report .why-verdict").count())
     {
