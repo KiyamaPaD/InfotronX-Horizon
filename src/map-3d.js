@@ -5,6 +5,7 @@ import { loadJezeroDem } from "./bundled-dem.js";
 import { MAP_LAYERS, JEZERO_CTX_CONTEXT } from "./constants.js";
 import { addSpaceDecor } from "./space-decor.js";
 import { lowPower, createGovernor } from "./perf.js";
+import { analyzeRoute, formatDistance } from "./geo.js";
 
 const R = 3396190;
 const THREE_URL = "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
@@ -203,6 +204,21 @@ async function globalMosaic(base, zoom, extension = "jpg", fill = "#6b3a26")
     return canvas;
 }
 
+function disposeTree(root)
+{
+    root.traverse(object =>
+    {
+        object.geometry?.dispose();
+
+        for (const material of [].concat(object.material || []))
+        {
+            material.map?.dispose();
+            material.bumpMap?.dispose();
+            material.dispose();
+        }
+    });
+}
+
 function glowTexture(THREE, stops)
 {
     const canvas = document.createElement("canvas");
@@ -240,7 +256,8 @@ function sampleGrid(grid, point)
 
 const COPY = {
     crater: { title: "Jezero Crater", eyebrow: "3D VIEW · WHOLE CRATER", text: "Whole-crater visualization from NASA MOLA 8-bit grayscale imagery and Viking/HiRISE context. Vertical mapping is illustrative and not calibrated in meters. Use Delta detail for a documented numeric DEM.", switchLabel: "Delta detail · 20 m" },
-    delta: { title: "Delta front", eyebrow: "3D VIEW · DETAIL", text: "USGS CTX heights (20 m grid) with NASA HiRISE imagery (~1.2 m/pixel). Height and curvature are exaggerated for readability.", switchLabel: "Whole crater" }
+    planet: { title: "Whole planet", eyebrow: "3D VIEW · MARS", text: "All of Mars wrapped in real NASA Viking colour and raised by MOLA heights (relief exaggerated). Your route follows the surface between waypoints, anywhere on the planet. Distances use Mars's real radius.", switchLabel: "Whole crater" },
+    delta: { title: "Delta front", eyebrow: "3D VIEW · DETAIL", text: "USGS CTX heights (20 m grid) with NASA HiRISE imagery (~1.2 m/pixel). Height and curvature are exaggerated for readability.", switchLabel: "Whole planet" }
 };
 
 export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mode = "crater", onFocusArea, onClose })
@@ -272,6 +289,7 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
     let disposed = false;
     let renderer = null;
     let hud = null;
+    let hudKeep = null;
     let decorHandle = null;
     let skipFrames = false;
     let frameToggle = false;
@@ -417,7 +435,7 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
             renderer.setViewport(0, 0, width, height);
         };
 
-        if (!light) buildHud();
+        if (!light) { buildHud(); hudKeep = hud; }
         const tickers = new Set();
         // If frames stay slow, drop the decoration first (level 1), then the extra animation (level 2).
         const governor = createGovernor(level =>
@@ -426,6 +444,7 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
             resize();
             decorHandle?.setVisible(false);
             hud = null;
+            hudKeep = null;
 
             if (level >= 2)
             {
@@ -448,10 +467,217 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
             if (hud && scene) renderHud(now);
         });
 
+        // The whole planet at its true proportions: real Viking colour, MOLA relief (exaggerated) and a route that can run anywhere on it.
+        const buildPlanet = async id =>
+        {
+            status.textContent = "Loading the whole planet…";
+            controls.maxPolarAngle = Math.PI;
+            if (scene) disposeTree(scene);
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x05070d);
+            tickers.clear();
+            hud = null;
+            camera.near = 0.01;
+            camera.far = 400;
+            camera.updateProjectionMatrix();
+            controls.minDistance = 1.12;
+            controls.maxDistance = 14;
+            scene.add(new THREE.HemisphereLight(0xffe2cf, 0x1b2430, 0.55));
+            const sunLight = new THREE.DirectionalLight(0xfff1e0, 2.4);
+            sunLight.position.set(-5, 2.5, 4);
+            scene.add(sunLight);
+            const sunSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(THREE, [[0, "rgba(255,255,255,1)"], [0.1, "rgba(255,236,190,.95)"], [0.3, "rgba(255,170,90,.35)"], [1, "rgba(255,110,50,0)"]]), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, fog: false }));
+            sunSprite.position.set(-30, 12, -22);
+            sunSprite.scale.setScalar(14);
+            scene.add(sunSprite);
+
+            if (!light)
+            {
+                decorHandle = addSpaceDecor(THREE, scene, { radius: 1, center: new THREE.Vector3(), reduced: reducedMotion() });
+                tickers.add(now => decorHandle.update(now));
+            }
+
+            const geometry = new THREE.SphereGeometry(1, 256, 128);
+            const base = Float32Array.from(geometry.attributes.position.array);
+            const uv = geometry.attributes.uv;
+            const material = new THREE.MeshStandardMaterial({ color: 0x8a4a2c, roughness: 1 });
+            scene.add(new THREE.Mesh(geometry, material));
+            scene.add(new THREE.Mesh(new THREE.SphereGeometry(1.06, 96, 64), new THREE.ShaderMaterial({
+                transparent: true, side: THREE.BackSide, blending: THREE.AdditiveBlending, depthWrite: false, fog: false,
+                vertexShader: "varying vec3 n; void main(){ n = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+                fragmentShader: "varying vec3 n; void main(){ float i = pow(max(0.0, 0.72 - dot(n, vec3(0.0, 0.0, 1.0))), 3.0); gl_FragColor = vec4(1.0, 0.55, 0.34, 1.0) * i * 1.5; }"
+            })));
+
+            // MOLA grey level 0-255 spans 29.4 km of height; at true scale that is 0.87% of the radius, multiplied by the slider.
+            const relief = { data: null, width: 0, height: 0 };
+            const dispAt = (lat, lon) =>
+            {
+                if (!relief.data) return 0;
+
+                const x = Math.min(relief.width - 1, Math.max(0, (lon + 180) / 360 * relief.width)), y = Math.min(relief.height - 1, Math.max(0, (90 - lat) / 180 * relief.height));
+                const x0 = Math.floor(x), y0 = Math.floor(y), x1 = Math.min(relief.width - 1, x0 + 1), y1 = Math.min(relief.height - 1, y0 + 1), tx = x - x0, ty = y - y0;
+                const grey = (cx, cy) => relief.data[(cy * relief.width + cx) * 4];
+                const value = grey(x0, y0) * (1 - tx) * (1 - ty) + grey(x1, y0) * tx * (1 - ty) + grey(x0, y1) * (1 - tx) * ty + grey(x1, y1) * tx * ty;
+                return value / 255 * 0.00867 * factor;
+            };
+            const applyRelief = () =>
+            {
+                const position = geometry.attributes.position;
+
+                for (let i = 0; i < position.count; i++)
+                {
+                    const scale = 1 + dispAt(90 - (1 - uv.getY(i)) * 180, uv.getX(i) * 360 - 180);
+                    position.setXYZ(i, base[i * 3] * scale, base[i * 3 + 1] * scale, base[i * 3 + 2] * scale);
+                }
+
+                position.needsUpdate = true;
+                geometry.computeVertexNormals();
+            };
+
+            const toVector = (lat, lon) =>
+            {
+                const phi = (lon + 180) / 360 * Math.PI * 2, theta = (90 - lat) / 180 * Math.PI;
+                return new THREE.Vector3(-Math.cos(phi) * Math.sin(theta), Math.cos(theta), Math.sin(phi) * Math.sin(theta));
+            };
+            const toLatLon = vector =>
+            {
+                let phi = Math.atan2(vector.z, -vector.x);
+                if (phi < 0) phi += Math.PI * 2;
+                return { lat: 90 - Math.acos(Math.max(-1, Math.min(1, vector.y))) * 180 / Math.PI, lon: phi / (Math.PI * 2) * 360 - 180 };
+            };
+
+            const valid = points.filter(point => Number.isFinite(point.lat) && Number.isFinite(point.lon));
+            const vectors = valid.map(point => toVector(point.lat, point.lon));
+            const route = new THREE.Group();
+            scene.add(route);
+            let roverTick = null, ringTick = null;
+
+            const drawRoute = () =>
+            {
+                route.clear();
+                if (roverTick) { tickers.delete(roverTick); roverTick = null; }
+                if (ringTick) { tickers.delete(ringTick); ringTick = null; }
+
+                if (!vectors.length) return;
+
+                let totalAngle = 0;
+                for (let i = 1; i < vectors.length; i++) totalAngle += Math.acos(Math.max(-1, Math.min(1, vectors[i - 1].dot(vectors[i]))));
+
+                // Thick enough to see on a short route, thin enough not to swallow a long one.
+                const tube = Math.max(0.0035, Math.min(0.014, totalAngle * 0.012));
+                const lift = tube * 1.4;
+                const surface = vector => { const { lat, lon } = toLatLon(vector); return vector.clone().normalize().multiplyScalar(1 + dispAt(lat, lon) + lift); };
+                const dense = [];
+
+                // Great circles between waypoints, so a long route bends with the planet instead of cutting through it.
+                for (let i = 1; i < vectors.length; i++)
+                {
+                    const a = vectors[i - 1], b = vectors[i];
+                    const omega = Math.acos(Math.max(-1, Math.min(1, a.dot(b))));
+                    const steps = Math.max(2, Math.ceil(omega / 0.008));
+
+                    for (let step = i === 1 ? 0 : 1; step <= steps; step++)
+                    {
+                        const t = step / steps;
+                        const along = omega < 1e-6 ? a.clone() : a.clone().multiplyScalar(Math.sin((1 - t) * omega) / Math.sin(omega)).add(b.clone().multiplyScalar(Math.sin(t * omega) / Math.sin(omega)));
+                        dense.push(surface(along));
+                    }
+                }
+
+                const ringMaterials = [];
+                vectors.forEach((vector, index) =>
+                {
+                    const position = surface(vector).multiplyScalar(1 + tube * 0.4);
+                    const marker = new THREE.Mesh(new THREE.SphereGeometry(tube * 2.2, 16, 12), new THREE.MeshBasicMaterial({ color: index === 0 ? 0x75d1c8 : 0xffffff }));
+                    marker.position.copy(position);
+                    const ring = new THREE.Mesh(new THREE.RingGeometry(tube * 2.9, tube * 3.5, 32), new THREE.MeshBasicMaterial({ color: routeColor, transparent: true, side: THREE.DoubleSide, depthWrite: false }));
+                    ring.position.copy(position);
+                    ring.lookAt(position.clone().multiplyScalar(2));
+                    route.add(marker, ring);
+                    ringMaterials.push(ring);
+                });
+
+                if (dense.length < 2) return;
+
+                const curve = new THREE.CatmullRomCurve3(dense);
+                const mesh = new THREE.Mesh(new THREE.TubeGeometry(curve, Math.min(6000, dense.length * 2), tube, 8, false), new THREE.MeshBasicMaterial({ color: routeColor }));
+                route.add(mesh);
+
+                if (reducedMotion()) return;
+
+                ringTick = now => ringMaterials.forEach((ring, index) =>
+                {
+                    const phase = (now / 1000 * 0.8 + index * 0.23) % 1;
+                    ring.scale.setScalar(1 + phase * 3);
+                    ring.material.opacity = (1 - phase) * 0.8;
+                });
+                tickers.add(ringTick);
+                const rover = new THREE.Mesh(new THREE.SphereGeometry(tube * 3, 16, 12), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+                route.add(rover);
+                const seconds = Math.max(6, Math.min(24, totalAngle * 8));
+                roverTick = now => rover.position.copy(curve.getPointAt((now / 1000 / seconds) % 1));
+                tickers.add(roverTick);
+            };
+
+            applyFactor = () => { applyRelief(); drawRoute(); };
+
+            let total = 0;
+            for (let i = 1; i < valid.length; i++) total += analyzeRoute([valid[i - 1], valid[i]]).totalDistance;
+            get("route").textContent = valid.length >= 2
+                ? `Your route: ${valid.length} waypoints, ${formatDistance(total)} along the surface of Mars, anywhere on the planet.`
+                : "Draw two or more waypoints to see your route on the planet.";
+
+            const centre = vectors.length ? vectors.reduce((sum, vector) => sum.add(vector), new THREE.Vector3()).normalize() : toVector(18.44, 77.45);
+            const direction = centre.lengthSq() > 0.01 ? centre : toVector(18.44, 77.45);
+            const endPosition = direction.clone().multiplyScalar(3.1).add(new THREE.Vector3(0, 0.25, 0));
+            const startPosition = direction.clone().multiplyScalar(10);
+
+            flyIn = () =>
+            {
+                controls.target.set(0, 0, 0);
+
+                if (reducedMotion())
+                {
+                    camera.position.copy(endPosition);
+                    return;
+                }
+
+                camera.position.copy(startPosition);
+                const start = performance.now();
+                const step = now =>
+                {
+                    const t = Math.min(1, (now - start) / 2600);
+                    camera.position.lerpVectors(startPosition, endPosition, 1 - Math.pow(1 - t, 3));
+                    if (t < 1 && !disposed && id === session) requestAnimationFrame(step);
+                };
+                requestAnimationFrame(step);
+            };
+
+            applyFactor();
+            flyIn();
+            Promise.all([globalMosaic(VIKING_URL, light ? 2 : 3), globalMosaic(MOLA_DEM_URL, light ? 1 : 2, "png", "#000000")]).then(([colour, heights]) =>
+            {
+                if (disposed || id !== session) return;
+                const map = new THREE.CanvasTexture(colour);
+                map.colorSpace = THREE.SRGBColorSpace;
+                map.anisotropy = renderer.capabilities.getMaxAnisotropy();
+                material.map = map;
+                material.color.set(0xffffff);
+                material.needsUpdate = true;
+                relief.width = heights.width;
+                relief.height = heights.height;
+                relief.data = heights.getContext("2d").getImageData(0, 0, heights.width, heights.height).data;
+                applyFactor();
+                status.textContent = "Whole planet · NASA Viking colour with MOLA relief (exaggerated)";
+            }).catch(() => { if (!disposed && id === session) status.textContent = "Whole planet · imagery unavailable"; });
+        };
+
         const build = async which =>
         {
             const id = ++session;
             mode = which;
+            hud = which === "planet" ? null : hudKeep;
+            controls.maxPolarAngle = which === "planet" ? Math.PI : Math.PI * 0.47;
             // A 1.2 km deep crater 50 km wide looks flat at true scale; the delta clip reads well at x3.
             factor = 3;
             get("ex").value = String(factor);
@@ -460,6 +686,12 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
             get("title").textContent = COPY[which].title;
             get("copy").textContent = COPY[which].text;
             get("switch").textContent = COPY[which].switchLabel;
+            if (which === "planet")
+            {
+                await buildPlanet(id);
+                return;
+            }
+
             status.textContent = which === "crater" ? "Loading MOLA heights…" : "Loading CTX heights…";
             const grid = which === "crater" ? await craterGrid() : await (deltaPromise ??= loadJezeroDem());
 
@@ -510,6 +742,7 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
                 return bend((u - 0.5) * spanX, patchHeight(elevation, u, v, point.lat, point.lon), (v - 0.5) * spanY);
             };
 
+            if (scene) disposeTree(scene);
             scene = new THREE.Scene();
             tickers.clear();
             scene.background = new THREE.Color(0x0b1118);
@@ -852,7 +1085,7 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
             controls.autoRotate = !controls.autoRotate;
             event.currentTarget.setAttribute("aria-pressed", String(controls.autoRotate));
         });
-        get("switch").addEventListener("click", () => build(mode === "crater" ? "delta" : "crater").catch(() => { status.textContent = "3D terrain could not load. Check your connection."; }));
+        get("switch").addEventListener("click", () => build({ crater: "delta", delta: "planet", planet: "crater" }[mode]).catch(() => { status.textContent = "3D terrain could not load. Check your connection."; }));
         await build(mode);
     }
     catch
