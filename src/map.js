@@ -501,6 +501,45 @@ export class MarsMap
 
     // Transfer the actual image, not a new Image(src) clone. A second Image would generate
     // a simultaneous request under NASA errors and can double HTTP traffic.
+    // A failed probe is remembered for 16 s, the same window as the tile retry policy.
+    probePreview(url)
+    {
+        this.previewProbes ??= new Map();
+        const known = this.previewProbes.get(url);
+
+        if (known && (known.ok !== false || Date.now() - known.failedAt < 16000))
+        {
+            return known.promise;
+        }
+
+        if (this.previewProbes.size > 240)
+        {
+            this.previewProbes.delete(this.previewProbes.keys().next().value);
+        }
+
+        const probe = { ok: null, failedAt: 0 };
+        probe.promise = new Promise(resolve =>
+        {
+            const image = new Image();
+            image.decoding = "async";
+            image.onload = () =>
+            {
+                probe.ok = image.naturalWidth >= 240 && image.naturalHeight >= 240;
+                if (!probe.ok) probe.failedAt = Date.now();
+                resolve(probe.ok);
+            };
+            image.onerror = () =>
+            {
+                probe.ok = false;
+                probe.failedAt = Date.now();
+                resolve(false);
+            };
+            image.src = url;
+        });
+        this.previewProbes.set(url, probe);
+        return probe.promise;
+    }
+
     keepVikingRequest(image)
     {
         if (this.layer.id !== "hirise")
@@ -754,7 +793,31 @@ export class MarsMap
             preview.style.top = -((y % ratio) * 256) + "px";
             previewCandidates = this.tileCandidates(parentX, parentY, parentZoom, fallback);
             previewIndex = 0;
-            preview.src = previewCandidates[0];
+            showPreview();
+        };
+
+        // Sibling tiles share parent previews; one shared probe per URL avoids parallel duplicate requests.
+        const showPreview = () =>
+        {
+            const url = previewCandidates[previewIndex];
+            const index = previewIndex;
+
+            if (typeof Image === "undefined")
+            {
+                preview.src = url;
+                return;
+            }
+
+            this.probePreview(url).then(ok =>
+            {
+                if (!isCurrent() || index !== previewIndex)
+                {
+                    return;
+                }
+
+                if (ok) preview.src = url;
+                else nextPreview();
+            });
         };
 
         const nextPreview = () =>
@@ -768,7 +831,7 @@ export class MarsMap
 
             if (previewIndex < previewCandidates.length)
             {
-                preview.src = previewCandidates[previewIndex];
+                showPreview();
                 return;
             }
 
