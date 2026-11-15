@@ -1162,12 +1162,16 @@ async function workflowScenario()
         await target.locator('[data-action="open-3d"]').click();
         await target.waitForSelector(".map-3d-layer.is-open", { timeout: 5000 });
         await target.waitForFunction(() => /relief|could not|unavailable/i.test(document.querySelector('[data-3d="status"]')?.textContent || ""), null, { timeout: 30000 }).catch(() => {});
-        const status3d = await target.locator('[data-3d="status"]').textContent();
-        steps.push({ step: "3d-status", status3d });
+        const status3d = (await target.locator('[data-3d="status"]').textContent()).trim();
+        const loaded3dCanvas = await target.locator(".map-3d-canvas canvas").count() > 0;
+        const rendered3d = loaded3dCanvas && !/could not|unavailable/i.test(status3d)
+            && /km|relief|height/i.test(status3d);
+        steps.push({ step: "3d-status", status3d, loaded3dCanvas, rendered3d });
+        console.log(JSON.stringify({ label: "Whole-crater 3D load", status: status3d, loaded3dCanvas, rendered3d }));
         await target.screenshot({ path: "browser-map-evidence/workflow-3d.png" });
         await target.locator('[data-3d="close"]').click();
         await target.waitForFunction(() => !document.querySelector(".map-3d-layer"), null, { timeout: 3000 });
-        check("3D view opens over the map and closes back to 2D", true, status3d.trim());
+        check("3D view genuinely renders a WebGL canvas and returns to 2D", rendered3d, status3d);
     }
     finally
     {
