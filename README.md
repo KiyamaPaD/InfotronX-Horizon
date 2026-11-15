@@ -1,23 +1,90 @@
-# Mars Atlas
+<div align="center">
 
-**Explore Jezero. Plan a route. Understand the terrain.**
+# 🔴 Mars Atlas
 
-Mars Atlas is a manual-first Mars mission-planning workspace. Draw a route across Jezero Crater, read its distance, slopes and heights from public NASA and USGS data, compare alternatives and see it in 3D. Built by **InfotronX Horizon** for the NASA Space Apps Challenge 2026.
+### Explore Jezero. Plan a route. Understand the terrain.
+
+**A manual-first Mars mission-planning workspace: a 3D planet built on NASA's own model, a 2D map of real orbiter imagery, route analysis you can explain in plain words, and a lab of 25 small planning models.**
 
 [![Verify](https://github.com/mari0-th/InfotronX-Horizon/actions/workflows/verify.yml/badge.svg)](https://github.com/mari0-th/InfotronX-Horizon/actions/workflows/verify.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+![No build step](https://img.shields.io/badge/build-none-brightgreen)
+![Vanilla JS](https://img.shields.io/badge/JavaScript-ES%20modules-f7df1e)
+![Three.js](https://img.shields.io/badge/3D-three.js-black)
+![NASA data](https://img.shields.io/badge/data-NASA%20%C2%B7%20USGS-0b3d91)
 
-**[Open Mars Atlas](https://mars-atlas-mu.vercel.app/)** · [Releases](https://github.com/mari0-th/InfotronX-Horizon/releases) · [Changelog](CHANGELOG.md) · [Credits](CREDITS.md) · [Report a bug](https://github.com/mari0-th/InfotronX-Horizon/issues/new?template=bug_report.md)
+**[▶ Open Mars Atlas](https://mars-atlas-mu.vercel.app/)** · [Releases](https://github.com/mari0-th/InfotronX-Horizon/releases) · [Changelog](CHANGELOG.md) · [Credits](CREDITS.md) · [Report a bug](https://github.com/mari0-th/InfotronX-Horizon/issues/new?template=bug_report.md)
 
-> Mars Atlas is an independent educational project. It is a planning aid, **not** a navigation tool, and it is **not** certified, endorsed or approved by NASA.
+*Built by **InfotronX Horizon** for the NASA Space Apps Challenge 2026 · "Interplanetary Survival Guide: Martian Map"*
+
+</div>
+
+> ⚠️ Mars Atlas is an independent educational project. It is a planning aid, **not** a navigation tool, and it is **not** certified, endorsed or approved by NASA.
+
+---
+
+## Why Mars Atlas
+
+Planning a walk on Mars is a chain of small decisions: where to go, which way, how steep, how much oxygen, what if the radio drops. Most tools show you a map *or* a number. Mars Atlas puts them together and **explains every number in a sentence built from your own route**, labelled so you always know what it rests on:
+
+| Label | Meaning |
+| --- | --- |
+| **Measured** | Comes straight from NASA or USGS data |
+| **Calculated** | Computed from a formula on this page, from measured data |
+| **Illustrative** | A scenario or a simple model, not a measurement |
+| **Your note** | Something you wrote |
+
+Nothing is called "real" unless it is. The MOLA relief on the 3D planet is 8-bit (about 115 m per grey level), so it says *approximate*. The 20 m CTX height model only covers a clip near the Jezero delta, so outside it slopes are *unknown*, never "flat".
+
+## Highlights
+
+### 🌍 A planet you can fly around
+- **NASA's own 3D model of Mars** (NASA/JPL-Caltech), made denser and lifted by MOLA heights, with a slider for the exaggeration.
+- **Switch the surface:** the NASA model, Viking colour, MOLA shaded relief or MOLA colour relief. Close up, it borrows the sharper Viking map by itself.
+- **29 real places** (rover and lander sites, volcanoes, canyons, basins) with facts and NASA photos. Click a glowing pin.
+- **Routes anywhere on the planet**, following the surface, with great-circle distances on Mars's real radius.
+- **Fly over your route** with a height profile that moves in sync, drop a figure onto the map for a **surface view** like street view, and tint the ground by **slope**.
+- A **data-quality line under the pointer** says what the numbers there rest on, in 2D and in 3D.
+
+### 🗺️ A map built from real imagery
+- NASA Mars Trek layers: Viking colour, MOLA relief, CTX (6 m) and HiRISE (25 cm) around Jezero, plus a NASA colour-relief layer.
+- Draw routes, move and reorder waypoints, add notes, photos and extra links between waypoints. A dot travels along the active route in the *Flowing* line style.
+
+### 🧭 Plan, then understand
+- **Explore → Plan → Analyze:** one panel at a time, with the map taking the rest of the screen. **All tools** keeps the full science workspace, with a search across every tool.
+- **Analyze in eight explained steps:** size, height, legs, comparison, 3D, decision checklist, questions, safety. A slider trades **distance against relief** and names the penalty (about 10.6 on the benchmark) where the best route changes.
+- **A repeatable benchmark** on the Jezero delta: three routes, one start, one end, numbers re-checked by the test suite.
+- **Safety step:** robots that could go along, what to pack, the point of no return, and the Earth–Mars message delay (3 to 22 minutes one way).
+
+### 🧪 The Planning Lab
+Twenty-five small models for mission ideas, each with an example already filled in. Change the numbers, press **Run**:
+
+| | | |
+| --- | --- | --- |
+| Value plan under a time budget | Instruments and kit weight | Geological variety |
+| *Why is there no route?* | Backup plans with triggers | Does the best route stay the best? |
+| What to measure next | Navigation without GPS | Image / height-model alignment |
+| Turning radius | Vehicle width along the route | Side slope and tipping |
+| Wheel slip | Two rovers in a narrow pass | Where two teams meet |
+| Radio relay from line of sight | Time windows | Battery over time |
+| Equipment temperature | Depots and resupply | Samples and contamination |
+| Data budget | Recovery after an uncertain landing | Change between two pictures |
+| Local 3D points on the planet | Export for a small educational rover | |
+
+These are planning aids built from the numbers you give. They are not measurements and not a safety approval.
+
+### 🎓 Made to be learned
+A tutorial with the logo as its guide, a "how to choose a route" guide, a welcome page that says what each NASA source is used for and how good it is, and preferences kept in your browser (nothing is sent anywhere).
+
+---
 
 ## How it works
 
-1. **Explore:** start on the welcome screen, then look around Jezero and pick a map layer.
-2. **Plan:** click the map to place waypoints, drag them to adjust, add observations.
-3. **Analyze:** follow six explained steps (size, height, legs, comparison, 3D, decision) with charts and a checklist. Every number is labelled measured, calculated, illustrative or your own note.
+1. **Explore:** start on the welcome screen, look around, pick a map or a 3D surface.
+2. **Plan:** click to place waypoints, drag to adjust, add observations and photos.
+3. **Analyze:** follow the explained steps, move the slider, open the Lab.
 
-The "All tools" view keeps the full science, math and resource workspace.
+Sign in once and your missions save automatically. Guests can use everything, but nothing they draw is saved and they are warned before leaving.
 
 ## The mathematics
 
@@ -96,102 +163,78 @@ $$\mathrm{VaR}_\alpha = \text{the } \lceil \alpha N\rceil\text{-th smallest of }
 
 These describe hypothetical distributions. They are **not** NASA-calibrated probabilities and say nothing about the safety of a real extravehicular activity.
 
-## What you can do
+## Data and its limits
 
-- **Plan directly on the map:** create missions, draw and edit routes, move/reorder waypoints, and attach observations and references. AI is not required.
-- **Waypoint & Mission Editor V2:** edit point names, categories, notes, shapes, colors and precise coordinates; use map context actions and mission-scoped Undo/Redo. [Editing guide](docs/WAYPOINT_EDITOR_V2.md).
-- **Compare route alternatives:** inspect A*, D* Lite replanning, bounded multi-objective route searches, and user-defined hypothetical exclusion zones.
-- **Explain route decisions rigorously:** Why This Route? displays the A* objective `C = D + λ × (ascent + descent)`, Pareto trade-offs, model limitations and user-adjustable preference rankings. [Validation evidence](docs/JUDGE_SCIENTIFIC_VALIDATION.md).
-- **Explore real terrain data:** study a limited-area USGS/NASA Mars Reconnaissance Orbiter CTX elevation clip near Jezero alongside NASA Mars Trek imagery layers.
-- **Terrain Intelligence V2:** inspect an interactive elevation profile, compare waypoint altitude and mean segment grade, and locate numeric DEM samples directly on the map. [Terrain profile guide](docs/TERRAIN_INTELLIGENCE_V2.md).
-- **Analyze terrain:** elevation and slope profiles, local roughness, line of sight, reachability, contours, and experimental scientific models.
-- **Take your work with you:** Sign in once and your missions save automatically (guests are never saved). Mission Center groups checkpoints, exports, mission links and an authenticated cloud library with sharing by verified teammate email (no automatic email delivery).
-- **See what's needed in Science:** Analytics provides an explicit guide for required waypoint counts, numeric DEM availability and route alternatives; tools can be expanded and opened without automatic sample points.
-- **Visualize your mission graph:** a weighted waypoint-connectivity diagram complements the existing segment distances, elevation, slope/roughness, reachability, contour and route comparison charts.
-- **Create a private Crew Profile:** signed-in Mars Atlas accounts can save a callsign, mission role, interests, biography and an optional private profile image. Roles are user-supplied, not NASA credentials. [Crew profile documentation](docs/CREW_PROFILES.md).
-- **Team chat for shared missions:** owner/viewer/editor collaboration conversations in Mission Center with Supabase RLS, anti-spam, block, report and message deletion. **Global chat remains off** until staffed moderation is ready.
-- **Interactive numeric 3D terrain:** WebGL rendering of valid DEM mesh triangles, with user-controlled orientation, zoom and vertical exaggeration. NoData cells remain blank and the original 2D terrain tools still work without WebGL.
-- **Route insights:** compact distance, terrain coverage, comparison and resource cards calculated from the current mission. No account or language model is required.
+| Source | Used for | Quality |
+| --- | --- | --- |
+| NASA Viking MDIM 2.1 colour mosaic | Colour map in 2D and 3D | Measured imagery; tiles stop at zoom 7, so close zoom is enlarged, not new |
+| NASA MRO CTX and HiRISE (Mars Trek) | Detail around the Jezero delta | Measured imagery, footprint only |
+| NASA/GSFC MOLA elevation | 3D relief; heights outside Jezero | 8-bit, about 115 m per level: **approximate** |
+| USGS CTX DTM, 20 m (Fergason et al., 2020, [DOI 10.5066/P906QQT8](https://doi.org/10.5066/P906QQT8)) | Slopes, profiles, route planning | Calculated; a clip near the delta, **not** a full Jezero survey |
+| NASA/JPL-Caltech 3D model of Mars | The planet in 3D | Model; relief is illustrative |
+| NASA Image and Video Library | Photos of the 29 places | NASA photos |
 
-## Explore and analyze
+The scientific analyses are educational approximations. They are not mission-operational hazard measurements, medical advice or safety approvals. Scenario assumptions must not be confused with source measurements. Map layers are visual context, not certified terrain safety maps. More in [NASA_DATA.md](NASA_DATA.md), [Science validation](docs/SCIENCE_VALIDATION.md) and [Map engine](docs/MAP_ENGINE.md).
 
-The map uses the NASA Viking global color mosaic as its default (zoom 3–7). In the HiRISE Jezero mode, zoom 8 remains a continuous Viking overview without an isolated CTX rectangle; from zoom 9–11, NASA CTX Jezero 6 m/pixel and HiRISE 25 cm/pixel images provide higher-resolution context with feathered geographic coverage boundaries. MOLA Relief is a separate basemap. The legacy CTX beta imagery was retired from the map because its original strips and color seams persisted at all zoom levels. NASA WMTS metadata, caching and progressive tile previews remain supported. Outside HiRISE's mapped footprint, Viking imagery appears as clearly identified lower-resolution context; enlarged imagery is not a new observation. Science tools are organized into **Overview**, **Terrain**, **Models** and **Mission**, with quick access to individual calculations. Route geometry remains fully editable without an AI assistant.
-
-## Current product status
+## Current status
 
 | Area | Status |
 | --- | --- |
-| Code and automated verification | Available; GitHub Actions runs on pushes to `main` |
-| Manual mission workspace and analysis modules | Implemented; team browser testing in progress |
-| NASA/USGS DEM | Bundled numerical clip, **not** a complete Jezero elevation survey |
-| NASA background maps | External image services; actual tile loading depends on connectivity |
-| Mission saving | Guests: not saved. Signed-in users: automatic cloud saving with a device copy, plus user exports |
-| Team account access | Authenticated cloud save/open with per-mission viewer/editor roles; email-based viewer/editor access (no automatic invitation emails); real-user flows need verification |
-| Live simultaneous editing | **Not implemented** — cloud snapshots are opened and saved explicitly. Team chat uses Realtime independently of document editing |
-| Mission chat | RLS-protected conversations for cloud mission members; real two-account production test pending |
-| Global chat | Disabled until moderation and abuse response are staffed |
-| Route insights | Local metric cards, terrain coverage and resource scenarios; no language model |
-| WebGL 3D terrain | Implemented numeric mesh; degraded 2D mode remains when WebGL is unsupported |
-| Rover/astronaut safety certification | **Not provided** |
+| Code and automated tests | Available; GitHub Actions runs on pushes to `main` |
+| 3D planet, 2D map, Analyze, Lab | Implemented; browser testing by the team in progress |
+| Mission saving | Guests: not saved. Signed-in: automatic cloud save with a device copy, plus exports |
+| Team access | Cloud save with per-mission viewer/editor roles; no automatic invitation emails |
+| Live simultaneous editing | **Not implemented** (snapshots are opened and saved explicitly) |
+| Global chat | Disabled until moderation is staffed |
+| Rover or astronaut safety certification | **Not provided** |
 
-The scientific analyses are educational approximations, not real mission-operational hazard measurements, EVA medical advice, or safety approvals. Scenario assumptions must not be confused with source measurements.
+## Run it locally
 
-## Try the project locally
-
-Requires **Git** and **Node.js 22+**. The development server uses Python 3 (`npm run dev`).
+Requires **Git** and **Node.js 22+**. The dev server uses Python 3.
 
 ```bash
 git clone https://github.com/mari0-th/InfotronX-Horizon.git
 cd InfotronX-Horizon
-npm run dev
+npm run dev        # http://localhost:4173
+npm test           # the full test suite
+npm run build      # static site in dist/, ready for any static host
 ```
 
-Open `http://localhost:4173` in your browser. In another terminal:
+There is no compiler and no bundler: the app is native ES modules. Three.js comes from a CDN through an import map.
 
-```bash
-npm test
-```
-
-Local development uses native browser JavaScript modules without compilation. For Netlify, run `npm run build`: the static site is written to `dist/`, excluding internal documentation, SQL, tests and server functions. Deploy only that folder. The ready-to-upload archive is [releases/mars-atlas-netlify.zip](releases/mars-atlas-netlify.zip); extract it and upload the folder containing `index.html` to the existing Netlify site.
-
-## Contribute
-
-Short branches and Pull Requests into `main`, with `npm test` passing. See [CONTRIBUTING](CONTRIBUTING.md), [Engineering standards](docs/DEVELOPMENT_STANDARDS.md) and [Current state](docs/PROJECT_STATE.md).
-
-## Technical structure
+## Under the hood
 
 | Area | Primary files |
 | --- | --- |
-| Main UI / mission controls | `index.html`, `src/main.js`, `src/design.css` |
-| Mission data and export | `src/store.js`, `src/share.js` |
-| Mapping, terrain, routing | `src/map.js`, `src/terrain.js`, `src/dstar-lite.js`, `src/pareto-routes.js` |
-| Science / numerical analysis | `src/science-workbench.js`, `src/advanced-math.js`, `src/terrain-topology.js` |
-| CTX elevation sample | `assets/jezero_ctx_trn_dem_20m_clip.json` |
-| Automated tests | `tests/`, `.github/workflows/verify.yml` |
-| Data provenance and project credits | `NASA_DATA.md`, `SUBMISSION.md`, `docs/SCIENCE_VALIDATION.md` |
+| Shell, panels, steps | `index.html`, `src/main.js`, `src/workflow-steps.js`, `src/design.css` |
+| 3D planet | `src/map-3d.js`, `src/planet-mesh.js`, `src/mars-sites.js`, `src/deep-space.js` |
+| 2D map | `src/map.js`, `src/constants.js` |
+| Routing and terrain | `src/terrain.js`, `src/route-decision.js`, `src/dstar-lite.js`, `src/pareto-routes.js` |
+| Analyze and benchmark | `src/analyze-dashboard.js`, `src/benchmark.js`, `src/companions.js` |
+| Planning Lab | `src/lab.js` (the models), `src/lab-panel.js` (the window) |
+| Science tools | `src/science-workbench.js`, `src/advanced-math.js`, `src/terrain-topology.js` |
+| Missions, accounts, sharing | `src/store.js`, `src/account.js`, `src/share.js` |
+| Height data | `assets/jezero_ctx_trn_dem_20m_clip.json` |
+| Tests | `tests/` (maths, benchmark, Lab and more), `.github/workflows/verify.yml` |
 
-Scientific methodology, data references and engineering notes are available in the documentation directory. The active map architecture, NASA source URLs and Chromium tests are documented in [Map engine](docs/MAP_ENGINE.md). Independent A*, D* Lite and Pareto verification is described in [Route validation](docs/ROUTING_VALIDATION.md).
+The tests re-plan the benchmark routes on the bundled height model, check every worked example on this page and run every Lab card on its own example, so the documentation cannot drift from the program.
 
-## Sources and acknowledgments
+## Contribute
 
-The numeric terrain clip derives from the **USGS Astrogeology / NASA MRO CTX Mars 2020 Terrain Relative Navigation DTM** (Fergason et al., 2020), [DOI 10.5066/P906QQT8](https://doi.org/10.5066/P906QQT8). Basemap imagery is served through NASA Mars Trek. For technical attribution and modeled-versus-observed limitations, see [NASA_DATA.md](NASA_DATA.md) and [Science validation](docs/SCIENCE_VALIDATION.md). The project's software license does not replace third-party data/imagery licenses.
+Short branches and Pull Requests into `main`, with `npm test` passing. See [CONTRIBUTING](CONTRIBUTING.md), [Engineering standards](docs/DEVELOPMENT_STANDARDS.md) and [Current state](docs/PROJECT_STATE.md). Sharper zoom in 2D and 3D, real planet textures and a Content-Security-Policy are the open items with the most impact.
 
-**InfotronX Horizon** is an independent team. The clean Git repository is a publication reset, **not evidence that all components were written during the hackathon**. See [Submission readiness](docs/SUBMISSION_READINESS.md) for the official timing and source-eligibility considerations. Tools and contributors are acknowledged in [SUBMISSION.md](SUBMISSION.md).
+## Credits and honesty
 
-## Imagery consistency
-
-The Viking global basemap remains the default. HiRISE Jezero imagery is grayscale PNG with transparency, so Viking context is retained below its transparent pixels and tinted consistently in the HiRISE view. The MOLA Relief option now uses NASA's monochrome MOLA/HRSC hillshade blend rather than the older colored elevation shading. The correct image formats are used to avoid unnecessary failed requests. These map layers are visual context, not certified terrain safety maps.
-
-The background renderer never requests Viking zoom 8: a real Chromium network check found HTTP 404 at that level over Jezero, while level 7 returned real NASA imagery. HiRISE zoom 8–11 keeps a separate continuous Viking level-7 background, with genuine HiRISE overlays at 9–11. This avoids repeated enlarged parent tiles and unnecessary network retries.
-
-**Jezero photo-context improvement:** The former sharp HiRISE-versus-Viking visual boundary now has an internal, geographically aligned NASA/USGS controlled CTX Jezero photographic layer between them. It uses genuine PNG tiles (6 m/pixel) with their original alpha; it is distinct from the removed global CTX beta mosaic. Coverage gaps outside the controlled CTX footprint still use Viking at its actual source resolution. See [Map engine](docs/MAP_ENGINE.md).
+**InfotronX Horizon** is an independent team. The clean Git repository is a publication reset, **not evidence that all components were written during the hackathon**; see [Submission readiness](docs/SUBMISSION_READINESS.md). The software was built with AI assistance (Claude by Anthropic) for code and documentation; tools and contributors are in [SUBMISSION.md](SUBMISSION.md) and [CREDITS.md](CREDITS.md). The project's software licence does not replace third-party data and imagery licences.
 
 ## Legal
 
 - Licence: [MIT](LICENSE). Copyright (c) 2026 InfotronX Horizon and Mars Atlas contributors.
-- [Terms of Use](TERMS.md) · [Privacy Policy](PRIVACY.md) · [Cookies and local storage](COOKIES.md) · [Credits](CREDITS.md)
-- The same pages are available inside the app at `legal.html`.
+- [Terms of Use](TERMS.md) · [Privacy Policy](PRIVACY.md) · [Cookies and local storage](COOKIES.md) · [Credits](CREDITS.md). The same pages are inside the app at `legal.html`.
+- Versions are tagged `vMAJOR.MINOR.PATCH`; see the [Changelog](CHANGELOG.md) and the [release runbook](docs/RELEASE_RUNBOOK.md).
 
-## Releases
+<div align="center">
 
-Versions are tagged `vMAJOR.MINOR.PATCH`. Release notes are in [docs/](docs/) and the [Changelog](CHANGELOG.md). The release steps are in [docs/RELEASE_RUNBOOK.md](docs/RELEASE_RUNBOOK.md).
+*Made for people who want to understand a place before they go there.*
+
+</div>
