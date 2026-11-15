@@ -1860,6 +1860,17 @@ export class MarsMap
                 const path = svgElement("polyline", { points, fill: "none", stroke: route.color, "stroke-width": (active ? 4 : 2.5) * look.width, "stroke-opacity": look.opacity, "stroke-dasharray": dash, "stroke-linecap": "round", "stroke-linejoin": "round", "data-route": route.id, class: "route-path" + (active && look.style === "flowing" ? " route-flow" : "") });
                 if (look.glow) this.overlay.append(glow);
                 this.overlay.append(path);
+
+                if (active && look.style === "flowing" && !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches)
+                {
+                    let length = 0;
+
+                    for (let i = 1; i < coordinates.length; i++) length += Math.hypot(coordinates[i].x - coordinates[i - 1].x, coordinates[i].y - coordinates[i - 1].y);
+
+                    const rover = svgElement("circle", { r: 5.5, fill: "#ffffff", stroke: route.color, "stroke-width": 2.5, "pointer-events": "none", class: "route-rover" });
+                    rover.append(svgElement("animateMotion", { dur: Math.max(4, Math.min(20, length / 60)) + "s", repeatCount: "indefinite", path: "M" + coordinates.map(point => `${point.x},${point.y}`).join(" L") }));
+                    this.overlay.append(rover);
+                }
             }
 
             if (active && route.links?.length)
