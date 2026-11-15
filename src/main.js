@@ -5,6 +5,7 @@ import { analyzeRoute, formatCoordinate, formatDistance, generateDetour } from "
 import { MissionStore } from "./store.js";
 import { MarsMap } from "./map.js";
 import { renderRouteComparison, renderSegmentChart } from "./analytics.js";
+import { drawRouteGraph } from "./route-graph.js";
 import { createShareLink, downloadFile, readSharedMission, toGeoJson } from "./share.js";
 import { inspectRoute } from "./inspector.js";
 import { initScienceWorkbench } from "./science-workbench.js";
@@ -51,6 +52,7 @@ app.innerHTML = `
                 <div class="right-tabs" role="tablist" aria-label="Scientific information"><button id="tab-analytics" class="right-tab active" role="tab" aria-controls="analytics-panel" tabindex="0" data-tab="analytics" aria-selected="true">ANALYTICS</button><button id="tab-notes" class="right-tab" role="tab" aria-controls="notes-panel" tabindex="-1" data-tab="field-notes" aria-selected="false">FIELD NOTES</button></div>
                 <div class="sidebar-content" id="analytics-panel" role="tabpanel" aria-labelledby="tab-analytics"><div class="panel-section"><div class="panel-title-row"><span class="section-label">MISSION TELEMETRY</span><span class="tiny-pill amber">PLANNED</span></div><div class="metric-grid"><div class="metric-card"><span>ACTIVE ROUTE</span><strong id="metric-distance">—</strong><small>Surface distance</small></div><div class="metric-card"><span>WAYPOINTS</span><strong id="metric-waypoints">0</strong><small>Planned stops</small></div><div class="metric-card"><span>ALTERNATIVES</span><strong id="metric-routes">0</strong><small>Total routes</small></div><div class="metric-card"><span>OBSERVATIONS</span><strong id="metric-observations">0</strong><small>User annotations</small></div></div></div>
                     <div class="panel-section"><div class="panel-title-row"><span class="section-label">SEGMENT DISTANCES</span><span class="small-muted">METERS</span></div><div id="segment-chart"></div><div class="mobile-comparison"><div class="panel-title-row" style="margin-top:24px"><span class="section-label">ROUTE COMPARISON</span></div><div class="route-comparison" id="route-comparison-mobile"></div></div><p class="data-note">Measured from user-selected coordinates using a spherical Mars radius of 3,396.19 km. No terrain elevation corrections.</p></div>
+                    <div class="panel-section"><div class="panel-title-row"><span class="section-label">ROUTE CONNECTIVITY GRAPH</span><span class="tiny-pill">GRAPH THEORY</span></div><p class="section-help">Graph of user-created waypoints and route segments, with Mars spherical-distance edge weights. An abstract diagram, not a geographic route map.</p><div id="route-connectivity-graph"></div></div>
                     <div class="panel-section"><div class="panel-title-row"><span class="section-label">ROUTE INSPECTOR</span><span class="tiny-pill amber">REVIEW</span></div><p class="section-help">Transparent checks on geometry and user notes. Not a terrain safety certification.</p><div id="route-inspector" class="inspection-list"></div></div>
                     <div class="panel-section"><div class="panel-title-row"><span class="section-label">WAYPOINT COORDINATES</span><span class="small-muted" id="point-summary"></span></div><div id="waypoint-list" class="waypoint-list"></div></div>
                     <div class="panel-section"><div class="panel-title-row"><span class="section-label">DATA SOURCES</span><span class="tiny-pill">NASA</span></div><div class="evidence-item"><span class="evidence-dot"></span><div><strong>NASA Mars Trek</strong><small>Viking, HiRISE Jezero and MOLA imagery</small></div></div><div class="evidence-item"><span class="evidence-dot yellow"></span><div><strong>Elevation analysis</strong><small>Uses numeric DEM grids, never image colors.</small></div></div><div class="evidence-item"><span class="evidence-dot yellow"></span><div><strong>What-if scenarios</strong><small>Modeled alternatives do not establish safe traversability.</small></div></div><a class="source-link" href="https://trek.nasa.gov/tiles/apidoc/trekAPI.html?body=mars" target="_blank" rel="noopener noreferrer">View NASA layer documentation ↗</a></div>
@@ -355,6 +357,7 @@ function render()
     renderObservations();
     renderLibrary();
     renderSegmentChart(get("#segment-chart"), route);
+    drawRouteGraph(get("#route-connectivity-graph"), mission.routes, mission.activeRouteId);
     renderInspector();
     renderCheckpoints();
     get("#storage-status").textContent = store.lastSaveSucceeded ? "SAVED ON THIS DEVICE" : "SAVE FAILED · EXPORT A BACKUP";

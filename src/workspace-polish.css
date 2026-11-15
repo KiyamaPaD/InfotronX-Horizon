@@ -1517,3 +1517,44 @@
         flex-basis:72px;
     }
 }
+
+/* A legible route-graph diagram derived only from user-selected coordinates. */
+.route-graph-view
+{
+    overflow-x:auto;
+    border:1px solid #395261;
+    border-radius:9px;
+    background:linear-gradient(#132b36,#0e1e2a);
+    padding:7px;
+}
+.route-graph-view svg
+{
+    display:block;
+    width:100%;
+    height:auto;
+    min-width:250px;
+}
+.route-graph-view .route-graph-label
+{
+    fill:#e2eff1;
+    font-size:11px;
+    font-weight:700;
+}
+.route-graph-view .route-graph-weight
+{
+    fill:#b5d8d5;
+    font-size:8px;
+}
+.route-graph-view .route-graph-label-mini
+{
+    fill:#829aa9;
+    font-size:9px;
+}
+.route-graph-footnote
+{
+    display:block;
+    margin:9px 0;
+    font-size:10px;
+    line-height:1.6;
+    color:#a2bec7;
+}
