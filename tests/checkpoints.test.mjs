@@ -66,6 +66,10 @@ test("reordering manual waypoints changes route sequence without losing coordina
 {
     globalThis.localStorage = memoryStorage();
     const store = new MissionStore();
+    store.addPoint({ lat: 18.4400, lon: 77.4500 });
+    store.addPoint({ lat: 18.4440, lon: 77.4540 });
+    store.addPoint({ lat: 18.4460, lon: 77.4700 });
+    store.addPoint({ lat: 18.4550, lon: 77.4730 });
     const ids = store.activeRoute.points.map(point => point.id);
     const before = analyzeRoute(store.activeRoute.points).totalDistance;
     assert.equal(store.reorderPoint(ids[1], 1), true);
@@ -79,6 +83,7 @@ test("user observation may be added as a waypoint manually", () =>
 {
     globalThis.localStorage = memoryStorage();
     const store = new MissionStore();
+    store.addObservation({ lat: 18.45160, lon: 77.45920 }, "User note", "A human annotation");
     const note = store.current.observations[0];
     const count = store.activeRoute.points.length;
     assert.equal(store.addObservationWaypoint(note.id), true);
