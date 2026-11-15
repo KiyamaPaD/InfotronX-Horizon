@@ -33,6 +33,10 @@ We may limit or remove accounts and content that break these rules.
 - You are responsible for what you write. Do not enter secrets or personal data of other people.
 - Export a backup (JSON) from Mission Center if a mission matters to you.
 
+## 4a. Photos and notes you add
+
+You are responsible for any photo or text you add. Add only material you have the right to use, with no personal data of other people. NASA images shown in the app come from the NASA Image and Video Library; follow NASA's media usage guidelines if you reuse them, and keep the credit. Mars Atlas does not claim NASA's endorsement of your use.
+
 ## 5. Data from other sources
 
 Imagery and elevation data come from public services (NASA Mars Trek, USGS and others). Their availability, accuracy and licences are theirs. See [CREDITS](CREDITS.md). Maps can be slow, incomplete or unavailable without notice.

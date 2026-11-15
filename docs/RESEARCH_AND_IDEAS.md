@@ -41,3 +41,9 @@ Updated 2026-11-14. These projects and sources are **references, not endorsed de
 
 
 This is a *product hypothesis*, not a claim no other system can do it. First show reliable maps and one evidence-driven scenario; add true live collaboration later if feasible.
+
+## Projects reviewed (ideas only, no code copied)
+
+- **Deepanki-sketch/Nasa-Martian-Map (ARES-OPS)**: Mount Sharp as the science site, a slope-hazard heat map on a 3D mesh, a street-view style surface walk, and a walk-back reserve. Taken as ideas: slope colours on the 3D surface and a ground view. Its safety thresholds were not reused because they are not sourced here.
+- **rijan-maharjan836/martian-map-project-astra**: Jezero as the first region; terrain evaluation and route planning in an exploration concept.
+- **kmmohaimenulhaque-code/MartianMap-NeuroNexus**: a 30-second subtitled judging demo next to a longer one, tests on several devices, and several AI fallbacks. Taken as ideas: the two-length demo and device checks.

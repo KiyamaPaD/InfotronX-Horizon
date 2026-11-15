@@ -61,6 +61,8 @@
 <li>You are responsible for what you write. Do not enter secrets or personal data of other people.</li>
 <li>Export a backup (JSON) from Mission Center if a mission matters to you.</li>
 </ul>
+<h3>4a. Photos and notes you add</h3>
+<p>You are responsible for any photo or text you add. Add only material you have the right to use, with no personal data of other people. NASA images shown in the app come from the NASA Image and Video Library; follow NASA's media usage guidelines if you reuse them, and keep the credit. Mars Atlas does not claim NASA's endorsement of your use.</p>
 <h3>5. Data from other sources</h3>
 <p>Imagery and elevation data come from public services (NASA Mars Trek, USGS and others). Their availability, accuracy and licences are theirs. See <a href="#credits">CREDITS</a>. Maps can be slow, incomplete or unavailable without notice.</p>
 <h3>6. AI features</h3>
@@ -91,7 +93,8 @@
 <h3>What the site loads from other services</h3>
 <p>When you open Mars Atlas your browser contacts these services, which can see your IP address and browser details. We do not control them.</p>
 <ul>
-<li><strong>NASA Mars Trek</strong> (trek.nasa.gov): map imagery tiles.</li>
+<li><strong>NASA Mars Trek</strong> (trek.nasa.gov): map imagery tiles and heights.</li>
+<li><strong>NASA Image and Video Library</strong> (images-api.nasa.gov and images-assets.nasa.gov): the photos shown when you open a place on the 3D planet. Nothing about your mission is sent.</li>
 <li><strong>Google Fonts</strong> (fonts.googleapis.com): the typefaces.</li>
 <li><strong>jsDelivr</strong> (cdn.jsdelivr.net) and <strong>esm.sh</strong>: the 3D library and the account library.</li>
 <li><strong>Our hosting provider</strong> (Netlify or Vercel): serves the site and keeps standard server logs.</li>
@@ -105,6 +108,8 @@
 <li>team chat messages in shared missions, and reports or blocks you make.</li>
 </ul>
 <p>Access is limited with row-level security, so you and the people you share with can see a mission and others cannot. Staff can access data only to run, secure and support the service.</p>
+<h3>Photos you add</h3>
+<p>A photo you attach to a waypoint is shrunk in your browser and kept inside the mission, on your device or, if you are signed in, in your cloud mission. It is left out of share links. Do not add pictures of other people or pictures you do not have the right to use.</p>
 <h3>Optional AI features</h3>
 <p>The Mission Copilot has a local mode that sends nothing. An AI explanation is only requested when you ask for it, and it sends the mission details needed for that answer to an AI service run by our server. Do not include personal data in mission notes.</p>
 <h3>Why we use data</h3>
@@ -127,6 +132,11 @@
 <table><thead><tr><th>Key</th><th>What it keeps</th><th>Why</th></tr></thead><tbody>
 <tr><td><code>mars-atlas.missions.v1</code></td><td>A copy of the signed-in user's missions, tagged with their account. Removed when they sign out. Guests never get this</td><td>Offline copy for a signed-in user</td></tr>
 <tr><td><code>mars-guest-session</code> (session storage)</td><td>That you chose to continue as a guest</td><td>Do not ask again until you close the tab</td></tr>
+<tr><td><code>mars-prefs</code></td><td>Which blocks you folded or opened, and where</td><td>Remember your layout</td></tr>
+<tr><td><code>mars-line-style</code></td><td>Your line thickness, colour style and marker size</td><td>Remember your map look</td></tr>
+<tr><td><code>mars-perf</code></td><td>Your graphics choice (automatic, lighter or full)</td><td>Keep the 3D view smooth on your computer</td></tr>
+<tr><td><code>mars-quick-waypoint</code></td><td>Whether to ask for details when you add a waypoint</td><td>Respect your choice</td></tr>
+<tr><td><code>mars-qa-checklist</code></td><td>Ticks on the test checklist page</td><td>Let testers keep their progress</td></tr>
 <tr><td><code>mars-atlas.workflow-step</code></td><td>The last step you used (Explore, Plan, Analyze, All tools)</td><td>Return to where you were</td></tr>
 <tr><td><code>mars-panel-left</code>, <code>mars-panel-right</code></td><td>Whether a side panel is hidden</td><td>Remember your layout</td></tr>
 <tr><td><code>mars-tutorial-seen</code></td><td>That you have seen the tour</td><td>Do not repeat it</td></tr>
@@ -135,7 +145,7 @@
 </tbody></table>
 <p>None of these are sent to us unless you sign in and save a mission to the cloud.</p>
 <h3>Other services you contact</h3>
-<p>Loading the site also contacts NASA Mars Trek, Google Fonts, jsDelivr and esm.sh. They may log your IP address. See the <a href="#privacy">Privacy Policy</a>.</p>
+<p>Loading the site also contacts NASA Mars Trek (map tiles), the NASA Image and Video Library (photos of places on Mars, only when you open a place in the 3D view), Google Fonts, jsDelivr and esm.sh. They may log your IP address. See the <a href="#privacy">Privacy Policy</a>.</p>
 <h3>Control</h3>
 <p>You can clear these any time in your browser (site data / local storage). Clearing deletes missions that were saved only on this device, so export a backup first from Mission Center.</p>
 <p>If we ever add analytics or other optional storage, we will ask for your consent first and list it here.</p></section>
@@ -150,16 +160,21 @@
 <li><strong>MOLA elevation and relief shading</strong>: NASA / Goddard Space Flight Center (Mars Global Surveyor), with HRSC context from ESA / DLR / FU Berlin, served by NASA Mars Trek.</li>
 <li><strong>CTX terrain model of the Mars 2020 landing site</strong> (the bundled 20 m elevation clip): USGS Astrogeology Science Center. Fergason, R. L., et al. (2020). DOI <a href="https://doi.org/10.5066/P906QQT8" rel="noopener">10.5066/P906QQT8</a>.</li>
 <li><strong>3D model of Mars</strong> (the planet in the 3D view, with its texture and normal map): NASA/JPL-Caltech, https://science.nasa.gov/resource/planet-mars-3d-model/. The file is included unchanged as <code>assets/nasa/mars-3d-model.glb</code>; the app makes its mesh denser and lifts it with MOLA heights.</li>
+<li><strong>Photos of places on Mars</strong> shown in the 3D view: NASA Image and Video Library, https://images.nasa.gov/. Each photo links back to its own page with its credit.</li>
+<li><strong>MOLA colour relief</strong> (a 2D and 3D layer): NASA / Goddard Space Flight Center (Mars Global Surveyor), dataset <code>Mars_MGS_MOLA_ClrShade_merge_global_463m</code>, served by NASA Mars Trek.</li>
 <li>Mars Trek: https://trek.nasa.gov/mars/</li>
 </ul>
 <p>Please check each provider's own terms before reusing their imagery.</p>
 <h3>Software</h3>
 <ul>
 <li><strong>three.js</strong> (MIT): 3D graphics in the welcome screen and the terrain view.</li>
+<li>The tool names and simplified marks on the welcome page belong to their owners (Anthropic, OpenAI, W3C, Supabase, GitHub, Vercel, Netlify and others) and only name the tools used.</li>
 <li><strong>Supabase</strong> (Apache-2.0): optional accounts and cloud storage.</li>
 <li><strong>Google Fonts</strong>: DM Sans and Space Grotesk (SIL Open Font Licence).</li>
 <li>Everything else is native browser JavaScript and CSS.</li>
 </ul>
+<h3>Projects reviewed for ideas</h3>
+<p>We read the public repositories of other teams on the same challenge for ideas about ground-level views, slope maps and judging demos. No code was copied. <a href="https://github.com/Deepanki-sketch/Nasa-Martian-Map" rel="noopener">Deepanki-sketch/Nasa-Martian-Map</a>, <a href="https://github.com/rijan-maharjan836/martian-map-project-astra" rel="noopener">rijan-maharjan836/martian-map-project-astra</a> and <a href="https://github.com/kmmohaimenulhaque-code/MartianMap-NeuroNexus" rel="noopener">kmmohaimenulhaque-code/MartianMap-NeuroNexus</a>.</p>
 <h3>The globe, space scenery and animations</h3>
 <p>The planets, satellites, rocket, stars and shooting stars on the welcome screen and in the 3D view are decorative illustrations drawn by the app. They are not real-time positions of real objects.</p>
 <h3>AI assistance</h3>
