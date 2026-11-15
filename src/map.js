@@ -258,7 +258,7 @@ export class MarsMap
         this.activeContextTiles.clear();
         clearTimeout(this.highDetailRecoveryTimer);
         this.highDetailRecoveryTimer = null;
-        this.highDetailFailures.clear();
+        this.highDetailFailures?.clear();
         this.container.classList.remove("map-has-imagery");
         this.notice.textContent = "Loading Mars imagery…";
         this.layer = MAP_LAYERS.find(layer => layer.id === id) || MAP_LAYERS[0];

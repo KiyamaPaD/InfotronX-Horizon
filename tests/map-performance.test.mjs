@@ -910,8 +910,9 @@ test("a hung high-resolution NASA request advances to an alternate candidate and
             const tile = map.createHiRISETile(2928, 814, 11);
             tile.startLoading();
             assert.equal(requests.length, 1);
-            const timer = [...timers.values()][0];
+            const [timerId, timer] = [...timers.entries()][0];
             assert.equal(timer.delay, 15000);
+            timers.delete(timerId); // Simulate the browser removing a fired one-shot timer.
             timer.callback();
             assert.equal(requests.length, 2, "Stalled PNG must try alternate NASA URL");
             tile.dispose();
