@@ -2,16 +2,22 @@
 
 **Explore Jezero. Plan a route. Understand the terrain.**
 
-A manual-first Mars mission-planning workspace developed by **InfotronX Horizon**.
-
-**NASA Space Apps Challenge 2026** · Team season **2026–2027** · Independent student project (not an official NASA navigation tool)
+Mars Atlas is a manual-first Mars mission-planning workspace. Draw a route across Jezero Crater, read its distance, slopes and heights from public NASA and USGS data, compare alternatives and see it in 3D. Built by **InfotronX Horizon** for the NASA Space Apps Challenge 2026.
 
 [![Verify](https://github.com/KiyamaPaD/Mars-Atlas/actions/workflows/verify.yml/badge.svg)](https://github.com/KiyamaPaD/Mars-Atlas/actions/workflows/verify.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**[Open Mars Atlas (Netlify)](https://mars-atlas-map.netlify.app/)** · **[Scientific validation](docs/JUDGE_SCIENTIFIC_VALIDATION.md)** · **[Judge demo draft](docs/JUDGE_DEMO_DRAFT_2026.md)** · **[AI/data disclosure](docs/AI_USE_AND_SOURCES.md)** · **[Team testing guide](docs/BETA_TESTING.md)** · **[Report a bug](https://github.com/KiyamaPaD/Mars-Atlas/issues/new?template=bug_report.md)**
+**[Open Mars Atlas](https://mars-atlas-map.netlify.app/)** · [Releases](https://github.com/KiyamaPaD/Mars-Atlas/releases) · [Changelog](CHANGELOG.md) · [Credits](CREDITS.md) · [Report a bug](https://github.com/KiyamaPaD/Mars-Atlas/issues/new?template=bug_report.md)
 
-> **Team-testing stage.** A successful deployment and automated checks do not replace testing the interactive map in a real browser. If you see a Vercel access screen, request a shareable link from the maintainer.
+> Mars Atlas is an independent educational project. It is a planning aid, **not** a navigation tool, and it is **not** certified, endorsed or approved by NASA.
+
+## How it works
+
+1. **Explore:** start on the welcome screen, then look around Jezero and pick a map layer.
+2. **Plan:** click the map to place waypoints, drag them to adjust, add observations.
+3. **Analyze:** follow six explained steps (size, height, legs, comparison, 3D, decision) with charts and a checklist. Every number is labelled measured, calculated, illustrative or your own note.
+
+The "All tools" view keeps the full science, math and resource workspace.
 
 ## What you can do
 
@@ -55,12 +61,12 @@ The scientific analyses are educational approximations, not real mission-operati
 
 ## Try the project locally
 
-Requires **Git**, **Python 3** for the development server, and **Node.js 22+** for automated tests.
+Requires **Git** and **Node.js 22+**. The development server uses Python 3 (`npm run dev`).
 
 ```bash
 git clone https://github.com/KiyamaPaD/Mars-Atlas.git
 cd Mars-Atlas
-python3 -m http.server 4173
+npm run dev
 ```
 
 Open `http://localhost:4173` in your browser. In another terminal:
@@ -71,11 +77,9 @@ npm test
 
 The website uses native browser JavaScript modules and does not need an npm build step.
 
-## Work with the team
+## Contribute
 
-We work on **`main`**, without a mandatory Pull Request/merge workflow. Agree on ownership of shared files, synchronize before editing, run the tests, and push a small clear commit. **Never force-push `main`.** A push triggers both CI and the connected Vercel deployment; test locally before pushing.
-
-Start with [Contributing](CONTRIBUTING.md), [Team workflow](docs/TEAM_WORKFLOW.md), [Engineering standards](docs/DEVELOPMENT_STANDARDS.md), and [Current state](docs/PROJECT_STATE.md). Testers should use [Beta testing](docs/BETA_TESTING.md) and open a GitHub Issue for reproducible defects.
+Short branches and Pull Requests into `main`, with `npm test` passing. See [CONTRIBUTING](CONTRIBUTING.md), [Engineering standards](docs/DEVELOPMENT_STANDARDS.md) and [Current state](docs/PROJECT_STATE.md).
 
 ## Technical structure
 
@@ -104,3 +108,13 @@ The Viking global basemap remains the default. HiRISE Jezero imagery is grayscal
 The background renderer never requests Viking zoom 8: a real Chromium network check found HTTP 404 at that level over Jezero, while level 7 returned real NASA imagery. HiRISE zoom 8–11 keeps a separate continuous Viking level-7 background, with genuine HiRISE overlays at 9–11. This avoids repeated enlarged parent tiles and unnecessary network retries.
 
 **Jezero photo-context improvement:** The former sharp HiRISE-versus-Viking visual boundary now has an internal, geographically aligned NASA/USGS controlled CTX Jezero photographic layer between them. It uses genuine PNG tiles (6 m/pixel) with their original alpha; it is distinct from the removed global CTX beta mosaic. Coverage gaps outside the controlled CTX footprint still use Viking at its actual source resolution. See [Map engine](docs/MAP_ENGINE.md).
+
+## Legal
+
+- Licence: [MIT](LICENSE). Copyright (c) 2026 InfotronX Horizon and Mars Atlas contributors.
+- [Terms of Use](TERMS.md) · [Privacy Policy](PRIVACY.md) · [Cookies and local storage](COOKIES.md) · [Credits](CREDITS.md)
+- The same pages are available inside the app at `legal.html`.
+
+## Releases
+
+Versions are tagged `vMAJOR.MINOR.PATCH`. Release notes are in [docs/](docs/) and the [Changelog](CHANGELOG.md). The release steps are in [docs/RELEASE_RUNBOOK.md](docs/RELEASE_RUNBOOK.md).

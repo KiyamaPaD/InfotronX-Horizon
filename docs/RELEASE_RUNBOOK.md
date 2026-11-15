@@ -31,3 +31,23 @@ If a teammate sees Vercel Authentication, share access via the deployment's **Sh
 If a push breaks production, identify the last verified working commit/deployment and roll back via the Vercel dashboard. Do not rewrite shared Git history to conceal mistakes.
 
 Vercel hosts only the frontend; cloud accounts and real-time collaborative missions need a future backend.
+
+## Publishing a version (GitHub Release)
+
+1. Merge the work into `main` and wait for Actions to be green. Run the `map-browser` workflow for anything that touched the map or 3D.
+2. Update [CHANGELOG.md](../CHANGELOG.md) and add `docs/RELEASE_NOTES_vX.Y.Z.md`. Check [CREDITS.md](../CREDITS.md), [PRIVACY.md](../PRIVACY.md) and [COOKIES.md](../COOKIES.md) still match what the app does.
+3. Tag and push:
+
+   ```bash
+   git switch main && git pull --ff-only origin main
+   git tag -a vX.Y.Z -m "Mars Atlas X.Y.Z"
+   git push origin vX.Y.Z
+   ```
+
+4. Create the release from the notes:
+
+   ```bash
+   gh release create vX.Y.Z --title "Mars Atlas X.Y.Z" --notes-file docs/RELEASE_NOTES_vX.Y.Z.md
+   ```
+
+5. Open the live site in a private window and test the main flow.
