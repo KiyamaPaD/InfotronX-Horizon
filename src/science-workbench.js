@@ -11,6 +11,7 @@ import { mountTerrainIntelligence } from "./terrain-intelligence-ui.js";
 import { mountInteractiveTerrainProfile } from "./terrain-profile-v2-ui.js";
 import { mountAdvancedMathematics } from "./advanced-math-ui.js";
 import { mountMissionResearch } from "./mission-research-ui.js";
+import { mountTerrain3D } from "./terrain-3d-ui.js";
 
 const escapeText = value => String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
 const formatHours = value => `${Math.floor(value)}h ${String(Math.round((value % 1) * 60)).padStart(2, "0")}m`;
@@ -145,6 +146,7 @@ export function initScienceWorkbench({ store, map, notify, onTerrainChange = () 
     let sensitivityReport = null;
     let observationsSignature = null;
     let terrainMessage = "";
+    const terrain3D = mountTerrain3D({ panel, before: inspector, store, readDem: () => dem, notify });
     const interactiveProfile = mountInteractiveTerrainProfile({
         host: terrain.querySelector("#terrain-profile"), store, map, readDem: () => dem
     });
@@ -352,6 +354,7 @@ export function initScienceWorkbench({ store, map, notify, onTerrainChange = () 
         }
 
         interactiveProfile.refresh();
+        terrain3D.refresh();
 
         if (route.terrainModel)
         {

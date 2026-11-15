@@ -1141,3 +1141,73 @@
     font-size:10px;
     color:#a9c0c8;
 }
+
+/* Real numeric surface: WebGL does not guess missing DEM elevations. */
+.terrain-3d-view
+{
+    position:relative;
+    width:100%;
+    height:290px;
+    min-height:230px;
+    overflow:hidden;
+    border:1px solid #426170;
+    border-radius:10px;
+    background:#0c1722;
+}
+.terrain-3d-view canvas
+{
+    display:block;
+    width:100%;
+    height:100%;
+    cursor:grab;
+    touch-action:none;
+}
+.terrain-3d-view canvas:active
+{
+    cursor:grabbing;
+}
+.terrain-3d-view canvas:focus-visible
+{
+    outline:2px solid #85d6c4;
+    outline-offset:-2px;
+}
+.terrain-3d-body
+{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    padding:9px 0;
+}
+.terrain-3d-controls
+{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+}
+.terrain-3d-controls label
+{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    font-size:11px;
+    color:#bed6e0;
+}
+.terrain-3d-controls input
+{
+    max-width:100%;
+    accent-color:#91d9c6;
+}
+.terrain-3d-controls button
+{
+    grid-column:1 / -1;
+}
+.terrain-3d-controls output
+{
+    color:#e3c08c;
+    font-weight:700;
+}
+@media(max-width:375px)
+{
+    .terrain-3d-view { height:230px; }
+    .terrain-3d-controls { grid-template-columns:1fr; }
+}

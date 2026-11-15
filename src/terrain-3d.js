@@ -91,12 +91,12 @@ export function terrainPointMarkers(dem, mesh, points = [])
     {
         const cell = gridCellForPoint(dem, point);
 
-        if (!cell || sampleElevation(dem, point) === null)
+        if (cell < 0 || sampleElevation(dem, point) === null)
         {
             continue;
         }
 
-        const id = (cell.row * dem.width + cell.column) * 6;
+        const id = cell * 6;
         result.push(mesh.vertexData[id], mesh.vertexData[id + 1] + 0.002,
             mesh.vertexData[id + 2], 1, 0.70, 0.34);
     }
