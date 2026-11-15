@@ -47,7 +47,7 @@ export function setupAnalyticsNavigation(panel, options = {})
     readiness.className = "analytics-readiness";
     readiness.setAttribute("aria-label", "How to activate science tools");
     readiness.innerHTML = `
-        <details open>
+        <details>
             <summary>How to unlock the science tools <span aria-hidden="true">▾</span></summary>
             <p>Modules stay available to explore. Some calculations need real user data before they can run.</p>
             <div class="analytics-ready-list">
@@ -128,7 +128,6 @@ export function setupAnalyticsNavigation(panel, options = {})
 
         if (toggle)
         {
-            toggle.textContent = expanded ? "−" : "+";
             toggle.setAttribute("aria-expanded", String(expanded));
         }
     }
@@ -185,7 +184,7 @@ export function setupAnalyticsNavigation(panel, options = {})
 
         const title = heading.textContent.trim().replace(/\s+/g, " ");
         const group = groupDefinitions.find(definition => definition.items.includes(title))?.id || "models";
-        const expanded = true;
+        const expanded = ["MISSION TELEMETRY", "WAYPOINT COORDINATES", "DEM ROUTE LAB", "MISSION COPILOT"].includes(title);
         const id = "analytics-section-" + index;
         section.id = id;
         section.dataset.analyticsGroup = group;
@@ -199,8 +198,10 @@ export function setupAnalyticsNavigation(panel, options = {})
         toggle.type = "button";
         toggle.setAttribute("aria-label", "Toggle " + title.toLowerCase());
         toggle.setAttribute("aria-expanded", String(expanded));
-        toggle.textContent = expanded ? "−" : "+";
-        header.append(toggle);
+        toggle.textContent = section.dataset.analyticsTitle;
+        heading.textContent = "";
+        heading.append(toggle);
+
 
         toggle.addEventListener("click", () =>
         {
@@ -241,5 +242,15 @@ export function setupAnalyticsNavigation(panel, options = {})
     showGroup(activeGroup);
     refresh();
 
-    return { refresh };
+    return {
+        refresh,
+        openSection(section)
+        {
+            if (!sections.includes(section)) return;
+            showGroup(section.dataset.analyticsGroup);
+            setExpanded(section, true);
+            updateToggleAll();
+            requestAnimationFrame(() => section.scrollIntoView({ block:"start", behavior:"smooth" }));
+        }
+    };
 }

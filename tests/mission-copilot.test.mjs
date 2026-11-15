@@ -47,7 +47,7 @@ test("copilot AI is a separate consent-based read-only flow", () =>
     assert.doesNotMatch(ui,/store\.save|store\.addPoint|store\.deleteRoute/);
 });
 
-test("Copilot shows diagnostic codes and falls back to deterministic analysis", () =>
+test("Copilot shows diagnostic codes and keeps explicit deterministic analysis available", () =>
 {
     const ui = readFileSync(new URL("../src/mission-copilot-ui.js",import.meta.url),"utf8");
     assert.match(ui,/copilot-health/);
@@ -69,4 +69,16 @@ test("Copilot compares anonymized alternatives and uses the saved resource assum
     assert.equal(facts.resourceScenario.retraceReturn,false);
     assert.equal(facts.resourceScenario.illustrative,true);
     assert.doesNotMatch(JSON.stringify(facts),/Private route title|"id":"alternative"|77\.4509/);
+});
+
+test("an empty active route does not hide the existence of populated alternatives", () =>
+{
+    const copy = structuredClone(mission);
+    copy.routes.push({ id:"empty", name:"Empty alternative", points:[] });
+    copy.activeRouteId = "empty";
+    const facts = buildMissionFacts(copy,dem);
+    assert.equal(facts.waypointCount,0);
+    assert.equal(facts.horizontalDistanceMeters,0);
+    assert.match(localMissionExplanation(facts),/Another saved route has data/);
+    assert.equal(facts.alternatives[0].waypointCount,2);
 });

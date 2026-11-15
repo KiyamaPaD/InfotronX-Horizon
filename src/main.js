@@ -10,6 +10,7 @@ import { createShareLink, downloadFile, readSharedMission, toGeoJson } from "./s
 import { inspectRoute } from "./inspector.js";
 import { initScienceWorkbench } from "./science-workbench.js";
 import { createJezeroReviewMission } from "./review-demo.js";
+import { mountWorkspaceDisclosures } from "./workspace-disclosures.js";
 import { setupAnalyticsNavigation } from "./workspace-ux.js";
 import { mountCloudWorkspace } from "./cloud-ui.js";
 import { mountMissionCopilot } from "./mission-copilot-ui.js";
@@ -34,15 +35,15 @@ app.innerHTML = `
         <header class="header" role="banner">
             <div class="brand"><div class="brand-symbol"><span></span></div><div><div class="brand-wordmark">MARS <strong>ATLAS</strong></div><div class="brand-subline">INFOTRONX HORIZON · MISSION INTELLIGENCE</div></div></div>
             <div class="header-center"><span class="header-center-label">MISSION WORKSPACE</span><span class="header-center-title">Mission Control <span class="header-divider"></span> Jezero Crater</span><span class="header-coordinates">18.44° N · 77.45° E</span></div>
-            <div class="header-actions"><span class="edition-pill">NASA SPACE APPS · 2026</span><button class="btn btn-quiet compact header-help" data-action="show-guide" aria-label="Open help and keyboard shortcuts">? <span>Help</span></button><button class="btn btn-accent compact header-share" data-action="share">Share mission <span aria-hidden="true">↗</span></button></div>
+            <div class="header-actions"><button class="btn btn-outline compact header-copilot" data-action="open-copilot">Copilot <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M4 4h8v8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="edition-pill">NASA SPACE APPS · 2026</span><button class="btn btn-quiet compact header-help" data-action="show-guide" aria-label="Open help and keyboard shortcuts">? <span>Help</span></button><button class="btn btn-accent compact header-share" data-action="share">Share mission <span aria-hidden="true">↗</span></button></div>
         </header>
         <div class="workspace">
             <aside class="sidebar sidebar-left" id="left-sidebar">
                 <div class="sidebar-content">
-                    <div class="panel-section top-section"><div class="section-eyebrow">YOUR MISSION <span class="status-dot" aria-hidden="true"></span></div><h1 id="mission-heading">Jezero reconnaissance</h1><div class="subtle-copy" id="mission-description"></div><div class="mission-top-actions"><button class="btn btn-outline" data-action="new-mission">+ New mission</button><button class="btn btn-muted" data-action="rename-mission">Edit mission</button></div><div class="mission-quick-guide"><span class="guide-mark" aria-hidden="true">✦</span><div><strong>You are in control.</strong><span>Create, edit and save your own mission routes.</span></div></div><button class="btn btn-outline wide" type="button" data-action="load-review-demo">◉ Open Jezero example mission</button></div>
-                    <div class="panel-section"><div class="panel-title-row"><div class="section-label">ROUTE PLANNER</div><span class="count-chip" id="route-count">01</span></div><p class="section-help">Create routes directly on the map; keep full control of every waypoint.</p><div class="mode-switcher" role="group" aria-label="Map editing tools"><button class="mode-btn active" data-mode="pan" title="Pan map">↔ <span>Explore</span></button><button class="mode-btn" data-mode="draw" title="Add waypoints">✎ <span>Draw</span></button><button class="mode-btn" data-mode="edit" title="Move waypoints">◎ <span>Move</span></button><button class="mode-btn" data-mode="observe" title="Add an observation">✧ <span>Observe</span></button></div><div id="route-list" class="route-list"></div><div class="route-actions"><button class="btn btn-outline" data-action="new-route">＋ Route</button><button class="btn btn-outline" data-action="duplicate-route">⧉ Duplicate</button><button class="btn btn-outline" data-action="undo-point">↶ Last point</button><button class="btn btn-outline" data-action="undo-edit" title="Undo edit (Ctrl+Z)" disabled>↶ Undo</button><button class="btn btn-outline" data-action="redo-edit" title="Redo edit (Ctrl+Y)" disabled>↷ Redo</button><button class="btn btn-outline" data-action="clear-route" title="Remove all waypoints in the selected route">× Clear route</button></div><div class="route-secondary-actions"><button data-action="add-coordinates">＋ Coordinates</button><button data-action="rename-route">Rename</button><button data-action="delete-route">Delete</button></div><label class="route-color-setting" for="active-route-color">ACTIVE ROUTE COLOR <input id="active-route-color" type="color" value="#ec9976" aria-label="Active route line color" /></label></div>
+                    <div class="panel-section top-section"><div class="section-eyebrow">YOUR MISSION <span class="status-dot" aria-hidden="true"></span></div><h1 id="mission-heading">Jezero reconnaissance</h1><details class="mission-notes"><summary>Mission notes</summary><div class="subtle-copy" id="mission-description"></div></details><div class="mission-top-actions"><button class="btn btn-outline" data-action="new-mission">+ New mission</button><button class="btn btn-muted" data-action="rename-mission">Edit mission</button></div><button class="btn btn-outline wide" type="button" data-action="load-review-demo">◉ Open Jezero example mission</button></div>
+                    <div class="panel-section"><div class="panel-title-row"><div class="section-label">ROUTE PLANNER</div><span class="count-chip" id="route-count">01</span></div><p class="section-help">Create routes directly on the map; keep full control of every waypoint.</p><div class="mode-switcher" role="group" aria-label="Map editing tools"><button class="mode-btn active" data-mode="pan" title="Pan map">↔ <span>Explore</span></button><button class="mode-btn" data-mode="draw" title="Add waypoints">✎ <span>Draw</span></button><button class="mode-btn" data-mode="edit" title="Move waypoints">◎ <span>Move</span></button><button class="mode-btn" data-mode="observe" title="Add an observation">✧ <span>Observe</span></button></div><div id="route-list" class="route-list"></div><div class="route-primary-actions"><button class="btn btn-outline" data-action="new-route">＋ Route</button><button class="btn btn-outline" data-action="add-coordinates">＋ Coordinates</button></div><div class="route-history" role="group" aria-label="Edit history"><button class="btn btn-muted" data-action="undo-edit" title="Undo edit (Ctrl+Z)" disabled>↶ Undo</button><button class="btn btn-muted" data-action="redo-edit" title="Redo edit (Ctrl+Y)" disabled>↷ Redo</button></div><details class="route-options"><summary>Route options</summary><div class="route-actions"><button class="btn btn-outline" data-action="duplicate-route">Duplicate</button><button class="btn btn-outline" data-action="rename-route">Rename</button><button class="btn btn-outline" data-action="clear-route">Clear points</button><button class="btn btn-outline" data-action="delete-route">Delete route</button></div><label class="route-color-setting" for="active-route-color">Route color <input id="active-route-color" type="color" value="#ec9976" aria-label="Active route line color" /></label></details></div>
                     <div class="panel-section"><div class="panel-title-row"><div class="section-label">MAP DATA</div><span class="tiny-pill">NASA TREK</span></div><div id="layer-buttons" class="layer-buttons"></div><div class="layer-description" id="layer-description"></div></div>
-                    <div class="panel-section last-section"><div class="section-label">MISSION OBJECTIVES</div><div class="objective-item"><span class="objective-icon">01</span><div>Define exploration route <small>Place waypoints in Draw mode</small></div></div><div class="objective-item"><span class="objective-icon">02</span><div>Compare alternatives <small>Duplicate and modify a route</small></div></div><div class="objective-item"><span class="objective-icon">03</span><div>Share your findings <small>Save and export your mission</small></div></div></div>
+
                 </div>
                 <div class="sidebar-foot"><span class="dot-green"></span> <span id="storage-status">SAVED ON THIS DEVICE</span> <span class="sidebar-foot-right">MANUAL-FIRST</span></div>
             </aside>
@@ -60,7 +61,7 @@ app.innerHTML = `
                     <div class="panel-section"><div class="panel-title-row"><span class="section-label">WAYPOINT COORDINATES</span><span class="small-muted" id="point-summary"></span></div><div id="waypoint-list" class="waypoint-list"></div></div>
                     <div class="panel-section"><div class="panel-title-row"><span class="section-label">DATA SOURCES</span><span class="tiny-pill">NASA</span></div><div class="evidence-item"><span class="evidence-dot"></span><div><strong>NASA Mars Trek imagery</strong><small>Viking MDIM 2.1 global mosaic, HiRISE Jezero 25 cm orthomosaic, MOLA/HRSC shaded relief (visual only, not elevation)</small></div></div><div class="evidence-item"><span class="evidence-dot"></span><div><strong>Jezero CTX elevation model</strong><small>USGS Astrogeology, Fergason et al. 2020 · <a href="https://doi.org/10.5066/P906QQT8" target="_blank" rel="noopener noreferrer">DOI 10.5066/P906QQT8 ↗</a></small></div></div><div class="evidence-item"><span class="evidence-dot yellow"></span><div><strong>Elevation analysis</strong><small>Uses numeric DEM grids, never image colors.</small></div></div><div class="evidence-item"><span class="evidence-dot yellow"></span><div><strong>AI assistance</strong><small>OpenAI ChatGPT and Anthropic Claude helped with code, tests and documentation; the team reviewed and tested the result. Route calculations are deterministic algorithms, not AI. <a href="https://github.com/KiyamaPaD/Mars-Atlas/blob/main/docs/AI_USE_AND_SOURCES.md" target="_blank" rel="noopener noreferrer">Full disclosure ↗</a></small></div></div><div class="evidence-item"><span class="evidence-dot yellow"></span><div><strong>What-if scenarios</strong><small>Modeled alternatives do not establish safe traversability.</small></div></div><a class="source-link" href="https://trek.nasa.gov/tiles/apidoc/trekAPI.html?body=mars" target="_blank" rel="noopener noreferrer">View NASA layer documentation ↗</a></div>
                     <div class="panel-section"><div class="panel-title-row"><span class="section-label">MISSION CHECKPOINTS</span><span class="tiny-pill">CHECKPOINT HISTORY</span></div><p class="section-help">Save a complete manual checkpoint before changing routes. Restore an earlier plan whenever needed.</p><button class="btn btn-outline wide" data-action="save-checkpoint">＋ Save checkpoint</button><div id="checkpoint-list" class="checkpoint-list"></div></div>
-                    <div class="panel-section"><div class="panel-title-row"><span class="section-label">ROUTE INSIGHTS</span><span class="tiny-pill">OPTIONAL</span></div><p class="assistant-copy">Get a concise summary of your selected route.</p><button class="btn btn-outline wide" data-action="explain-route">✦ Explain my route</button><div id="assistant-response" class="assistant-response" hidden></div></div>
+
                 </div>
                 <div class="sidebar-content" id="notes-panel" role="tabpanel" aria-labelledby="tab-notes" hidden><div class="panel-section"><div class="panel-title-row"><span class="section-label">OBSERVATION LOG</span><span class="tiny-pill">USER ANNOTATIONS</span></div><p class="section-help">Select Observe, then click the map to add a georeferenced note. Notes are unverified until independently checked.</p><div id="observation-list" class="observation-list"></div></div></div>
                 <div class="right-footer"><button class="btn btn-outline" data-action="export-json">↓ Mission JSON</button><button class="btn btn-outline" data-action="export-geojson">↓ GeoJSON</button><button class="btn btn-outline" data-action="export-brief">↓ Brief</button></div>
@@ -149,11 +150,16 @@ const map = new MarsMap(get("#map-root"), store, {
     }
 });
 
+let missionCopilot = null;
 const scienceWorkbench = initScienceWorkbench({ store, map, notify,
-    onTerrainChange: () => analyticsNavigation?.refresh()
+    onTerrainChange: () =>
+    {
+        analyticsNavigation?.refresh();
+        missionCopilot?.refresh();
+    }
 });
 const cloudWorkspace = mountCloudWorkspace({ store, notify });
-mountMissionCopilot({
+missionCopilot = mountMissionCopilot({
     panel: get("#analytics-panel"),
     before: get("#route-inspector").closest(".panel-section"),
     store, getDem: () => scienceWorkbench.numericDem,
@@ -497,21 +503,20 @@ function exportJson()
     notify("Mission JSON exported.");
 }
 
+function openCopilot()
+{
+    get('#tab-analytics').click();
+    const workflow = get('button[data-step="analyze"]');
+    if (get('#mars-shell').dataset.step === 'explore') workflow?.click();
+    setMobilePanel('analytics');
+    missionCopilot.refresh();
+    analyticsNavigation.openSection(missionCopilot.section);
+}
+
 function explainRoute()
 {
-    const route = store.activeRoute;
-    const analysis = analyzeRoute(route.points);
-    const response = get("#assistant-response");
-    response.hidden = false;
-
-    if (route.points.length < 2)
-    {
-        response.textContent = "Add at least two waypoints to calculate route distance. This summary is calculated from your route coordinates.";
-        return;
-    }
-
-    const longest = [...analysis.segments].sort((a, b) => b.distance - a.distance)[0];
-    response.textContent = `ROUTE SUMMARY · ${route.name} spans ${formatDistance(analysis.totalDistance)} across ${analysis.segments.length} straight-line segments. The longest segment is ${longest.index} → ${longest.index + 1} (${formatDistance(longest.distance)}). Distance is calculated on a spherical Mars model. Slope, soil strength and actual traversability cannot be verified from these coordinates alone. `;
+    openCopilot();
+    get('#copilot-local').click();
 }
 
 async function shareMission()
@@ -720,6 +725,7 @@ document.addEventListener("click", event =>
 
     switch (action)
     {
+        case "open-copilot": openCopilot(); break;
         case "show-guide":
             get("#guide-modal").showModal();
             break;
@@ -1094,6 +1100,7 @@ window.addEventListener("keydown", event =>
     }
 });
 
+mountWorkspaceDisclosures(get("#mars-shell"));
 store.subscribe(render);
 setMode("pan");
 render();

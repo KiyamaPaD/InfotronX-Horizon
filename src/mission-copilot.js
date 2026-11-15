@@ -60,7 +60,10 @@ export function localMissionExplanation(facts)
 
     if (facts.waypointCount < 2)
     {
-        lines.push("Add at least two manually controlled waypoints before comparing routes.");
+        const populated = (facts.alternatives || []).filter(item => item.waypointCount >= 2).length;
+        lines.push(populated
+            ? "The active route has fewer than two waypoints. Another saved route has data: select it in Route Planner before running analysis."
+            : "Add at least two manually controlled waypoints before comparing routes.");
     }
 
     if (!facts.hasNumericDem)
