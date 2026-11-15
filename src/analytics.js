@@ -1,4 +1,4 @@
-import { analyzeRoute, formatDistance } from "./geo.js";
+import { analyzeRoute, formatDistance, marsDistance } from "./geo.js";
 
 export function renderSegmentChart(container, route)
 {
@@ -35,6 +35,46 @@ export function renderSegmentChart(container, route)
     });
 
     container.appendChild(barContainer);
+}
+
+export function explainManualDistanceRoutes(routes, endpointToleranceMeters = 1)
+{
+    const rows = routes.filter(route => Array.isArray(route.points) && route.points.length >= 2)
+        .map(route => ({ id: route.id, name: route.name, points: route.points,
+            distanceMeters: analyzeRoute(route.points).totalDistance }));
+
+    if (rows.length < 2)
+    {
+        return { comparable: false, status: "insufficient",
+            explanation: "Add a second manually drawn route to compare alternatives by surface distance only." };
+    }
+
+    const reference = rows[0].points;
+    const start = reference[0];
+    const end = reference.at(-1);
+    const equalEndpoints = rows.every(row =>
+        marsDistance(start, row.points[0]) <= endpointToleranceMeters &&
+        marsDistance(end, row.points.at(-1)) <= endpointToleranceMeters);
+
+    if (!equalEndpoints)
+    {
+        return { comparable: false, status: "different-endpoints",
+            explanation: "These routes do not share the same start and destination. Their distances describe different journeys; no shortest-route recommendation is justified." };
+    }
+
+    const min = Math.min(...rows.map(row => row.distanceMeters));
+    const winners = rows.filter(row => Math.abs(row.distanceMeters - min) <= 0.05);
+    const labels = winners.map(row => row.name).join(", ");
+
+    return {
+        comparable: true, status: winners.length > 1 ? "tie" : "shortest",
+        minimumMeters: min, winnerIds: winners.map(row => row.id),
+        explanation: (winners.length > 1
+            ? "Several manual alternatives have equivalent spherical polyline lengths: "
+            : "Shortest manually drawn spherical polyline among these alternatives: ") +
+            labels + " (" + formatDistance(min) +
+            "). This is a distance-only comparison, not a DEM traverse, terrain safety finding or proof that scientific objectives are equal."
+    };
 }
 
 export function renderRouteComparison(container, routes, activeRouteId = null)
@@ -92,6 +132,11 @@ export function renderRouteComparison(container, routes, activeRouteId = null)
         wrapper.append(label, track);
         container.appendChild(wrapper);
     }
+
+    const explanation = document.createElement("p");
+    explanation.className = "manual-comparison-explanation";
+    explanation.textContent = explainManualDistanceRoutes(routes).explanation;
+    container.appendChild(explanation);
 
     if (rows.length > 4)
     {

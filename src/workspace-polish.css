@@ -1558,3 +1558,16 @@
     line-height:1.6;
     color:#a2bec7;
 }
+
+/* Explain the strict limits of manually drawn great-circle route comparisons. */
+.manual-comparison-explanation
+{
+    margin:12px 0 3px;
+    padding:10px 11px;
+    border-left:2px solid #8fdacb;
+    background:#142a34;
+    color:#bbd4dc;
+    font-size:11px;
+    line-height:1.6;
+    overflow-wrap:anywhere;
+}
