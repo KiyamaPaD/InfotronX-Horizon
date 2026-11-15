@@ -22,6 +22,7 @@ import { enableCardTilt } from "./tilt.js";
 import { mountHome } from "./home.js";
 import { mountAnalyzeDashboard } from "./analyze-dashboard.js";
 import { mountAccount } from "./account.js";
+import { shrinkPhoto, MAX_PHOTOS_PER_MISSION } from "./photo.js";
 import { mountLineControls } from "./line-style.js";
 import { mountQuickWaypoint, quickWaypointEnabled } from "./quick-waypoint.js";
 
@@ -89,7 +90,7 @@ app.innerHTML = `
         <dialog class="modal" id="mission-modal"><form method="dialog" id="mission-form"><div class="modal-header"><span class="section-label" id="modal-eyebrow">NEW MISSION</span><button class="modal-x" type="button" data-action="close-modal" aria-label="Close dialog">×</button></div><h2 id="modal-title">Create a mission</h2><p id="modal-hint">Plan your next Marswalk.</p><label class="field-label" for="mission-input">MISSION NAME</label><input id="mission-input" class="field-input" maxlength="90" autocomplete="off" required /><div id="mission-description-field"><label class="field-label" for="mission-description-input">MISSION DESCRIPTION</label><textarea id="mission-description-input" class="field-input" rows="3" maxlength="300" placeholder="Mission purpose, objectives or field notes"></textarea></div><div class="dialog-actions"><button type="button" class="btn btn-outline" data-action="close-modal">Cancel</button><button id="mission-submit" type="submit" class="btn btn-accent">Create mission</button></div></form></dialog>
         <dialog class="modal" id="observation-modal"><form method="dialog" id="observation-form"><div class="modal-header"><span class="section-label">GEOREFERENCED NOTE</span><button class="modal-x" type="button" data-action="close-modal" aria-label="Close dialog">×</button></div><h2>Record observation</h2><p id="observation-location"></p><label class="field-label" for="observation-title">TITLE</label><input id="observation-title" class="field-input" maxlength="80" required placeholder="Sample site, landmark, hazard hypothesis..."/><label class="field-label" for="observation-note">FIELD NOTES</label><textarea id="observation-note" class="field-input" maxlength="500" rows="4" placeholder="Describe what you observed. Mark uncertainty clearly."></textarea><label class="field-label" for="observation-source">SOURCE / EVIDENCE REFERENCE (OPTIONAL)</label><input id="observation-source" class="field-input" maxlength="160" placeholder="Example: NASA Mars Trek / user field note"/><div class="dialog-actions"><button type="button" class="btn btn-outline" data-action="delete-editing-observation" id="observation-delete" hidden>Delete note</button><button type="button" class="btn btn-outline" data-action="close-modal">Cancel</button><button type="submit" class="btn btn-accent" id="observation-submit">Save note</button></div></form></dialog>
         <dialog class="modal" id="coordinate-modal"><form method="dialog" id="coordinate-form"><div class="modal-header"><span class="section-label">MANUAL INPUT</span><button class="modal-x" type="button" data-action="close-modal" aria-label="Close dialog">×</button></div><h2>Enter coordinates</h2><p>Enter a precise Mars position in planetocentric east-positive decimal degrees.</p><label class="field-label" for="latitude-input">LATITUDE (−90 TO 90)</label><input id="latitude-input" class="field-input" type="number" step="any" min="-90" max="90" required placeholder="18.4446"/><label class="field-label" for="longitude-input">LONGITUDE (−180 TO 180)</label><input id="longitude-input" class="field-input" type="number" step="any" min="-180" max="180" required placeholder="77.4509"/><div class="dialog-actions"><button type="button" class="btn btn-outline" data-action="close-modal">Cancel</button><button type="submit" class="btn btn-accent"><span id="coordinate-submit-label">Add waypoint</span></button></div></form></dialog>
-        <dialog class="modal waypoint-editor-modal" id="waypoint-editor-modal" aria-labelledby="waypoint-editor-title"><form id="waypoint-editor-form"><div class="modal-header"><span class="section-label">WAYPOINT / MANUAL EDITOR V2</span><button class="modal-x" type="button" data-action="close-modal" aria-label="Close waypoint editor">×</button></div><h2 id="waypoint-editor-title">Edit waypoint</h2><p>Every change belongs to your mission and can be undone.</p><label class="field-label" for="waypoint-name-input">WAYPOINT NAME</label><input id="waypoint-name-input" class="field-input" maxlength="80" autocomplete="off" placeholder="e.g. Delta sampling site"/><label class="field-label" for="waypoint-category-input">CATEGORY</label><select id="waypoint-category-input" class="field-input"></select><label class="field-label" for="waypoint-description-input">DESCRIPTION / PURPOSE</label><textarea id="waypoint-description-input" class="field-input" rows="3" maxlength="500" placeholder="What is this point for? Separate hypotheses from measured facts."></textarea><div class="waypoint-editor-grid"><div><label class="field-label" for="waypoint-icon-input">MARKER SHAPE</label><select id="waypoint-icon-input" class="field-input"></select></div><div><label class="field-label" for="waypoint-color-input">MARKER COLOR</label><input id="waypoint-color-input" class="field-input color-field" type="color" value="#ec9976"/></div></div><label class="editor-color-default"><input id="waypoint-use-route-color" type="checkbox" checked/> Use active route color</label><div class="waypoint-editor-grid"><div><label class="field-label" for="waypoint-lat-input">LATITUDE (°)</label><input id="waypoint-lat-input" class="field-input" type="number" step="any" min="-90" max="90" required/></div><div><label class="field-label" for="waypoint-lon-input">LONGITUDE (°)</label><input id="waypoint-lon-input" class="field-input" type="number" step="any" min="-180" max="180" required/></div></div><div class="dialog-actions waypoint-editor-actions"><button type="button" class="btn btn-outline" data-action="delete-editing-waypoint">Delete point</button><button type="button" class="btn btn-outline" data-action="close-modal">Cancel</button><button type="submit" class="btn btn-accent">Save waypoint</button></div></form></dialog>
+        <dialog class="modal waypoint-editor-modal" id="waypoint-editor-modal" aria-labelledby="waypoint-editor-title"><form id="waypoint-editor-form"><div class="modal-header"><span class="section-label">WAYPOINT / MANUAL EDITOR V2</span><button class="modal-x" type="button" data-action="close-modal" aria-label="Close waypoint editor">×</button></div><h2 id="waypoint-editor-title">Edit waypoint</h2><p>Every change belongs to your mission and can be undone.</p><label class="field-label" for="waypoint-name-input">WAYPOINT NAME</label><input id="waypoint-name-input" class="field-input" maxlength="80" autocomplete="off" placeholder="e.g. Delta sampling site"/><label class="field-label" for="waypoint-category-input">CATEGORY</label><select id="waypoint-category-input" class="field-input"></select><label class="field-label" for="waypoint-description-input">DESCRIPTION / PURPOSE</label><textarea id="waypoint-description-input" class="field-input" rows="3" maxlength="500" placeholder="What is this point for? Separate hypotheses from measured facts."></textarea><label class="field-label">PHOTO (OPTIONAL)</label><div class="wp-photo"><img id="waypoint-photo-preview" alt="Photo of this place" hidden><input type="file" id="waypoint-photo-input" accept="image/*"><button type="button" class="btn btn-quiet small" id="waypoint-photo-remove" hidden>Remove photo</button></div><p class="field-hint" id="waypoint-photo-hint">Pictures are shrunk and kept with the mission.</p><div class="waypoint-editor-grid"><div><label class="field-label" for="waypoint-icon-input">MARKER SHAPE</label><select id="waypoint-icon-input" class="field-input"></select></div><div><label class="field-label" for="waypoint-color-input">MARKER COLOR</label><input id="waypoint-color-input" class="field-input color-field" type="color" value="#ec9976"/></div></div><label class="editor-color-default"><input id="waypoint-use-route-color" type="checkbox" checked/> Use active route color</label><div class="waypoint-editor-grid"><div><label class="field-label" for="waypoint-lat-input">LATITUDE (°)</label><input id="waypoint-lat-input" class="field-input" type="number" step="any" min="-90" max="90" required/></div><div><label class="field-label" for="waypoint-lon-input">LONGITUDE (°)</label><input id="waypoint-lon-input" class="field-input" type="number" step="any" min="-180" max="180" required/></div></div><div class="dialog-actions waypoint-editor-actions"><button type="button" class="btn btn-outline" data-action="delete-editing-waypoint">Delete point</button><button type="button" class="btn btn-outline" data-action="close-modal">Cancel</button><button type="submit" class="btn btn-accent">Save waypoint</button></div></form></dialog>
         <dialog class="modal library-modal" id="library-modal"><div class="modal-header"><span class="section-label">MISSION LIBRARY</span><button class="modal-x" type="button" data-action="close-modal" aria-label="Close dialog">×</button></div><h2>Your saved missions</h2><p>Your missions are saved on this device. Export a JSON backup to keep a copy.</p><div class="library-list" id="library-list"></div><div class="dialog-actions"><label class="btn btn-outline file-input-button">↑ Import JSON<input type="file" accept=".json,application/json" id="import-json" hidden /></label><button class="btn btn-accent" data-action="new-mission">＋ New mission</button></div></dialog>
     </div>`;
 
@@ -270,6 +271,23 @@ function openObservationEditor(id)
     get("#observation-title").focus();
 }
 
+// The photo shown in the editor; null removes it, a picture replaces it.
+let waypointPhoto = null;
+
+function showWaypointPhoto(data)
+{
+    waypointPhoto = data;
+    const preview = get("#waypoint-photo-preview");
+    preview.hidden = !data;
+    preview.src = data || "";
+    get("#waypoint-photo-remove").hidden = !data;
+}
+
+function photoCount()
+{
+    return store.activeRoute.points.filter(point => point.photo).length;
+}
+
 function openWaypointEditor(id)
 {
     const index = store.activeRoute.points.findIndex(point => point.id === id);
@@ -286,6 +304,7 @@ function openWaypointEditor(id)
     get("#waypoint-name-input").value = point.name || "";
     get("#waypoint-category-input").value = point.category || "navigation";
     get("#waypoint-description-input").value = point.description || "";
+    showWaypointPhoto(point.photo || null);
     get("#waypoint-icon-input").value = normalizeMarkerIcon(point.icon);
     get("#waypoint-color-input").value = point.color || store.activeRoute.color;
     get("#waypoint-use-route-color").checked = !point.color;
@@ -1032,6 +1051,7 @@ get("#waypoint-editor-form").addEventListener("submit", event =>
         name: get("#waypoint-name-input").value,
         category: get("#waypoint-category-input").value,
         description: get("#waypoint-description-input").value,
+        photo: waypointPhoto,
         icon: get("#waypoint-icon-input").value,
         color: get("#waypoint-use-route-color").checked ? null : get("#waypoint-color-input").value
     });
@@ -1259,3 +1279,29 @@ mountAnalyzeDashboard({ shell: get("#mars-shell"), store, getCloud: () => cloudW
 mountAccount({ store, cloudWorkspace, notify, shell: get("#mars-shell") });
 
 mountLineControls(get("[data-lines]"), routeControls());
+
+get("#waypoint-photo-input").addEventListener("change", async event =>
+{
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) return;
+
+    const current = store.activeRoute.points.find(point => point.id === editingWaypointId);
+
+    if (!waypointPhoto && photoCount() >= MAX_PHOTOS_PER_MISSION && !current?.photo)
+    {
+        notify(`A route can hold ${MAX_PHOTOS_PER_MISSION} photos. Remove one first.`);
+        return;
+    }
+
+    try
+    {
+        showWaypointPhoto(await shrinkPhoto(file));
+    }
+    catch (error)
+    {
+        notify(error.message);
+    }
+});
+get("#waypoint-photo-remove").addEventListener("click", () => showWaypointPhoto(null));

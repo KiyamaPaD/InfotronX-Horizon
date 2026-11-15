@@ -832,6 +832,8 @@ export class MissionStore
         const moved = point.lat !== coordinate.lat || point.lon !== coordinate.lon;
         Object.assign(point, cleanWaypointMetadata(input), coordinate);
 
+        if (point.photo === null) delete point.photo;
+
         if (moved)
         {
             this.activeRoute.terrainModel = null;

@@ -25,7 +25,9 @@ function decodeUtf8(encoded)
 export function createShareLink(mission)
 {
     const link = new URL(window.location.href);
-    link.hash = SHARE_HASH_PREFIX.slice(1) + encodeUtf8(JSON.stringify(mission));
+    // Photos are left out of a link: they would make it far too long, and a link is public to anyone who has it.
+    const lean = { ...mission, routes: mission.routes.map(route => ({ ...route, points: route.points.map(({ photo, ...rest }) => rest) })) };
+    link.hash = SHARE_HASH_PREFIX.slice(1) + encodeUtf8(JSON.stringify(lean));
     return link.toString();
 }
 

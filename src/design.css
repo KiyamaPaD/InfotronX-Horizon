@@ -2477,3 +2477,7 @@ a:not(.source-link):hover
 .pf-axis { fill: #8da0b0; font-size: 9px; }
 .pf-cursor { stroke: #75d1c8; stroke-width: 1.5; stroke-dasharray: 3 3; }
 @media (max-width: 1100px) { .map-3d-profile { width: calc(100% - 32px); bottom: 70px; } }
+
+.wp-photo { display: grid; gap: 8px; margin-bottom: 6px; }
+.wp-photo img { max-width: 100%; max-height: 180px; border-radius: 10px; object-fit: cover; }
+.field-hint { margin: 0 0 10px; color: #8da0b0; font-size: 12px; }
