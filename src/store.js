@@ -200,7 +200,9 @@ function readTerrainMetadata(candidate)
             distanceMeters: Math.max(0, stats.distanceMeters),
             ascentMeters: Math.max(0, stats.ascentMeters),
             descentMeters: Math.max(0, stats.descentMeters),
-            maxGradePercent: Math.max(0, stats.maxGradePercent)
+            maxGradePercent: Math.max(0, stats.maxGradePercent),
+            ...(Number.isFinite(stats.costMeters) && stats.costMeters >= 0
+                ? { costMeters: stats.costMeters } : {})
         }
     };
 }

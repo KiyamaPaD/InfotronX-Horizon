@@ -416,6 +416,7 @@ export function planRouteOnDem(dem, waypoints, options = {})
     let distanceMeters = 0;
     let ascentMeters = 0;
     let descentMeters = 0;
+    let costMeters = 0;
     let maxGradePercent = 0;
     let visited = 0;
 
@@ -433,6 +434,7 @@ export function planRouteOnDem(dem, waypoints, options = {})
         distanceMeters += segment.distanceMeters;
         ascentMeters += segment.ascentMeters;
         descentMeters += segment.descentMeters;
+        costMeters += segment.costMeters;
         maxGradePercent = Math.max(maxGradePercent, segment.maxGradePercent);
         visited += segment.visited;
     }
@@ -455,7 +457,7 @@ export function planRouteOnDem(dem, waypoints, options = {})
     return {
         ok: true,
         points: kept.map(index => ({ ...gridCoordinate(dem, Math.floor(index / dem.width), index % dem.width), elevation: dem.elevations[index] })),
-        stats: { distanceMeters, ascentMeters, descentMeters, maxGradePercent, visited, cellCount: cells.length },
+        stats: { distanceMeters, ascentMeters, descentMeters, costMeters, maxGradePercent, visited, cellCount: cells.length },
         assumptions: { maxSlopePercent: options.maxSlopePercent ?? 18, slopePenalty: options.slopePenalty ?? 6, exclusionZones: (options.exclusionZones || []).length },
         source: dem.source
     };
