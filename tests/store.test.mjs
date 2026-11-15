@@ -45,6 +45,7 @@ test("coordinates can be edited exactly", () =>
     globalThis.localStorage = memoryStorage();
     const store = new MissionStore();
     const route = store.activeRoute;
+    store.addPoint({ lat: 18.44, lon: 77.45 });
     const point = route.points[0];
     assert.equal(store.updatePoint(point.id, { lat: 18.5, lon: 77.5 }), true);
     assert.deepEqual([route.points[0].lat, route.points[0].lon], [18.5, 77.5]);
@@ -90,4 +91,35 @@ test("failed browser storage is surfaced", () =>
     {
         console.warn = previous;
     }
+});
+
+test("fresh missions start with no user-generated map markers", () =>
+{
+    globalThis.localStorage = memoryStorage();
+    const store = new MissionStore();
+    assert.equal(store.activeRoute.points.length, 0);
+    assert.equal(store.current.observations.length, 0);
+});
+
+test("untouched sample markers are removed without touching customized routes", async () =>
+{
+    const { createDemoMission, removeUntouchedExample } = await import("../src/store.js");
+    const example = removeUntouchedExample(createDemoMission());
+    assert.equal(example.routes[0].points.length, 0);
+    assert.equal(example.observations.length, 0);
+
+    const customized = createDemoMission();
+    customized.routes[0].points[0].lat += 0.00001;
+    assert.equal(removeUntouchedExample(customized).routes[0].points.length, 4);
+});
+
+test("clearing an active route is explicit and does not delete observations", () =>
+{
+    globalThis.localStorage = memoryStorage();
+    const store = new MissionStore();
+    store.addPoint({ lat: 18.44, lon: 77.45 });
+    store.addObservation({ lat: 18.45, lon: 77.46 }, "Manual observation", "");
+    assert.equal(store.clearActiveRoute(), true);
+    assert.equal(store.activeRoute.points.length, 0);
+    assert.equal(store.current.observations.length, 1);
 });
