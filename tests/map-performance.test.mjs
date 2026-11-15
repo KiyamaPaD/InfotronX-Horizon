@@ -452,7 +452,7 @@ test("HiRISE imagery and native Viking fallback use geographically aligned tiles
         assert.match(requests.at(-1).url, /Mars_Viking_MDIM21_ClrMosaic_global_232m/);
         high.dispose();
 
-        const outside = map.createTile(1000, 300, 10, 0, 0);
+        const outside = map.createTile(1000, 302, 10, 0, 0);
         outside.startLoading();
         const detail = outside.children[1];
         assert.match(detail.src, /Mars_Viking_MDIM21_ClrMosaic_global_232m/);
@@ -462,6 +462,4 @@ test("HiRISE imagery and native Viking fallback use geographically aligned tiles
         assert.equal(detail.style.top, "-512px");
         outside.dispose();
     });
-});
-
 });
