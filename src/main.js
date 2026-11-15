@@ -35,7 +35,7 @@ app.innerHTML = `
             <aside class="sidebar sidebar-left" id="left-sidebar">
                 <div class="sidebar-content">
                     <div class="panel-section top-section"><div class="section-eyebrow">YOUR MISSION <span class="status-dot" aria-hidden="true"></span></div><h1 id="mission-heading">Jezero reconnaissance</h1><div class="subtle-copy" id="mission-description"></div><div class="mission-top-actions"><button class="btn btn-outline" data-action="new-mission">+ New mission</button><button class="btn btn-muted" data-action="rename-mission">Rename</button></div><div class="mission-quick-guide"><span class="guide-mark" aria-hidden="true">✦</span><div><strong>You are in control.</strong><span>Create, edit and save your own mission routes.</span></div></div><button class="btn btn-outline wide" type="button" data-action="load-review-demo">◉ Open Jezero example mission</button></div>
-                    <div class="panel-section"><div class="panel-title-row"><div class="section-label">ROUTE PLANNER</div><span class="count-chip" id="route-count">01</span></div><p class="section-help">Create routes directly on the map; keep full control of every waypoint.</p><div class="mode-switcher" role="group" aria-label="Map editing tools"><button class="mode-btn active" data-mode="pan" title="Pan map">↔ <span>Explore</span></button><button class="mode-btn" data-mode="draw" title="Add waypoints">✎ <span>Draw</span></button><button class="mode-btn" data-mode="edit" title="Move waypoints">◎ <span>Move</span></button><button class="mode-btn" data-mode="observe" title="Add an observation">✧ <span>Observe</span></button></div><div id="route-list" class="route-list"></div><div class="route-actions"><button class="btn btn-outline" data-action="new-route">＋ Route</button><button class="btn btn-outline" data-action="duplicate-route">⧉ Duplicate</button><button class="btn btn-outline" data-action="undo-point">↶ Last point</button></div><div class="route-secondary-actions"><button data-action="add-coordinates">＋ Coordinates</button><button data-action="rename-route">Rename</button><button data-action="delete-route">Delete</button></div></div>
+                    <div class="panel-section"><div class="panel-title-row"><div class="section-label">ROUTE PLANNER</div><span class="count-chip" id="route-count">01</span></div><p class="section-help">Create routes directly on the map; keep full control of every waypoint.</p><div class="mode-switcher" role="group" aria-label="Map editing tools"><button class="mode-btn active" data-mode="pan" title="Pan map">↔ <span>Explore</span></button><button class="mode-btn" data-mode="draw" title="Add waypoints">✎ <span>Draw</span></button><button class="mode-btn" data-mode="edit" title="Move waypoints">◎ <span>Move</span></button><button class="mode-btn" data-mode="observe" title="Add an observation">✧ <span>Observe</span></button></div><div id="route-list" class="route-list"></div><div class="route-actions"><button class="btn btn-outline" data-action="new-route">＋ Route</button><button class="btn btn-outline" data-action="duplicate-route">⧉ Duplicate</button><button class="btn btn-outline" data-action="undo-point">↶ Last point</button><button class="btn btn-outline" data-action="clear-route" title="Remove all waypoints in the selected route">× Clear route</button></div><div class="route-secondary-actions"><button data-action="add-coordinates">＋ Coordinates</button><button data-action="rename-route">Rename</button><button data-action="delete-route">Delete</button></div></div>
                     <div class="panel-section"><div class="panel-title-row"><div class="section-label">MAP DATA</div><span class="tiny-pill">NASA TREK</span></div><div id="layer-buttons" class="layer-buttons"></div><div class="layer-description" id="layer-description"></div></div>
                     <div class="panel-section last-section"><div class="section-label">MISSION OBJECTIVES</div><div class="objective-item"><span class="objective-icon">01</span><div>Define exploration route <small>Place waypoints in Draw mode</small></div></div><div class="objective-item"><span class="objective-icon">02</span><div>Compare alternatives <small>Duplicate and modify a route</small></div></div><div class="objective-item"><span class="objective-icon">03</span><div>Share your findings <small>Save and export your mission</small></div></div></div>
                 </div>
@@ -91,9 +91,9 @@ function updateImageryLabel(map)
     const overview = source.id !== map.layer.id;
     get("#map-source-name").textContent = map.layer.id === "hirise" && map.zoom >= 9
         ? "HIRISE + CTX" : map.layer.id === "hirise" && map.zoom === 8
-            ? "CTX + VIKING" : source.name.toUpperCase();
+            ? "VIKING OVERVIEW" : source.name.toUpperCase();
     get(".map-source-eyebrow").textContent = overview ? "GLOBAL OVERVIEW" : "CURRENT IMAGERY";
-    get(".map-data-badge").title = map.layer.id === "hirise" && map.zoom >= 8
+    get(".map-data-badge").title = map.layer.id === "hirise" && map.zoom >= 9
         ? "NASA Jezero CTX context (6 m/pixel) over Viking, with HiRISE detail (25 cm/pixel) where available."
         : overview ? "Viking global overview; NASA CTX and HiRISE are available at higher zoom."
             : source.description;
@@ -555,6 +555,13 @@ document.addEventListener("click", event =>
         case "new-route": if (store.addRoute(`Route ${store.current.routes.length + 1}`)) { setMode("draw"); notify("New route created. Click the map to add waypoints."); } else { notify("Route limit reached (15). Export or start another mission."); } break;
         case "duplicate-route": if (store.duplicateRoute()) { setMode("edit"); notify("Route duplicated. Drag waypoints to create a comparison."); } else { notify("Route limit reached (15)."); } break;
         case "undo-point": store.undoPoint(); break;
+        case "clear-route":
+            if (store.activeRoute.points.length && confirm("Remove all waypoints from this route? Export a backup first if needed."))
+            {
+                store.clearActiveRoute();
+                notify("Waypoints cleared from the active route.");
+            }
+            break;
         case "zoom-in": map.changeZoom(1); break;
         case "zoom-out": map.changeZoom(-1); break;
         case "focus-route": map.focusRoute(); break;
