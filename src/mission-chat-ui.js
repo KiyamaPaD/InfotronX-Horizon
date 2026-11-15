@@ -37,6 +37,11 @@ export function mountMissionChat({ dialog, cloud, notify, run, openCloudTab })
                     <button id="team-chat-refresh" type="button" class="btn btn-outline">Refresh</button>
                 </div>
             </form>
+            <details id="team-chat-activity">
+                <summary>Mission save activity (last 12 revisions)</summary>
+                <div id="team-chat-activity-list" role="list"></div>
+                <p class="science-footnote">Shows cloud save history, not real-time simultaneous editing. Refresh the library to open another user's saved version.</p>
+            </details>
             <details id="team-chat-blocks"><summary>Blocked members</summary>
                 <div id="team-chat-block-list"></div>
             </details>
@@ -55,6 +60,7 @@ export function mountMissionChat({ dialog, cloud, notify, run, openCloudTab })
     let activeId = "";
     let messages = [];
     let blocked = [];
+    let revisions = [];
     let timer = null;
     let generation = 0;
 
@@ -72,7 +78,9 @@ export function mountMissionChat({ dialog, cloud, notify, run, openCloudTab })
         activeId = "";
         messages = [];
         blocked = [];
+        revisions = [];
         stream.replaceChildren();
+        el("#team-chat-activity-list").replaceChildren();
     }
 
     function appendAction(host, label, callback)
@@ -159,6 +167,31 @@ export function mountMissionChat({ dialog, cloud, notify, run, openCloudTab })
         }
     }
 
+    function showActivity()
+    {
+        const host = el("#team-chat-activity-list");
+        host.replaceChildren();
+
+        if (!revisions.length)
+        {
+            host.textContent = "No saved revisions available for this mission.";
+            return;
+        }
+
+        for (const entry of revisions)
+        {
+            const row = document.createElement("div");
+            row.className = "team-chat-activity-row";
+            row.setAttribute("role","listitem");
+            const author = entry.editor_id === cloud.user?.id ? "You" :
+                "Team member " + String(entry.editor_id || "").slice(0,6);
+            const timestamp = new Date(entry.created_at);
+            row.textContent = "Revision " + Number(entry.revision) + " · " + author + " · " +
+                (Number.isNaN(timestamp.getTime()) ? "unknown time" : timestamp.toLocaleString());
+            host.append(row);
+        }
+    }
+
     function showBlocks()
     {
         blockList.replaceChildren();
@@ -196,8 +229,8 @@ export function mountMissionChat({ dialog, cloud, notify, run, openCloudTab })
             return;
         }
 
-        const [nextMessages,nextBlocked] = await Promise.all([
-            service.list(missionId),service.blocked()
+        const [nextMessages,nextBlocked,nextActivity] = await Promise.all([
+            service.list(missionId),service.blocked(),service.listActivity(missionId)
         ]);
 
         if (requestId !== generation || cloud.user?.id !== userId || activeId !== missionId)
@@ -207,8 +240,10 @@ export function mountMissionChat({ dialog, cloud, notify, run, openCloudTab })
 
         messages = nextMessages;
         blocked = nextBlocked;
+        revisions = nextActivity;
         showMessages();
         showBlocks();
+        showActivity();
         tell(messages.length + " recent visible messages · Only signed-in mission members have access.");
         stream.scrollTop = stream.scrollHeight;
     }

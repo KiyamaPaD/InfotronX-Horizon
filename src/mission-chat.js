@@ -61,6 +61,14 @@ export class MissionChatService
         return (rows || []).reverse();
     }
 
+    async listActivity(missionId)
+    {
+        this.validateMission(missionId);
+        return unwrap(await this.cloud.client.from("mars_mission_versions")
+            .select("id,revision,editor_id,created_at")
+            .eq("mission_id", missionId).order("created_at", { ascending: false }).limit(12)) || [];
+    }
+
     async send(missionId, text)
     {
         this.validateMission(missionId);

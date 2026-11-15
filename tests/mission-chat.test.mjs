@@ -124,3 +124,14 @@ test("chat UI renders message content using textContent, not user-controlled HTM
     assert.match(cloud,/missionChat\.onUserChanged/);
     assert.match(cloud,/showHubTab\("chat"\)/);
 });
+
+test("collaboration activity shows revisions without exposing full mission JSON", () =>
+{
+    const backend = readFileSync(new URL("../src/mission-chat.js",import.meta.url),"utf8");
+    const ui = readFileSync(new URL("../src/mission-chat-ui.js",import.meta.url),"utf8");
+    assert.match(backend,/from\("mars_mission_versions"\)/);
+    assert.match(backend,/select\("id,revision,editor_id,created_at"\)/);
+    assert.match(ui,/Mission save activity/);
+    assert.match(ui,/Revision " \+ Number\(entry.revision\)/);
+    assert.match(ui,/not real-time simultaneous editing/);
+});

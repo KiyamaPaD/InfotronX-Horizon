@@ -1841,3 +1841,23 @@
     touch-action:none;
     overscroll-behavior:contain;
 }
+
+#team-chat-activity
+{
+    margin:12px 0;
+    padding:9px 12px;
+    border:1px solid #395669;
+    border-radius:8px;
+    color:#cde0e6;
+}
+.team-chat-activity-row
+{
+    padding:7px 0;
+    border-bottom:1px solid #2c4553;
+    color:#bed5de;
+    font-size:11px;
+}
+.team-chat-activity-row:last-child
+{
+    border-bottom:none;
+}
