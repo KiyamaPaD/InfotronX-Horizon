@@ -154,7 +154,7 @@ test("Crew Profile appears as its own tab and never claims official NASA status"
     assert.match(cloudUi, /data-hub-tab="crew"/);
     assert.match(cloudUi, /id="crew-profile-form"/);
     assert.match(cloudUi, /id="crew-avatar-upload"/);
-    assert.match(cloudUi, /not NASA credentials/i);
+    assert.match(cloudUi, /not an astronaut certification|No NASA affiliation/i);
     assert.match(crewUi, /CrewProfileService/);
     assert.match(style, /\.crew-profile-hero/);
 });
