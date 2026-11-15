@@ -7,14 +7,26 @@ export const MAX_OBSERVATIONS = 80;
 
 export const MAP_LAYERS = [
     {
-        id: "ctx",
-        name: "CTX Orbital",
-        short: "CTX",
-        agency: "NASA / MRO",
-        dataset: "CTX_beta01_uncontrolled_5m_Caltech",
-        description: "Mars Reconnaissance Orbiter CTX global image mosaic. Visual planning context, not a certified hazard map.",
-        url: "https://trek.nasa.gov/tiles/Mars/EQ/CTX_beta01_uncontrolled_5m_Caltech/1.0.0",
+        id: "viking",
+        name: "Viking Global",
+        short: "VIKING",
+        agency: "NASA / Viking",
+        dataset: "Mars_Viking_MDIM21_ClrMosaic_global_232m",
+        description: "Continuous Viking color mosaic for global Mars exploration. Native detail is limited to its map resolution.",
+        url: "https://trek.nasa.gov/tiles/Mars/EQ/Mars_Viking_MDIM21_ClrMosaic_global_232m/1.0.0",
         extensions: ["jpg", "png"],
+        maxUsefulZoom: 8
+    },
+    {
+        id: "hirise",
+        name: "HiRISE Jezero",
+        short: "HIRISE",
+        agency: "NASA / MRO",
+        dataset: "JEZ_hirise_soc_006_orthoMosaic_25cm_Eqc_latTs0_lon0_first_dd",
+        description: "Controlled 25 cm HiRISE mosaic of Jezero. Outside its coverage, the map displays lower-resolution Viking context.",
+        url: "https://trek.nasa.gov/tiles/Mars/EQ/JEZ_hirise_soc_006_orthoMosaic_25cm_Eqc_latTs0_lon0_first_dd/1.0.0",
+        extensions: ["png", "jpg"],
+        coverage: { south: 18.3067994, north: 18.669315, west: 77.2229331, east: 77.583964 },
         maxUsefulZoom: 10
     },
     {
@@ -27,17 +39,6 @@ export const MAP_LAYERS = [
         url: "https://trek.nasa.gov/tiles/Mars/EQ/Mars_MGS_MOLA_ClrShade_merge_global_463m/1.0.0",
         extensions: ["png", "jpg"],
         maxUsefulZoom: 7
-    },
-    {
-        id: "viking",
-        name: "Viking Color",
-        short: "VIKING",
-        agency: "NASA / Viking",
-        dataset: "Mars_Viking_MDIM21_ClrMosaic_global_232m",
-        description: "Viking global color mosaic for planetary visual context.",
-        url: "https://trek.nasa.gov/tiles/Mars/EQ/Mars_Viking_MDIM21_ClrMosaic_global_232m/1.0.0",
-        extensions: ["jpg", "png"],
-        maxUsefulZoom: 8
     }
 ];
 

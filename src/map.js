@@ -22,7 +22,7 @@ export class MarsMap
         this.container = container;
         this.store = store;
         this.options = options;
-        this.zoom = 10;
+        this.zoom = 8;
         this.center = { ...JEZERO };
         this.layer = MAP_LAYERS[0];
         this.layerMaxZoom = Math.min(11, this.layer.maxUsefulZoom || 13);
@@ -359,6 +359,11 @@ export class MarsMap
             this.store.save();
         }
 
+        if (drag.moved && !drag.pointId)
+        {
+            this.options.onViewChange?.(this.center, this.zoom);
+        }
+
         if (drag.moved || !this.container.contains(event.target))
         {
             return;
@@ -379,14 +384,28 @@ export class MarsMap
         tile.remove?.();
     }
 
-    getImageryLayer(zoom = this.zoom)
+    getImageryLayer(zoom = this.zoom, tileX = null, tileY = null)
     {
-        if (this.layer.id === "ctx" && zoom <= 4)
+        if (this.layer.id !== "hirise")
         {
-            return MAP_LAYERS.find(layer => layer.id === "viking") || this.layer;
+            return this.layer;
         }
 
-        return this.layer;
+        const fallback = MAP_LAYERS.find(layer => layer.id === "viking") || this.layer;
+
+        if (zoom < 9)
+        {
+            return fallback;
+        }
+
+        const point = Number.isInteger(tileX) && Number.isInteger(tileY)
+            ? unproject({ x: (tileX + 0.5) * 256, y: (tileY + 0.5) * 256 }, zoom)
+            : this.center;
+        const bounds = this.layer.coverage;
+
+        return point.lon >= bounds.west && point.lon <= bounds.east
+            && point.lat >= bounds.south && point.lat <= bounds.north
+            ? this.layer : fallback;
     }
 
     tileCandidates(x, y, zoom, layer = this.getImageryLayer(zoom))
@@ -420,11 +439,24 @@ export class MarsMap
     createTile(x, y, zoom, left, top)
     {
         const selectedLayerId = this.layer.id;
-        const layer = this.getImageryLayer(zoom);
+        const layer = this.getImageryLayer(zoom, x, y);
+        const sourceDepth = Math.max(0, zoom - (layer.maxUsefulZoom || zoom));
+        const sourceRatio = 2 ** sourceDepth;
+        const sourceZoom = zoom - sourceDepth;
+        const sourceX = Math.floor(x / sourceRatio);
+        const sourceY = Math.floor(y / sourceRatio);
         const tile = document.createElement("div");
         tile.className = "map-tile";
         tile.dataset.state = "loading";
         tile.dataset.preview = "loading";
+        tile.dataset.source = layer.id;
+        tile.dataset.lowDetail = String(sourceDepth > 0);
+
+        if (selectedLayerId === "hirise" && layer.id === "viking")
+        {
+            tile.style.filter = "grayscale(1)";
+        }
+
         tile.style.left = Math.round(left) + "px";
         tile.style.top = Math.round(top) + "px";
 
@@ -443,16 +475,25 @@ export class MarsMap
         detail.style.opacity = "0";
         tile.append(preview, detail);
 
-        const primaryCandidates = this.tileCandidates(x, y, zoom, layer);
+        if (sourceDepth)
+        {
+            const enlarged = 256 * sourceRatio;
+            detail.style.width = enlarged + "px";
+            detail.style.height = enlarged + "px";
+            detail.style.left = -(x % sourceRatio) * 256 + "px";
+            detail.style.top = -(y % sourceRatio) * 256 + "px";
+        }
+
+        const primaryCandidates = this.tileCandidates(sourceX, sourceY, sourceZoom, layer);
         let primaryIndex = 0;
-        let previewDepth = 1;
+        let previewDepth = selectedLayerId === "hirise" ? Math.max(1, zoom - 8) : 1;
         let previewIndex = 0;
         let previewCandidates = [];
         let disposed = false;
 
         const isCurrent = () => !disposed
             && selectedLayerId === this.layer.id
-            && layer.id === this.getImageryLayer(zoom).id
+            && layer.id === this.getImageryLayer(zoom, x, y).id
             && tile.isConnected;
 
         const report = () =>
@@ -501,7 +542,7 @@ export class MarsMap
             tile.dataset.state = "loaded";
             this.loadedImages++;
             detail.style.opacity = "1";
-            preview.style.opacity = "0";
+            preview.style.opacity = selectedLayerId === "hirise" && layer.id === "hirise" ? "1" : "0";
             const source = primaryCandidates[primaryIndex];
             const match = source.match(/\/default\/(default028mm|default)\/[^/]+\/\d+\/\d+\.(png|jpg)$/);
 
@@ -526,8 +567,10 @@ export class MarsMap
                 return;
             }
 
-            const ratio = 2 ** previewDepth;
-            const parentZoom = zoom - previewDepth;
+            const fallback = selectedLayerId === "hirise"
+                ? MAP_LAYERS.find(item => item.id === "viking") || layer : layer;
+            const parentZoom = Math.min(zoom - previewDepth, fallback.maxUsefulZoom || zoom);
+            const ratio = 2 ** (zoom - parentZoom);
             const parentX = Math.floor(x / ratio);
             const parentY = Math.floor(y / ratio);
             const size = 256 * ratio;
@@ -535,7 +578,7 @@ export class MarsMap
             preview.style.height = size + "px";
             preview.style.left = -((x % ratio) * 256) + "px";
             preview.style.top = -((y % ratio) * 256) + "px";
-            previewCandidates = this.tileCandidates(parentX, parentY, parentZoom, layer);
+            previewCandidates = this.tileCandidates(parentX, parentY, parentZoom, fallback);
             previewIndex = 0;
             preview.src = previewCandidates[0];
         };
@@ -641,7 +684,6 @@ export class MarsMap
         const maxY = Math.floor((center.y + height / 2) / 256);
         const maxTileX = 2 ** (this.zoom + 1);
         const maxTileY = 2 ** this.zoom;
-        const source = this.getImageryLayer(this.zoom);
         const active = new Set();
 
         for (let y = minY; y <= maxY; y++)
@@ -653,7 +695,7 @@ export class MarsMap
                     continue;
                 }
 
-                const key = source.id + "-" + this.zoom + "-" + x + "-" + y;
+                const key = this.layer.id + "-" + this.zoom + "-" + x + "-" + y;
                 active.add(key);
                 const left = x * 256 - center.x + width / 2;
                 const top = y * 256 - center.y + height / 2;
@@ -723,9 +765,13 @@ export class MarsMap
         {
             const tile = this.tiles.get(key);
 
-            if (tile?.dataset.state === "loaded")
+            if (tile?.dataset.state === "loaded" && tile.dataset.lowDetail !== "true")
             {
                 detail++;
+            }
+            else if (tile?.dataset.state === "loaded")
+            {
+                preview++;
             }
             else if (tile?.dataset.preview === "loaded")
             {
