@@ -9,7 +9,7 @@ A manual-first Mars mission-planning workspace developed by **InfotronX Horizon*
 [![Verify](https://github.com/KiyamaPaD/Mars-Atlas/actions/workflows/verify.yml/badge.svg)](https://github.com/KiyamaPaD/Mars-Atlas/actions/workflows/verify.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**[Open Mars Atlas](https://mars-atlas-mu.vercel.app)** · **[Scientific validation](docs/JUDGE_SCIENTIFIC_VALIDATION.md)** · **[Judge demo draft](docs/JUDGE_DEMO_DRAFT_2026.md)** · **[AI/data disclosure](docs/AI_USE_AND_SOURCES.md)** · **[Team testing guide](docs/BETA_TESTING.md)** · **[Report a bug](https://github.com/KiyamaPaD/Mars-Atlas/issues/new?template=bug_report.md)**
+**[Open Mars Atlas (Netlify)](https://mars-atlas-map.netlify.app/)** · **[Scientific validation](docs/JUDGE_SCIENTIFIC_VALIDATION.md)** · **[Judge demo draft](docs/JUDGE_DEMO_DRAFT_2026.md)** · **[AI/data disclosure](docs/AI_USE_AND_SOURCES.md)** · **[Team testing guide](docs/BETA_TESTING.md)** · **[Report a bug](https://github.com/KiyamaPaD/Mars-Atlas/issues/new?template=bug_report.md)**
 
 > **Team-testing stage.** A successful deployment and automated checks do not replace testing the interactive map in a real browser. If you see a Vercel access screen, request a shareable link from the maintainer.
 
@@ -26,6 +26,9 @@ A manual-first Mars mission-planning workspace developed by **InfotronX Horizon*
 - **See what's needed in Science:** Analytics provides an explicit guide for required waypoint counts, numeric DEM availability and route alternatives; tools can be expanded and opened without automatic sample points.
 - **Visualize your mission graph:** a weighted waypoint-connectivity diagram complements the existing segment distances, elevation, slope/roughness, reachability, contour and route comparison charts.
 - **Create a private Crew Profile:** signed-in Mars Atlas accounts can save a callsign, mission role, interests, biography and an optional private profile image. Roles are user-supplied, not NASA credentials. [Crew profile documentation](docs/CREW_PROFILES.md).
+- **Team chat for shared missions:** owner/viewer/editor collaboration conversations in Mission Center with Supabase RLS, anti-spam, block, report and message deletion. **Global chat remains off** until staffed moderation is ready.
+- **Interactive numeric 3D terrain:** WebGL rendering of valid DEM mesh triangles, with user-controlled orientation, zoom and vertical exaggeration. NoData cells remain blank and the original 2D terrain tools still work without WebGL.
+- **Optional Mission Copilot:** deterministic local analysis without authentication, plus a consent-based read-only AI explanation endpoint. The AI model needs a **server-side** API key configured by the project owner; no external AI answer is assumed live yet. [Collaboration, AI and 3D instructions](docs/COLLAB_AI_3D_V2.md).
 
 ## Explore and analyze
 
@@ -41,7 +44,11 @@ The map uses the NASA Viking global color mosaic as its default (zoom 3–7). In
 | NASA background maps | External image services; actual tile loading depends on connectivity |
 | Mission saving | Browser-local storage, user exports and an optional authenticated Supabase cloud library |
 | Team account access | Authenticated cloud save/open with per-mission viewer/editor roles; email-based viewer/editor access (no automatic invitation emails); real-user flows need verification |
-| Live simultaneous editing | **Not implemented** — cloud snapshots are opened and saved explicitly |
+| Live simultaneous editing | **Not implemented** — cloud snapshots are opened and saved explicitly. Team chat uses Realtime independently of document editing |
+| Mission chat | RLS-protected conversations for cloud mission members; real two-account production test pending |
+| Global chat | Disabled until moderation and abuse response are staffed |
+| AI Copilot | Deterministic local report works now; external LLM requires a server-side `OPENAI_API_KEY` |
+| WebGL 3D terrain | Implemented numeric mesh; degraded 2D mode remains when WebGL is unsupported |
 | Rover/astronaut safety certification | **Not provided** |
 
 The scientific analyses are educational approximations, not real mission-operational hazard measurements, EVA medical advice, or safety approvals. Scenario assumptions must not be confused with source measurements.

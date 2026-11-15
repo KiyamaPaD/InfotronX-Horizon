@@ -38,20 +38,20 @@
 5. Keep A* and D* Lite traceable and show algorithm names, assumptions, source coverage and skipped NoData segments.
 6. Acceptance: full route comparison with and without a loaded DEM, repeatable graph/score tests, accessible mobile and desktop charts, export retaining provenance.
 
-## Remaining phase 2 — Mission Control & Collaboration V2
+## Phase 2 — Mission Control & Collaboration V2 (foundation implemented; multiaccount QA pending)
 
 1. Build a user-controlled mission/team workspace on authenticated Supabase sessions.
 2. Extend Crew Profile to optional visibility settings and capability tags, with private-by-default identity and avatars.
 3. Shared mission permissions, revision conflict detection, audit history and explicit team invites.
-4. **Global chat / mission chat** is a proposal, not shipped: implement authentication, spam and abuse limits, mute/block/report tools, moderator review, safe retention, sanitization, RLS membership rules and visibility controls first.
+4. **Mission team chat is implemented** with RLS-scoped cloud members, Postgres-Changes updates, server-side 3 s / 10-per-minute message limits, block/report and own deletion. **Global chat is not shipped**: it still needs staffed moderator review, retention rules and abuse response.
 5. Offline mission editing continues independently of chat and cloud access.
 6. Acceptance: separate-account tests for owner/editor/viewer access, impersonation attempts, photos/privacy, conflict handling and account deletion.
 
-## Remaining phase 3 — Optional AI Mission Copilot + true 3D terrain
+## Phase 3 — Optional AI Mission Copilot + true 3D terrain (foundation implemented; production review pending)
 
-1. AI Copilot receives bounded tool access to deterministic analytics, public NASA datasets and user-permitted mission context. All suggestions display provenance and limitations.
+1. **Implemented:** local deterministic mission analysis and a read-only, consent-based Supabase Edge Function for optional OpenAI Responses API explanations using bounded aggregates. External model activation requires the project owner's `OPENAI_API_KEY` secret. Tool-calling integration and source-based AI reasoning remain future work.
 2. Copilot never creates, deletes, shares or overrides routes without explicit user approval; manual-first is unaffected.
-3. True 3D DEM relief view uses real numeric elevations and separately identified photographic context. No imaginary data are inserted into NoData areas.
+3. **Implemented:** native WebGL DEM mesh from numeric elevations, explicit source and optional exaggeration controls; missing elevation cells create holes. Future photographic 3D texturing and topographic route overlays require separate georeferencing review.
 4. Include 2D fallback, GPU performance caps, mobile usability and camera/orientation controls.
 5. Diagnostics/visualizations: elevation surface, slope/roughness overlays, local cross-sections, route graph and 3D trace, coordinate and scale legend.
 6. Acceptance: scientifically transparent 2D/3D alignment, no fabricated surface data, graceful WebGL failure, validated tool-call permissions and reproducible output.
