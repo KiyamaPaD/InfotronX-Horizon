@@ -810,6 +810,53 @@ async function offlineScenario()
     return { scenario: "network-offline-online", viewport: VIEWPORTS[2], steps, checks, gateDuplicates: false, ...summarize(log) };
 }
 
+async function nasaOutageScenario()
+{
+    const steps = [];
+    const checks = [];
+    const outage = { active: true };
+    const { context, target, log } = await openWatchedScenario(VIEWPORTS[2], async (context, target) =>
+    {
+        await target.route("https://trek.nasa.gov/tiles/**", route =>
+            outage.active && isTileUrl(route.request().url()) ? route.fulfill({ status: 503, body: "" }) : route.continue());
+    });
+
+    try
+    {
+        const outageAt = Date.now();
+        // Stay down past one 16 s retry window so a retry storm would show.
+        await target.waitForTimeout(24000);
+        const outageRequests = log.requests.slice();
+        const outageSeconds = (Date.now() - Math.min(outageAt, outageRequests[0]?.at ?? outageAt)) / 1000;
+        const outageMessages = await readMessages(target);
+        await target.screenshot({ path: "browser-map-evidence/nasa-outage-during.png" });
+
+        outage.active = false;
+        const restoredAt = Date.now();
+        const recovered = await allVisibleTilesLoaded(target, 40000);
+        const recoveryMs = Date.now() - restoredAt;
+        await capture(target, log, steps, "nasa-outage-recovered");
+        const bannerEpisodes = outageMessages.filter(item => item.kind === "network" && item.text);
+        const unavailable = outageMessages.filter(item => item.kind === "notice" && /unavailable/i.test(item.text || ""));
+        const toasts = (await readMessages(target)).filter(item => item.kind === "toast");
+        const maxAttempts = attemptsPerUrl(outageRequests);
+        const allowedAttempts = 1 + Math.floor(outageSeconds / 16);
+        const clearedAfter = await target.evaluate(() => document.querySelector("#map-root .map-network-notice").hidden && document.querySelector("#map-root .map-load-notice").hidden);
+        steps.push({ step: "nasa-outage-analysis", outageSeconds, outageRequests: outageRequests.length, maxAttemptsPerUrl: maxAttempts, allowedAttempts, recovered, recoveryMs, outageMessages });
+
+        checks.push({ name: "NASA 503: one clear degradation message", ok: bannerEpisodes.length === 1 && unavailable.length === 0 && toasts.length === 0, detail: bannerEpisodes.length + " banner episodes" + (bannerEpisodes[0] ? " (\"" + bannerEpisodes[0].text + "\")" : "") + ", " + unavailable.length + " unavailable notices, " + toasts.length + " toasts", hard: true });
+        checks.push({ name: "NASA 503: no retry storm", ok: maxAttempts <= allowedAttempts, detail: outageRequests.length + " requests in " + outageSeconds.toFixed(0) + " s, max " + maxAttempts + " per tile (allowed " + allowedAttempts + ")", hard: true });
+        checks.push({ name: "NASA back: recovers without user action", ok: recovered, detail: recovered ? recoveryMs + " ms" : "not recovered after 40 s", hard: true });
+        checks.push({ name: "NASA back: message cleared", ok: clearedAfter, detail: clearedAfter ? "banner and notice hidden" : "a message is still visible", hard: true });
+    }
+    finally
+    {
+        await context.close();
+    }
+
+    return { scenario: "network-nasa-503", viewport: VIEWPORTS[2], steps, checks, gateDuplicates: false, ...summarize(log) };
+}
+
 function countBy(items, key)
 {
     const counts = {};
@@ -875,6 +922,7 @@ async function runStabilityScenarios()
         notes: [
             "Cold load opens a fresh browser context on the default view (Viking zoom 7, set in src/map.js). It is not a URL deep link: no ?z=&layer= parameter exists yet.",
             "Offline scenario duplicates are reported but not gated: tiles that failed while offline are expected to be requested again.",
+            "Viking tiles may never be reissued after an abort (plan step 1.1b); other layers' reissues are reported only.",
             "Checks marked soft are findings that need a src/ change; they are reported here and do not fail the test.",
             "Duplicates are tile URLs requested more than once in one scenario. retry-after-error means every repeat followed an HTTP error or failed request by at least 15 s (the map retries after 16 s)."
         ],
@@ -894,6 +942,7 @@ async function runStabilityScenarios()
         report.scenarios.push(await hiriseEdgeScenario());
         report.scenarios.push(await slowNetworkScenario());
         report.scenarios.push(await offlineScenario());
+        report.scenarios.push(await nasaOutageScenario());
     }
     finally
     {
@@ -929,6 +978,8 @@ async function runStabilityScenarios()
     const jsErrors = report.scenarios.flatMap(item => item.jsErrors.map(text => item.scenario + " " + text));
     assert.deepEqual(notFound, [], "Tile 404s on used levels");
     assert.deepEqual(duplicates, [], "Duplicate tile requests");
+    const vikingReissues = report.scenarios.flatMap(item => item.duplicates.filter(entry => entry.kind === "reissue-after-abort" && entry.url.includes("Mars_Viking_MDIM21")).map(entry => item.scenario + " " + entry.url));
+    assert.deepEqual(vikingReissues, [], "Viking backdrop tiles aborted and downloaded again (plan step 1.1b)");
     assert.deepEqual(jsErrors, [], "JavaScript console errors");
     const hardFailures = report.scenarios.flatMap(item => (item.checks || []).filter(check => check.hard && !check.ok).map(check => item.scenario + " " + check.name + ": " + check.detail));
     assert.deepEqual(hardFailures, [], "Map checks");

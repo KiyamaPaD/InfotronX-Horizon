@@ -480,6 +480,37 @@ export class MarsMap
         this.options.onMapClick?.(this.screenToGeo(event.clientX, event.clientY), this.mode);
     }
 
+    // Viking tiles are reused as the HiRISE backdrop; a detached image keeps an in-flight request alive so the browser
+    // serves the backdrop from its memory cache instead of aborting and downloading the same tile again.
+    keepVikingRequest(image)
+    {
+        if (typeof Image === "undefined")
+        {
+            return;
+        }
+
+        const url = image.getAttribute?.("src") ?? image.src;
+        const viking = MAP_LAYERS.find(item => item.id === "viking");
+
+        if (!url || image.complete || !url.includes(viking.dataset))
+        {
+            return;
+        }
+
+        this.vikingKeepers ??= new Set();
+
+        if (this.vikingKeepers.size >= 48)
+        {
+            return;
+        }
+
+        const keeper = new Image();
+        keeper.decoding = "async";
+        keeper.onload = keeper.onerror = () => this.vikingKeepers.delete(keeper);
+        keeper.src = url;
+        this.vikingKeepers.add(keeper);
+    }
+
     releaseTile(tile)
     {
         tile.dispose?.();
@@ -781,6 +812,7 @@ export class MarsMap
             detail.onerror = null;
             preview.onload = null;
             preview.onerror = null;
+            this.keepVikingRequest(detail);
             detail.removeAttribute("src");
             preview.removeAttribute("src");
         };
@@ -930,7 +962,7 @@ export class MarsMap
         {
             for (const [key, tile] of this.backgroundTiles)
             {
-                if (active.has(key))
+                if (active.has(key) || tile.dataset.state === "loading")
                 {
                     continue;
                 }
@@ -1666,6 +1698,11 @@ export class MarsMap
 
     onTileOutcome(loaded)
     {
+        if (loaded)
+        {
+            this.nasaFailing = false;
+        }
+
         if (loaded && this.awaitingRecovery)
         {
             this.awaitingRecovery = false;
@@ -1697,7 +1734,9 @@ export class MarsMap
             return;
         }
 
-        const failing = !this.offline && this.allVisibleTilesFailed();
+        // Once every visible tile has failed the banner stays until a tile loads, so retries in flight do not make it flicker.
+        this.nasaFailing = this.nasaFailing || this.allVisibleTilesFailed();
+        const failing = !this.offline && this.nasaFailing;
         const hasImagery = this.container.classList.contains("map-has-imagery");
         clearTimeout(this.recoveryTimer);
 
