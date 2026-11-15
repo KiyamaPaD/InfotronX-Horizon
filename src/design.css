@@ -2402,3 +2402,59 @@ a:not(.source-link):hover
 .map-3d-tip { position: absolute; z-index: 6; padding: 4px 10px; border-radius: 8px; background: #0b121bee; border: 1px solid #ffffff22; color: #fff; font-size: 12px; pointer-events: none; white-space: nowrap; }
 .map-3d-tip[hidden] { display: none; }
 .map-3d-actions [aria-pressed="true"] { background: #75d1c8; color: #08201d; border-color: #75d1c8; }
+
+/* Double scrollbar fix: the route comparison scrolls in one place only */
+.bottom-area .route-comparison { max-height: none; overflow: visible; }
+.bottom-area .workspace-panel-body { max-height: 200px; overflow-y: auto; }
+
+/* Fold and unfold */
+.ad-fold, .map-3d-fold { flex: none; width: 30px; height: 30px; border-radius: 9px; border: 1px solid #3c4d5c; background: #111d29; color: #d2dce5; font-size: 18px; line-height: 1; cursor: pointer; }
+.ad-fold:hover, .map-3d-fold:hover { border-color: #e39165; }
+.ad-step-head .ad-fold { margin-left: auto; }
+.ad-step.is-folded > :not(.ad-step-head) { display: none; }
+.ad-step.is-folded .ad-step-head { margin-bottom: 0; }
+.ad-step.is-folded .ad-step-head p { display: none; }
+.map-3d-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.map-3d-panel.is-folded > :not(.map-3d-head) { display: none; }
+
+/* Legends */
+.map-legend, .map-3d-legend { font-size: 12px; color: #d2dce5; }
+.map-legend { position: absolute; left: 14px; bottom: 54px; z-index: 6; max-width: 240px; padding: 8px 12px; border: 1px solid #ffffff22; border-radius: 12px; background: #101a24e6; }
+.map-legend summary, .map-3d-legend summary { cursor: pointer; font-weight: 800; letter-spacing: .14em; font-size: 10px; color: #e99570; }
+.map-legend ul, .map-3d-legend ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+.map-legend li, .map-3d-legend li { display: flex; align-items: center; gap: 8px; }
+.lg-line { width: 22px; height: 3px; border-radius: 2px; background: #ec9976; }
+.lg-dash { width: 22px; height: 0; border-top: 2px dashed #8da0b0; }
+.lg-symbols { min-width: 22px; letter-spacing: 1px; color: #ffd0b0; }
+.lg3-pin { flex: none; width: var(--s, 12px); height: var(--s, 12px); border-radius: 50%; background: var(--c); box-shadow: 0 0 8px var(--c); }
+.lg3-line { flex: none; width: 22px; height: 3px; border-radius: 2px; background: #ff9a6b; }
+
+/* 3D compass and readout */
+.map-3d-nav { position: absolute; left: 16px; bottom: 56px; z-index: 5; display: grid; gap: 8px; justify-items: start; }
+.map-3d-compass { width: 60px; height: 60px; padding: 0; border: 0; background: transparent; cursor: pointer; }
+.map-3d-compass svg { width: 100%; height: 100%; }
+.map-3d-poles { display: flex; gap: 6px; }
+.map-3d-poles button { padding: 4px 10px; border-radius: 8px; border: 1px solid #ffffff2a; background: #101a24e6; color: #d2dce5; font: inherit; font-size: 11px; cursor: pointer; }
+.map-3d-poles button:hover { border-color: #75d1c8; }
+.map-3d-readout { padding: 5px 10px; border-radius: 8px; background: #0b121bcc; color: #d2dce5; font-size: 11px; font-variant-numeric: tabular-nums; }
+
+/* 3D panel: buttons wrap instead of spilling out */
+.map-3d-panel { width: min(340px, calc(100% - 32px)); box-sizing: border-box; }
+.map-3d-actions { flex-wrap: wrap; }
+.map-3d-actions .btn { flex: 1 1 auto; }
+
+/* Line controls */
+.ls-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 10px; margin: 8px 0; font-size: 12px; color: #d2dce5; }
+.ls-row input[type="range"] { grid-column: 1 / -1; width: 100%; }
+.ls-row span[data-ls-out] { color: #ffcaa8; font-variant-numeric: tabular-nums; }
+.ls-choice span { display: inline-flex; gap: 4px; }
+.ls-choice button { padding: 3px 9px; border-radius: 7px; border: 1px solid #3c4d5c; background: #111d29; color: #d2dce5; font: inherit; font-size: 11px; cursor: pointer; }
+.ls-choice button[aria-pressed="true"] { background: #75d1c8; color: #08201d; border-color: #75d1c8; }
+.ls-colour input { width: 40px; height: 26px; padding: 0; border: 0; background: none; }
+.ls-check { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 12px; color: #aebdca; }
+.ls-reset { margin-top: 6px; padding: 4px 10px; border-radius: 8px; border: 1px solid #3c4d5c; background: transparent; color: #aebdca; font: inherit; font-size: 11px; cursor: pointer; }
+.map-lines { position: absolute; right: 14px; bottom: 54px; z-index: 6; width: 220px; padding: 8px 12px; border: 1px solid #ffffff22; border-radius: 12px; background: #101a24e6; font-size: 12px; }
+.map-lines summary { cursor: pointer; font-weight: 800; letter-spacing: .14em; font-size: 10px; color: #e99570; }
+.route-flow { animation: route-flow 1.2s linear infinite; }
+@keyframes route-flow { to { stroke-dashoffset: -21; } }
+@media (prefers-reduced-motion: reduce) { .route-flow { animation: none; } }

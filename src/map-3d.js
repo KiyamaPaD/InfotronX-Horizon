@@ -7,6 +7,7 @@ import { addSpaceDecor } from "./space-decor.js";
 import { lowPower, createGovernor } from "./perf.js";
 import { analyzeRoute, formatDistance } from "./geo.js";
 import { MARS_SITES, SITE_TYPES } from "./mars-sites.js";
+import { getLineStyle, mountLineControls } from "./line-style.js";
 import { directionOf, latLonOf, ellipseRadius, parseGlb, subdivide, positionGroups } from "./planet-mesh.js";
 
 // NASA/JPL-Caltech 3D model of Mars: https://science.nasa.gov/resource/planet-mars-3d-model/
@@ -301,7 +302,7 @@ const COPY = {
     delta: { title: "Delta front", eyebrow: "3D VIEW · DETAIL", text: "USGS CTX heights (20 m grid) with NASA HiRISE imagery (~1.2 m/pixel). Height and curvature are exaggerated for readability.", switchLabel: "Whole planet" }
 };
 
-export async function openMap3d({ host, points = [], getPoints, subscribe, onAddWaypoint, routeColor = "#ff9a6b", mode = "planet", onFocusArea, onClose })
+export async function openMap3d({ host, points = [], getPoints, subscribe, onAddWaypoint, routeControls, routeColor = "#ff9a6b", mode = "planet", onFocusArea, onClose })
 {
     const layer = document.createElement("section");
     layer.className = "map-3d-layer";
@@ -309,7 +310,7 @@ export async function openMap3d({ host, points = [], getPoints, subscribe, onAdd
     layer.innerHTML = `
         <div class="map-3d-canvas"></div>
         <div class="map-3d-panel">
-            <div class="map-3d-head"><div class="map-3d-eyebrow" data-3d="eyebrow"></div><h3 class="map-3d-title" data-3d="title"></h3></div>
+            <div class="map-3d-head"><div><div class="map-3d-eyebrow" data-3d="eyebrow"></div><h3 class="map-3d-title" data-3d="title"></h3></div><button type="button" class="map-3d-fold" data-3d="fold" aria-expanded="true" aria-label="Fold or unfold this panel">−</button></div>
             <p class="map-3d-copy" data-3d="copy"></p>
             <div class="map-3d-group"><span class="map-3d-label">VIEW</span>
                 <label class="map-3d-range">Vertical ×<span data-3d="ex-value">3</span><input data-3d="ex" type="range" min="1" max="12" step="0.5" value="6" /></label>
@@ -322,6 +323,16 @@ export async function openMap3d({ host, points = [], getPoints, subscribe, onAdd
                 </div>
             </div>
             <div class="map-3d-group"><span class="map-3d-label">YOUR ROUTE</span><p class="map-3d-route" data-3d="route"></p></div>
+            <details class="map-3d-group map-3d-lines"><summary class="map-3d-label">LINES</summary><div data-3d="lines"></div></details>
+            <details class="map-3d-group map-3d-legend" open><summary class="map-3d-label">LEGEND</summary>
+                <ul>
+                    <li><i class="lg3-pin" style="--c:#75d1c8"></i>Landing site of a rover or lander</li>
+                    <li><i class="lg3-pin" style="--c:#e3a06a"></i>Natural feature: volcano, canyon, basin</li>
+                    <li><i class="lg3-pin" style="--c:#75d1c8;--s:9px"></i>First waypoint of your route</li>
+                    <li><i class="lg3-pin" style="--c:#fff;--s:9px"></i>Other waypoints, with a pulsing ring</li>
+                    <li><i class="lg3-line"></i>Your route, along the surface of Mars</li>
+                </ul>
+            </details>
         </div>
         <aside class="map-3d-site" data-3d="site" hidden aria-label="Place on Mars">
             <button type="button" class="map-3d-site-close" data-3d="site-close" aria-label="Close">×</button>
@@ -335,6 +346,13 @@ export async function openMap3d({ host, points = [], getPoints, subscribe, onAdd
             <div class="map-3d-site-actions"><button type="button" class="btn btn-accent compact" data-3d="site-fly">Fly here</button><button type="button" class="btn btn-outline compact" data-3d="site-add">Add as waypoint</button></div>
         </aside>
         <div class="map-3d-tip" hidden></div>
+        <div class="map-3d-nav">
+            <button type="button" class="map-3d-compass" data-3d="compass" aria-label="Compass. North is where the red needle points. Click to return to the default view.">
+                <svg viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="25" fill="#0b121bcc" stroke="#ffffff33"/><g data-3d="needle" style="transform-origin:28px 28px"><path d="M28 7 L34 28 L28 24 L22 28 Z" fill="#e3623a"/><path d="M28 49 L34 28 L28 32 L22 28 Z" fill="#aebdca"/></g><text x="28" y="6" text-anchor="middle" font-size="7" font-weight="700" fill="#fff">N</text></svg>
+            </button>
+            <div class="map-3d-poles"><button type="button" data-3d="north" title="Look down on the north pole">N pole</button><button type="button" data-3d="south" title="Look down on the south pole">S pole</button></div>
+            <div class="map-3d-readout" data-3d="readout" aria-live="off"></div>
+        </div>
         <button type="button" class="map-3d-close" data-3d="close" aria-label="Close 3D view">✕ 2D map</button>
         <div class="map-3d-status" role="status" data-3d="status">Loading 3D terrain…</div>`;
     host.appendChild(layer);
@@ -660,7 +678,9 @@ export async function openMap3d({ host, points = [], getPoints, subscribe, onAdd
                 for (let i = 1; i < vectors.length; i++) totalAngle += Math.acos(Math.max(-1, Math.min(1, vectors[i - 1].dot(vectors[i]))));
 
                 // Thick enough to see on a short route, thin enough not to swallow a long one.
-                const tube = Math.max(0.0035, Math.min(0.014, totalAngle * 0.012));
+                const look = getLineStyle();
+                const colour = routeControls?.getColor?.() || routeColor;
+                const tube = Math.max(0.0035, Math.min(0.014, totalAngle * 0.012)) * look.width;
                 const lift = tube * 1.4;
                 const surface = vector => { const { lat, lon } = toLatLon(vector); const n = vector.clone().normalize(); return n.multiplyScalar(ellipseRadius(n.x, n.y, n.z) * (1 + dispAt(lat, lon) + lift)); };
                 const dense = [];
@@ -684,9 +704,9 @@ export async function openMap3d({ host, points = [], getPoints, subscribe, onAdd
                 vectors.forEach((vector, index) =>
                 {
                     const position = surface(vector).multiplyScalar(1 + tube * 0.4);
-                    const marker = new THREE.Mesh(new THREE.SphereGeometry(tube * 2.2, 16, 12), new THREE.MeshBasicMaterial({ color: index === 0 ? 0x75d1c8 : 0xffffff }));
+                    const marker = new THREE.Mesh(new THREE.SphereGeometry(Math.max(0.004, tube / look.width * 2.2 * look.markerSize), 16, 12), new THREE.MeshBasicMaterial({ color: index === 0 ? 0x75d1c8 : 0xffffff }));
                     marker.position.copy(position);
-                    const ring = new THREE.Mesh(new THREE.RingGeometry(tube * 2.9, tube * 3.5, 32), new THREE.MeshBasicMaterial({ color: routeColor, transparent: true, side: THREE.DoubleSide, depthWrite: false }));
+                    const ring = new THREE.Mesh(new THREE.RingGeometry(tube / look.width * 2.9 * look.markerSize, tube / look.width * 3.5 * look.markerSize, 32), new THREE.MeshBasicMaterial({ color: colour, transparent: true, side: THREE.DoubleSide, depthWrite: false }));
                     ring.position.copy(position);
                     ring.lookAt(position.clone().multiplyScalar(2));
                     route.add(marker, ring);
@@ -696,10 +716,31 @@ export async function openMap3d({ host, points = [], getPoints, subscribe, onAdd
                 if (dense.length < 2) return;
 
                 const curve = new THREE.CatmullRomCurve3(dense);
-                const mesh = new THREE.Mesh(new THREE.TubeGeometry(curve, Math.min(6000, dense.length * 2), tube, 8, false), new THREE.MeshBasicMaterial({ color: routeColor }));
-                route.add(mesh);
+                const lineMaterial = new THREE.MeshBasicMaterial({ color: colour, transparent: look.opacity < 1, opacity: look.opacity });
+                const outline = new THREE.MeshBasicMaterial({ color: 0x07121a, transparent: true, opacity: 0.55 * look.opacity });
 
-                if (reducedMotion()) return;
+                if (look.style === "dashed")
+                {
+                    // Short pieces with gaps; each piece is its own thin tube.
+                    const on = 14, off = 9;
+
+                    for (let from = 0; from < dense.length - 1; from += on + off)
+                    {
+                        const piece = dense.slice(from, Math.min(dense.length, from + on + 1));
+
+                        if (piece.length < 2) continue;
+
+                        route.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(piece), piece.length, tube, 8, false), lineMaterial));
+                    }
+                }
+                else
+                {
+                    if (look.glow) route.add(new THREE.Mesh(new THREE.TubeGeometry(curve, Math.min(6000, dense.length * 2), tube * 1.7, 8, false), outline));
+
+                    route.add(new THREE.Mesh(new THREE.TubeGeometry(curve, Math.min(6000, dense.length * 2), tube, 8, false), lineMaterial));
+                }
+
+                if (reducedMotion() || !look.animate) return;
 
                 ringTick = now => ringMaterials.forEach((ring, index) =>
                 {
@@ -708,7 +749,7 @@ export async function openMap3d({ host, points = [], getPoints, subscribe, onAdd
                     ring.material.opacity = (1 - phase) * 0.8;
                 });
                 tickers.add(ringTick);
-                const rover = new THREE.Mesh(new THREE.SphereGeometry(tube * 3, 16, 12), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+                const rover = new THREE.Mesh(new THREE.SphereGeometry(Math.max(0.006, tube / look.width * 3 * look.markerSize), 16, 12), new THREE.MeshBasicMaterial({ color: 0xffffff }));
                 route.add(rover);
                 const seconds = Math.max(6, Math.min(24, totalAngle * 8));
                 roverTick = now => rover.position.copy(curve.getPointAt((now / 1000 / seconds) % 1));
@@ -957,6 +998,44 @@ export async function openMap3d({ host, points = [], getPoints, subscribe, onAdd
                 status.textContent = addMode ? "Click the planet to drop a waypoint." : "";
             });
 
+            // Compass and readout, in the spirit of a planetarium: which way is north, how high you are and what is below you.
+            const needle = get("needle");
+            const readout = get("readout");
+            let readoutAt = 0;
+            const ndcA = new THREE.Vector3(), ndcB = new THREE.Vector3(), tangent = new THREE.Vector3(), below = new THREE.Vector3();
+            tickers.add(now =>
+            {
+                if (now - readoutAt < 120) return;
+
+                readoutAt = now;
+                const distance = camera.position.length();
+                below.copy(camera.position).normalize();
+                const place = toLatLon(below);
+                const altitude = (distance - 1) * 3396.19;
+                readout.textContent = `${altitude >= 100 ? Math.round(altitude).toLocaleString("en-US") + " km" : altitude.toFixed(1) + " km"} above the surface · ${Math.abs(place.lat).toFixed(2)}° ${place.lat >= 0 ? "N" : "S"} ${Math.abs(place.lon).toFixed(2)}° ${place.lon >= 0 ? "E" : "W"}`;
+                tangent.set(0, 1, 0).addScaledVector(below, -below.y);
+
+                if (tangent.lengthSq() < 1e-6)
+                {
+                    needle.style.transform = "rotate(0deg)";
+                    return;
+                }
+
+                tangent.normalize().multiplyScalar(0.05).add(below);
+                ndcA.copy(below).project(camera);
+                ndcB.copy(tangent).project(camera);
+                needle.style.transform = `rotate(${Math.atan2(ndcB.x - ndcA.x, ndcB.y - ndcA.y) * 180 / Math.PI}deg)`;
+            });
+            get("north").addEventListener("click", () => flyTo(new THREE.Vector3(0, 1, 0), 2.6));
+            get("south").addEventListener("click", () => flyTo(new THREE.Vector3(0, -1, 0), 2.6));
+            get("compass").addEventListener("click", () => flyTo(defaultDirection, 3.1));
+            get("fold").addEventListener("click", event =>
+            {
+                const folded = layer.querySelector(".map-3d-panel").classList.toggle("is-folded");
+                event.currentTarget.setAttribute("aria-expanded", String(!folded));
+                event.currentTarget.textContent = folded ? "+" : "−";
+            });
+
             const updateRouteText = () =>
             {
                 readPoints();
@@ -978,7 +1057,11 @@ export async function openMap3d({ host, points = [], getPoints, subscribe, onAdd
 
             // Changes made anywhere else (the 2D map, the editors, undo) show here at once.
             stopListening?.();
-            stopListening = subscribe ? subscribe(() => { drawRoute(); updateRouteText(); }) : null;
+            const stopStore = subscribe ? subscribe(() => { drawRoute(); updateRouteText(); }) : null;
+            const onLineStyle = () => drawRoute();
+            window.addEventListener("mars-line-style", onLineStyle);
+            stopListening = () => { stopStore?.(); window.removeEventListener("mars-line-style", onLineStyle); };
+            mountLineControls(get("lines"), routeControls);
             controls.zoomSpeed = 1.3;
             camera.near = 0.002;
             camera.updateProjectionMatrix();

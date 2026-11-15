@@ -2,6 +2,7 @@ import { JEZERO, JEZERO_CTX_CONTEXT, MAP_LAYERS } from "./constants.js";
 import { describeSource } from "./source-label.js";
 import { clamp, formatCoordinate, project, unproject } from "./geo.js";
 import { markerRadiusForZoom, normalizeMarkerIcon } from "./marker-icons.js";
+import { getLineStyle } from "./line-style.js";
 import { waypointLabel } from "./waypoint-editor.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -57,6 +58,7 @@ export class MarsMap
 {
     constructor(container, store, options = {})
     {
+        window.addEventListener("mars-line-style", () => this.renderOverlays());
         this.container = container;
         this.store = store;
         this.options = options;
@@ -1839,9 +1841,12 @@ export class MarsMap
             if (coordinates.length > 1)
             {
                 const points = coordinates.map(point => `${point.x},${point.y}`).join(" ");
-                const glow = svgElement("polyline", { points, fill: "none", stroke: "#07121a", "stroke-width": active ? 10 : 7, "stroke-linecap": "round", "stroke-linejoin": "round" });
-                const path = svgElement("polyline", { points, fill: "none", stroke: route.color, "stroke-width": active ? 4 : 2.5, "stroke-dasharray": active ? "none" : "7 7", "stroke-linecap": "round", "stroke-linejoin": "round", "data-route": route.id, class: "route-path" });
-                this.overlay.append(glow, path);
+                const look = getLineStyle();
+                const glow = svgElement("polyline", { points, fill: "none", stroke: "#07121a", "stroke-width": (active ? 10 : 7) * look.width, "stroke-opacity": look.opacity * 0.85, "stroke-linecap": "round", "stroke-linejoin": "round" });
+                const dash = !active ? "7 7" : look.style === "dashed" ? "10 8" : look.style === "flowing" ? "12 9" : "none";
+                const path = svgElement("polyline", { points, fill: "none", stroke: route.color, "stroke-width": (active ? 4 : 2.5) * look.width, "stroke-opacity": look.opacity, "stroke-dasharray": dash, "stroke-linecap": "round", "stroke-linejoin": "round", "data-route": route.id, class: "route-path" + (active && look.style === "flowing" ? " route-flow" : "") });
+                if (look.glow) this.overlay.append(glow);
+                this.overlay.append(path);
             }
 
             if (active)
@@ -1849,7 +1854,7 @@ export class MarsMap
                 displayed.forEach((position, index) =>
                 {
                     const point = route.points[index];
-                    const radius = markerRadiusForZoom(this.zoom);
+                    const radius = markerRadiusForZoom(this.zoom) * getLineStyle().markerSize;
                     const markerColor = point.color || route.color;
                     const halo = svgElement("circle", { cx: position.x, cy: position.y, r: radius + 3, fill: markerColor, opacity: 0.2 });
                     const marker = markerShape(position, point.icon, markerColor, { class: "route-node", "data-point": point.id });
@@ -1865,7 +1870,7 @@ export class MarsMap
         for (const observation of this.store.current.observations)
         {
             const position = this.geoToScreen(observation);
-            const radius = markerRadiusForZoom(this.zoom);
+            const radius = markerRadiusForZoom(this.zoom) * getLineStyle().markerSize;
             const halo = svgElement("circle", { cx: position.x, cy: position.y, r: radius + 3, fill: "#7ed4c5", opacity: 0.15 });
             const marker = markerShape(position, observation.icon || "diamond", "#8fe5d8",
                 { class: "observation-node", "data-observation": observation.id });
