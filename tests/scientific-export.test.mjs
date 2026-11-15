@@ -8,6 +8,7 @@ import { compareTerrainStrategies } from "../src/mission-scenarios.js";
 
 const raw = JSON.parse(readFileSync(new URL("../assets/jezero_ctx_trn_dem_20m_clip.json", import.meta.url), "utf8"));
 const dem = decodeBundledDem(raw);
+dem.bundledSource = true; // Matches loadJezeroDem(), which records the bundled source marker.
 const mission = createJezeroReviewMission();
 const route = mission.routes[0];
 
@@ -25,6 +26,7 @@ test("scientific export is grounded in the actual bundled numeric Jezero clip", 
     const result = makeReport();
     assert.match(result, /Scientific route comparison/);
     assert.match(result, /CTX/);
+    assert.match(result, /Origin: Bundled CTX-derived numeric Jezero sample/);
     assert.match(result, /18\.4446° N, 77\.4509° E/);
     assert.match(result, /18\.451° N, 77\.46° E/);
     assert.match(result, /3,396,190 m/);
