@@ -255,7 +255,8 @@ try
     await page.locator('#waypoint-editor-form button[type="submit"]').click();
 
     assert.match(await page.locator("#waypoint-list .waypoint-coordinates strong").first().textContent(), /Delta science site/);
-    assert.equal(await page.locator(".map-overlays .route-node").first().getAttribute("fill"), "#75d1c8");
+    await page.waitForFunction(() => document.querySelector(".map-overlays .route-node")?.getAttribute("fill") === "#75d1c8",
+        null, { timeout: 7000 });
     await page.locator('[data-action="undo-edit"]').click();
     assert.doesNotMatch(await page.locator("#waypoint-list .waypoint-coordinates strong").first().textContent(), /Delta science site/);
     await page.locator('[data-action="redo-edit"]').click();
@@ -271,7 +272,8 @@ try
     await page.reload({ waitUntil: "domcontentloaded" });
     assert.match(await page.locator("#waypoint-list .waypoint-coordinates strong").first().textContent(), /Delta science site/,
         "Manual waypoint metadata must persist after a browser reload");
-    assert.equal(await page.locator(".map-overlays .route-node").first().getAttribute("fill"), "#75d1c8");
+    await page.waitForFunction(() => document.querySelector(".map-overlays .route-node")?.getAttribute("fill") === "#75d1c8",
+        null, { timeout: 7000 });
 
     const unique = new Set(network);
     console.log(JSON.stringify({
