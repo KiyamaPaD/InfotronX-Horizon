@@ -365,6 +365,67 @@ export class MarsMap
         this.flyTo({ lat: latitude, lon: longitude }, zoom);
     }
 
+    startPinch()
+    {
+        const [first, second] = [...this.touches.values()];
+
+        if (this.drag?.moved && this.drag.pointId)
+        {
+            this.store.save();
+        }
+
+        this.drag = null;
+        this.container.classList.remove("is-dragging");
+        this.pinch = {
+            distance: Math.hypot(first.x - second.x, first.y - second.y),
+            midX: (first.x + second.x) / 2,
+            midY: (first.y + second.y) / 2
+        };
+    }
+
+    updatePinch()
+    {
+        const [first, second] = [...this.touches.values()];
+        const distance = Math.hypot(first.x - second.x, first.y - second.y);
+        const midX = (first.x + second.x) / 2;
+        const midY = (first.y + second.y) / 2;
+        const center = project(this.center, this.zoom);
+        this.center = unproject({ x: center.x - (midX - this.pinch.midX), y: center.y - (midY - this.pinch.midY) }, this.zoom);
+        this.pinch.midX = midX;
+        this.pinch.midY = midY;
+        const ratio = distance / Math.max(1, this.pinch.distance);
+
+        // Tiles exist only at whole zoom levels, so a level changes once the fingers spread or close by 1.5x.
+        if (ratio >= 1.5 || ratio <= 1 / 1.5)
+        {
+            this.zoomAround(ratio > 1 ? 1 : -1, midX, midY);
+            this.pinch.distance = distance;
+        }
+
+        this.render();
+    }
+
+    // Changes zoom while keeping the geographic point under (clientX, clientY) fixed on screen.
+    zoomAround(delta, clientX, clientY)
+    {
+        const nextZoom = clamp(this.zoom + delta, 3, this.layerMaxZoom);
+
+        if (nextZoom === this.zoom)
+        {
+            return;
+        }
+
+        const rect = this.container.getBoundingClientRect();
+        const anchor = this.screenToGeo(clientX, clientY);
+        const offsetX = clientX - rect.left - rect.width / 2;
+        const offsetY = clientY - rect.top - rect.height / 2;
+        this.zoom = nextZoom;
+        const pixel = project(anchor, this.zoom);
+        this.center = unproject({ x: pixel.x - offsetX, y: pixel.y - offsetY }, this.zoom);
+        this.render();
+        this.options.onViewChange?.(this.center, this.zoom);
+    }
+
     screenToGeo(clientX, clientY)
     {
         const rect = this.container.getBoundingClientRect();
@@ -402,6 +463,18 @@ export class MarsMap
             return;
         }
 
+        if (event.pointerType === "touch")
+        {
+            this.touches ??= new Map();
+            this.touches.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+            if (this.touches.size >= 2)
+            {
+                this.startPinch();
+                return;
+            }
+        }
+
         const target = event.target.closest?.("[data-point]");
         const pointId = target?.dataset.point;
         const observationId = event.target.closest?.("[data-observation]")?.dataset.observation || null;
@@ -420,6 +493,17 @@ export class MarsMap
 
     onPointerMove(event)
     {
+        if (this.touches?.has(event.pointerId))
+        {
+            this.touches.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+            if (this.pinch)
+            {
+                this.updatePinch();
+                return;
+            }
+        }
+
         if (!this.drag || this.drag.pointerId !== event.pointerId)
         {
             if (this.container.contains(event.target))
@@ -454,6 +538,19 @@ export class MarsMap
 
     onPointerUp(event)
     {
+        this.touches?.delete(event.pointerId);
+
+        if (this.pinch)
+        {
+            if (!this.touches?.size || this.touches.size < 2)
+            {
+                this.pinch = null;
+                this.options.onViewChange?.(this.center, this.zoom);
+            }
+
+            return;
+        }
+
         if (!this.drag || this.drag.pointerId !== event.pointerId)
         {
             return;
@@ -499,8 +596,6 @@ export class MarsMap
         this.options.onMapClick?.(this.screenToGeo(event.clientX, event.clientY), this.mode);
     }
 
-    // Transfer the actual image, not a new Image(src) clone. A second Image would generate
-    // a simultaneous request under NASA errors and can double HTTP traffic.
     // A failed probe is remembered for 16 s, the same window as the tile retry policy.
     probePreview(url)
     {
@@ -540,6 +635,8 @@ export class MarsMap
         return probe.promise;
     }
 
+    // Transfer the actual image, not a new Image(src) clone. A second Image would generate
+    // a simultaneous request under NASA errors and can double HTTP traffic.
     keepVikingRequest(image)
     {
         if (this.layer.id !== "hirise")

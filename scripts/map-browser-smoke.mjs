@@ -953,6 +953,118 @@ async function sourceIndicatorScenario()
     return { scenario: "source-indicator", viewport: VIEWPORTS[2], steps, checks, ...summarize(log) };
 }
 
+async function touchSequence(session, frames)
+{
+    const ids = frames[0].map((_, index) => index);
+    await session.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: frames[0].map((point, index) => ({ x: point.x, y: point.y, id: ids[index] })) });
+
+    for (const frame of frames.slice(1))
+    {
+        await session.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: frame.map((point, index) => ({ x: point.x, y: point.y, id: ids[index] })) });
+    }
+
+    await session.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+}
+
+function interpolate(from, to, steps)
+{
+    return Array.from({ length: steps + 1 }, (_, step) => from.map((point, index) => ({
+        x: point.x + (to[index].x - point.x) * step / steps,
+        y: point.y + (to[index].y - point.y) * step / steps
+    })));
+}
+
+async function markerCenter(target)
+{
+    return target.evaluate(() =>
+    {
+        const rect = document.querySelector(".map-overlays .route-node").getBoundingClientRect();
+        return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    });
+}
+
+async function touchScenario()
+{
+    const viewport = VIEWPORTS[0];
+    const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, deviceScaleFactor: 1, hasTouch: true, isMobile: true });
+    const target = await context.newPage();
+    const log = trackPage(target);
+    const steps = [];
+    const checks = [];
+    const near = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+
+    try
+    {
+        await target.goto(APP_URL, { waitUntil: "domcontentloaded" });
+        await target.waitForSelector("#map-root");
+        const session = await context.newCDPSession(target);
+        await selectLayer(target, "hirise");
+        await zoomTo(target, 9);
+        await target.evaluate(() => document.querySelector('[data-action="add-coordinates"]').click());
+        await target.evaluate(() =>
+        {
+            document.querySelector("#latitude-input").value = "18.4446";
+            document.querySelector("#longitude-input").value = "77.4509";
+            document.querySelector("#coordinate-form").requestSubmit();
+        });
+        await target.waitForSelector(".map-overlays .route-node");
+        await target.waitForTimeout(400);
+
+        const start = await markerCenter(target);
+        await touchSequence(session, interpolate([start], [{ x: start.x - 120, y: start.y - 40 }], 10));
+        await target.waitForTimeout(300);
+        const afterPan = await markerCenter(target);
+        const panError = near(afterPan, { x: start.x - 120, y: start.y - 40 });
+        checks.push({ name: "one-finger pan moves the map with the finger", ok: panError <= 2, detail: panError.toFixed(1) + " px from expected", hard: true });
+
+        const zoomBefore = (await readView(target)).zoom;
+        await touchSequence(session, interpolate([{ x: afterPan.x - 40, y: afterPan.y }, { x: afterPan.x + 40, y: afterPan.y }], [{ x: afterPan.x - 80, y: afterPan.y }, { x: afterPan.x + 80, y: afterPan.y }], 12));
+        await target.waitForTimeout(400);
+        const zoomOut = (await readView(target)).zoom;
+        const anchorIn = await markerCenter(target);
+        const anchorInError = near(anchorIn, afterPan);
+        checks.push({ name: "pinch out zooms in one level", ok: zoomOut === zoomBefore + 1, detail: "z" + zoomBefore + " → z" + zoomOut, hard: true });
+        checks.push({ name: "pinch keeps the point under the fingers", ok: anchorInError <= 3, detail: anchorInError.toFixed(1) + " px drift", hard: true });
+
+        // Pinch in around the map centre: after the pan the marker sits near the left edge, where a finger would land off-screen.
+        const mapBox = await target.locator("#map-root").boundingBox();
+        const mid = { x: mapBox.x + mapBox.width / 2, y: mapBox.y + mapBox.height / 2 };
+        await touchSequence(session, interpolate([{ x: mid.x - 80, y: mid.y }, { x: mid.x + 80, y: mid.y }], [{ x: mid.x - 45, y: mid.y }, { x: mid.x + 45, y: mid.y }], 12));
+        await target.waitForTimeout(400);
+        const zoomBack = (await readView(target)).zoom;
+        checks.push({ name: "pinch in zooms out one level", ok: zoomBack === zoomOut - 1, detail: "z" + zoomOut + " → z" + zoomBack, hard: true });
+        await target.screenshot({ path: "browser-map-evidence/touch-after-pinch.png" });
+
+        await target.evaluate(() => document.querySelector('.mobile-map-toolbar [data-mode="edit"]').click());
+        const grab = await markerCenter(target);
+        const drop = { x: grab.x + 90, y: grab.y + 60 };
+        await touchSequence(session, interpolate([grab], [drop], 14));
+        await target.waitForTimeout(400);
+        const dropped = await markerCenter(target);
+        const dragError = near(dropped, drop);
+        checks.push({ name: "dragged waypoint stays under the finger", ok: dragError <= 3, detail: dragError.toFixed(1) + " px between finger and marker", hard: true });
+        await target.screenshot({ path: "browser-map-evidence/touch-after-drag.png" });
+
+        const targets = await target.evaluate(() => [...document.querySelectorAll('[data-action="zoom-in"], [data-action="zoom-out"], .layer-btn')].map(element =>
+        {
+            const rect = element.getBoundingClientRect();
+            return { name: element.getAttribute("aria-label") || element.dataset.layer, width: Math.round(rect.width), height: Math.round(rect.height), shown: rect.width > 0 && rect.height > 0 };
+        }));
+        steps.push({ step: "touch-targets-375", targets, start, afterPan, anchorIn, grab, dropped });
+
+        for (const item of targets)
+        {
+            checks.push({ name: "375px touch target " + item.name + " at least 44×44", ok: !item.shown || item.width >= 44 && item.height >= 44, detail: item.shown ? item.width + "×" + item.height + " px" : "not shown at 375 px", hard: true });
+        }
+    }
+    finally
+    {
+        await context.close();
+    }
+
+    return { scenario: "touch-375", viewport, steps, checks, ...summarize(log) };
+}
+
 function countBy(items, key)
 {
     const counts = {};
@@ -1037,6 +1149,7 @@ async function runStabilityScenarios()
         report.scenarios.push(await largePanScenario());
         report.scenarios.push(await hiriseEdgeScenario());
         report.scenarios.push(await sourceIndicatorScenario());
+        report.scenarios.push(await touchScenario());
         report.scenarios.push(await slowNetworkScenario());
         report.scenarios.push(await offlineScenario());
         report.scenarios.push(await nasaOutageScenario());

@@ -181,6 +181,9 @@ Ordinea rămâne: întâi terminăm Etapa 1 (harta).
 ## De investigat
 
 - Scenariul `network-nasa-503` din testul de browser: tile-ul părinte Viking zoom 5 (`5/12/45.jpg`) e cerut de două ori la ~4 ms distanță. Probabil două tile-uri copil cer același părinte ca preview, iar răspunsurile cu eroare nu ajung în cache. Mic, nu blochează nimic.
+- Rezolvat: dublura de mai sus era cauza CI-ului roșu din scenariul 503; preview-urile părinte folosesc acum o singură cerere comună (commit b001177).
+- Indicatorul de sursă decide acoperirea HiRISE după centrul hărții. Când vederea taie marginea acoperirii ar trebui să afișeze „HiRISE (partial)”.
+- `net::ERR_BLOCKED_BY_ORB` pe URL-urile de rezervă `default/default` (HiRISE/CTX, văzut pe Slow 3G): verifică în WMTSCapabilities dacă există; dacă nu, nu le mai cerem.
 
 ---
 
