@@ -21,6 +21,7 @@ const MOLA_METERS_PER_LEVEL = 29430 / 255;
 const CRATER_BOUNDS = { north: 18.9, south: 18.0, west: 77.0, east: 77.9 };
 const CRATER_GRID = 121;
 const VIKING_URL = MAP_LAYERS.find(layer => layer.id === "viking").url + "/default/default028mm/";
+const MOLA_DEM_URL = MOLA_URL;
 const MOLA_SHADE_URL = MAP_LAYERS.find(layer => layer.id === "mola").url + "/default/default028mm/";
 const HIRISE_URL = MAP_LAYERS.find(layer => layer.id === "hirise").url + "/default/default028mm/";
 const CTX_URL = JEZERO_CTX_CONTEXT.url + "/default/default028mm/";
@@ -190,15 +191,15 @@ async function deltaTexture(THREE, bounds, maxSize, anisotropy, onProgress)
 }
 
 // The whole planet as one equirectangular canvas (2^(zoom+1) by 2^zoom tiles of 256 px), longitude -180 at the left edge.
-async function globalMosaic(base, zoom)
+async function globalMosaic(base, zoom, extension = "jpg", fill = "#6b3a26")
 {
     const canvas = document.createElement("canvas");
     canvas.width = 512 * 2 ** zoom;
     canvas.height = 256 * 2 ** zoom;
     const context = canvas.getContext("2d");
-    context.fillStyle = "#6b3a26";
+    context.fillStyle = fill;
     context.fillRect(0, 0, canvas.width, canvas.height);
-    await drawLayer(context, canvas, { north: 89.999, south: -89.999, west: -179.999, east: 179.999 }, base, zoom, "jpg");
+    await drawLayer(context, canvas, { north: 89.999, south: -89.999, west: -179.999, east: 179.999 }, base, zoom, extension);
     return canvas;
 }
 
@@ -483,12 +484,30 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
                 const angle = d / radius, ring = radius + y;
                 return target.set(x / d * ring * Math.sin(angle), ring * Math.cos(angle) - radius, z / d * ring * Math.sin(angle));
             };
-            // Heights fade to zero over the outer 10% so the map melts into the planet instead of ending in a cliff.
-            const edgeWeight = (u, v) => { const t = Math.max(0, Math.min(1, Math.min(u, 1 - u, v, 1 - v) / 0.1)); return t * t * (3 - 2 * t); };
+            // The whole planet is raised by the global MOLA heights (exaggerated). The detailed map starts from the planet's own
+            // height at its edge and blends into its own relief over the outer 22%, so it melts into the planet instead of ending in a cliff.
+            const relief = { data: null, width: 0, height: 0 };
+            const reliefMax = () => radius * 0.09 * (factor / 3);
+            const bodyDisp = (lat, lon) =>
+            {
+                if (!relief.data) return 0;
+
+                const x = Math.min(relief.width - 1, Math.max(0, (lon + 180) / 360 * relief.width)), y = Math.min(relief.height - 1, Math.max(0, (90 - lat) / 180 * relief.height));
+                const x0 = Math.floor(x), y0 = Math.floor(y), x1 = Math.min(relief.width - 1, x0 + 1), y1 = Math.min(relief.height - 1, y0 + 1), tx = x - x0, ty = y - y0;
+                const grey = (cx, cy) => relief.data[(cy * relief.width + cx) * 4];
+                const value = grey(x0, y0) * (1 - tx) * (1 - ty) + grey(x1, y0) * tx * (1 - ty) + grey(x0, y1) * (1 - tx) * ty + grey(x1, y1) * tx * ty;
+                return value / 255 * reliefMax();
+            };
+            const edgeWeight = (u, v) => { const t = Math.max(0, Math.min(1, Math.min(u, 1 - u, v, 1 - v) / 0.22)); return t * t * (3 - 2 * t); };
+            const patchHeight = (elevation, u, v, lat, lon) =>
+            {
+                const w = edgeWeight(u, v);
+                return bodyDisp(lat, lon) * (1 - w) + (bodyDisp(midLat, (bounds.west + bounds.east) / 2) + (elevation - minZ) * factor) * w;
+            };
             const toScene = (point, elevation) =>
             {
                 const u = (point.lon - bounds.west) / (bounds.east - bounds.west), v = (bounds.north - point.lat) / (bounds.north - bounds.south);
-                return bend((u - 0.5) * spanX, (elevation - minZ) * factor * edgeWeight(u, v), (v - 0.5) * spanY);
+                return bend((u - 0.5) * spanX, patchHeight(elevation, u, v, point.lat, point.lon), (v - 0.5) * spanY);
             };
 
             scene = new THREE.Scene();
@@ -583,7 +602,25 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
             const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 });
             scene.add(new THREE.Mesh(geometry, material));
             const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x5a3020, roughness: 1 });
-            const body = new THREE.Mesh(new THREE.SphereGeometry(radius - spanX * 0.003, 160, 96), bodyMaterial);
+            const bodyGeometry = new THREE.SphereGeometry(radius - spanX * 0.003, 256, 128);
+            const bodyBase = Float32Array.from(bodyGeometry.attributes.position.array);
+            const bodyUv = bodyGeometry.attributes.uv;
+            const applyBody = () =>
+            {
+                const position = bodyGeometry.attributes.position;
+
+                for (let i = 0; i < position.count; i++)
+                {
+                    const x = bodyBase[i * 3], y = bodyBase[i * 3 + 1], z = bodyBase[i * 3 + 2];
+                    const length = Math.hypot(x, y, z);
+                    const scale = (length + bodyDisp(90 - (1 - bodyUv.getY(i)) * 180, bodyUv.getX(i) * 360 - 180)) / length;
+                    position.setXYZ(i, x * scale, y * scale, z * scale);
+                }
+
+                position.needsUpdate = true;
+                bodyGeometry.computeVertexNormals();
+            };
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
             body.position.y = -radius;
             // Turn the sphere so the map's centre is on top, east to the right and north away from the camera.
             {
@@ -595,18 +632,24 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
                 const target = new THREE.Matrix4().makeBasis(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, -1));
                 body.quaternion.setFromRotationMatrix(target.multiply(local.transpose()));
             }
-            // Real Viking colour for the whole planet, with MOLA relief shading as bumps (sharper than the old flat colour).
-            Promise.all([globalMosaic(VIKING_URL, light ? 2 : 3), globalMosaic(MOLA_SHADE_URL, light ? 1 : 2)]).then(([colour, relief]) =>
+            // Real Viking colour for the whole planet, and the real MOLA heights raised as relief all over it.
+            globalMosaic(VIKING_URL, light ? 2 : 3).then(colour =>
             {
                 if (disposed || id !== session) return;
                 const map = new THREE.CanvasTexture(colour);
                 map.colorSpace = THREE.SRGBColorSpace;
                 map.anisotropy = renderer.capabilities.getMaxAnisotropy();
                 bodyMaterial.map = map;
-                bodyMaterial.bumpMap = new THREE.CanvasTexture(relief);
-                bodyMaterial.bumpScale = radius * 0.006;
                 bodyMaterial.color.set(0xffffff);
                 bodyMaterial.needsUpdate = true;
+            }).catch(() => {});
+            globalMosaic(MOLA_DEM_URL, light ? 1 : 2, "png", "#000000").then(canvas =>
+            {
+                if (disposed || id !== session) return;
+                relief.width = canvas.width;
+                relief.height = canvas.height;
+                relief.data = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data;
+                applyFactor();
             }).catch(() => {});
             const halo = new THREE.Mesh(new THREE.SphereGeometry(radius * 1.05, 96, 64), new THREE.ShaderMaterial({
                 transparent: true, side: THREE.BackSide, blending: THREE.AdditiveBlending, depthWrite: false, fog: false,
@@ -734,12 +777,14 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
 
                 for (let i = 0; i < position.count; i++)
                 {
-                    bend(flat[i * 3], ((elevations[i] ?? minZ) - minZ) * factor * edgeWeight((i % width) / (width - 1), Math.floor(i / width) / (height - 1)), flat[i * 3 + 2], scratch);
+                    const u = (i % width) / (width - 1), v = Math.floor(i / width) / (height - 1);
+                    bend(flat[i * 3], patchHeight(elevations[i] ?? minZ, u, v, bounds.north - v * (bounds.north - bounds.south), bounds.west + u * (bounds.east - bounds.west)), flat[i * 3 + 2], scratch);
                     position.setXYZ(i, scratch.x, scratch.y, scratch.z);
                 }
 
                 position.needsUpdate = true;
                 geometry.computeVertexNormals();
+                applyBody();
                 drawOverlay();
             };
 
