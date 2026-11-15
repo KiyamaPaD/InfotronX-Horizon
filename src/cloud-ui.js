@@ -440,12 +440,25 @@ export function mountCloudWorkspace({ store, notify })
 
     account.addEventListener("click", () =>
     {
-        // Every save, share and export action lives in Mission Center; the science report button is moved here with its listeners.
+        // Preserve the original Science export button; provide a proxy in Mission Center.
         const scienceExport = document.querySelector("#terrain-evidence-export");
 
-        if (scienceExport && !exports.contains(scienceExport))
+        if (scienceExport)
         {
-            exports.append(scienceExport);
+            let shortcut = exports.querySelector("#hub-science-evidence-export");
+
+            if (!shortcut)
+            {
+                shortcut = document.createElement("button");
+                shortcut.id = "hub-science-evidence-export";
+                shortcut.type = "button";
+                shortcut.className = "btn btn-outline";
+                shortcut.textContent = "Export scientific comparison (.md)";
+                shortcut.addEventListener("click",() => scienceExport.click());
+                exports.append(shortcut);
+            }
+
+            shortcut.disabled = scienceExport.disabled;
         }
 
         dialog.showModal();

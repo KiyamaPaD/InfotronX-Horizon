@@ -8,6 +8,7 @@ export function mountMissionCopilot({ panel, before, store, getDem, getCloud, no
         <div class="panel-title-row"><h2 class="section-label">MISSION COPILOT</h2><span class="tiny-pill">OPTIONAL · READ-ONLY</span></div>
         <p class="section-help">Inspect the mission using deterministic mathematics, or optionally request a language-model explanation. AI has no ability to edit, delete, publish or approve mission data.</p>
         <button type="button" id="copilot-local" class="btn btn-outline wide">Analyze mission with verified calculations</button>
+        <button type="button" id="copilot-health" class="btn btn-outline wide">Check AI service status</button>
         <form id="copilot-ai-form" class="copilot-ai-form">
             <label>Question for AI (optional)
                 <textarea id="copilot-question" maxlength="240" rows="3" placeholder="Explain the difference between route distance and DEM grid distance."></textarea>
@@ -25,6 +26,71 @@ export function mountMissionCopilot({ panel, before, store, getDem, getCloud, no
     const question = section.querySelector("#copilot-question");
     const consent = section.querySelector("#copilot-consent");
     const send = section.querySelector("#copilot-ask");
+    const status = section.querySelector("#copilot-health");
+
+    async function invokeCopilot(cloud, body)
+    {
+        const result = await cloud.client.functions.invoke("mars-mission-copilot",{ body });
+
+        if (result.error)
+        {
+            let code = "";
+
+            try
+            {
+                const payload = await result.error.context?.clone?.().json?.();
+                code = typeof payload?.code === "string" ? payload.code : "";
+            }
+            catch
+            {
+                // Network errors and gateway failures do not always include a JSON response.
+            }
+
+            const explanations = {
+                SUPABASE_CONFIG_MISSING:"The Supabase gateway configuration is incomplete. Project setup needs review.",
+                AUTH_INVALID:"The login session has expired. Sign out and sign in again.",
+                AI_NOT_CONFIGURED:"Generative AI has not been activated by the project owner. The local scientific analysis works without it.",
+                AI_RATE_LIMIT:"AI requests are temporarily rate-limited. The local scientific analysis remains available.",
+                AI_PROVIDER_REJECTED:"The AI provider rejected this request. The project owner must verify API key, model access and billing.",
+                AI_PROVIDER_UNREACHABLE:"The AI provider is unreachable. Use local scientific analysis.",
+                AI_EMPTY_RESPONSE:"The AI provider returned no readable answer. Use local analysis."
+            };
+
+            throw new Error(explanations[code] ||
+                "The external AI service could not complete your request. The offline analysis remains available.");
+        }
+
+        return result.data;
+    }
+
+    status.addEventListener("click",async () =>
+    {
+        const cloud = getCloud();
+
+        if (!cloud?.user || !cloud.client)
+        {
+            output.textContent = "Sign in through Mission Center → Cloud library to check AI service availability. Local analysis does not require a login.";
+            return;
+        }
+
+        status.disabled = true;
+
+        try
+        {
+            const result = await invokeCopilot(cloud,{action:"status"});
+            output.textContent = result?.ready
+                ? "The AI backend is configured and reachable. A real model response has not yet been verified by this status check."
+                : "The AI backend is reachable, but generative explanations have not been enabled. Verified local analysis works now.";
+        }
+        catch(error)
+        {
+            output.textContent = error.message;
+        }
+        finally
+        {
+            status.disabled = false;
+        }
+    });
 
     section.querySelector("#copilot-local").addEventListener("click",() =>
     {
@@ -62,26 +128,30 @@ export function mountMissionCopilot({ panel, before, store, getDem, getCloud, no
             const facts = buildMissionFacts(store.current,getDem());
             send.disabled = true;
             output.textContent = "Requesting a read-only explanation. No mission data are being changed.";
-            const response = await cloud.client.functions.invoke("mars-mission-copilot",{
-                body:{ question:input, facts }
-            });
+            const response = await invokeCopilot(cloud,{ question:input, facts });
 
-            if (response.error)
-            {
-                throw new Error("AI backend is unavailable or not configured. Local analysis remains available.");
-            }
-
-            if (typeof response.data?.answer !== "string" || !response.data.answer.trim())
+            if (typeof response?.answer !== "string" || !response.answer.trim())
             {
                 throw new Error("No AI explanation was returned. Try local verified analysis.");
             }
 
-            output.textContent = response.data.answer.slice(0,3200) +
+            output.textContent = response.answer.slice(0,3200) +
                 "\n\nAI-generated explanation; verify against the actual route charts and scientific source data.";
         }
         catch(error)
         {
-            output.textContent = error.message;
+            let fallback = "";
+
+            try
+            {
+                fallback = "\n\n" + localMissionExplanation(buildMissionFacts(store.current,getDem()));
+            }
+            catch
+            {
+                // The failure reason remains visible even if local geometry is invalid.
+            }
+
+            output.textContent = error.message + fallback;
         }
         finally
         {

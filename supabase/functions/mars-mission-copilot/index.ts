@@ -68,6 +68,27 @@ function verifiedFacts(raw: any): Record<string, unknown> | null
     };
 }
 
+function publicKey(): string | null
+{
+    const direct = Deno.env.get("SUPABASE_PUBLISHABLE_KEY") || Deno.env.get("SUPABASE_ANON_KEY");
+
+    if (direct)
+    {
+        return direct;
+    }
+
+    // New Supabase projects expose modern keys as a JSON dictionary, not a single variable.
+    try
+    {
+        const keys = JSON.parse(Deno.env.get("SUPABASE_PUBLISHABLE_KEYS") || "{}");
+        return typeof keys.default === "string" && keys.default.length > 12 ? keys.default : null;
+    }
+    catch
+    {
+        return null;
+    }
+}
+
 Deno.serve(async (request: Request): Promise<Response> =>
 {
     const origin = request.headers.get("origin");
@@ -95,12 +116,15 @@ Deno.serve(async (request: Request): Promise<Response> =>
     }
 
     const url = Deno.env.get("SUPABASE_URL");
-    const publishable = Deno.env.get("SUPABASE_PUBLISHABLE_KEY") || Deno.env.get("SUPABASE_ANON_KEY");
+    const publishable = publicKey();
     const apiKey = Deno.env.get("OPENAI_API_KEY");
 
     if (!url || !publishable)
     {
-        return response(503,{error:"The AI authentication gateway is not configured."},origin);
+        return response(503,{
+            code:"SUPABASE_CONFIG_MISSING",
+            error:"Supabase AI authentication has not been configured correctly."
+        },origin);
     }
 
     // Defense in depth: verify the actual Supabase user JWT; never trust user_id from input.
@@ -110,12 +134,10 @@ Deno.serve(async (request: Request): Promise<Response> =>
 
     if (!identity?.ok)
     {
-        return response(401,{error:"Your Supabase session is not valid."},origin);
-    }
-
-    if (!apiKey)
-    {
-        return response(503,{error:"AI not configured. Use deterministic local mission analysis."},origin);
+        return response(401,{
+            code:"AUTH_INVALID",
+            error:"Your Supabase session is no longer valid. Sign in again."
+        },origin);
     }
 
     let input: any;
@@ -127,6 +149,25 @@ Deno.serve(async (request: Request): Promise<Response> =>
     catch
     {
         return response(400,{error:"Invalid JSON."},origin);
+    }
+
+    if (input?.action === "status")
+    {
+        return response(200,{
+            ready:Boolean(apiKey),
+            code:apiKey ? "AI_KEY_PRESENT" : "AI_NOT_CONFIGURED",
+            message:apiKey
+                ? "AI service configured. Provider access is tested when you ask a question."
+                : "Generative AI is not enabled yet. Verified local mission analysis is available."
+        },origin);
+    }
+
+    if (!apiKey)
+    {
+        return response(503,{
+            code:"AI_NOT_CONFIGURED",
+            error:"Generative AI is not enabled by the project owner yet. Use the local mission analysis."
+        },origin);
     }
 
     const question = typeof input?.question === "string" ? input.question.trim() : "";
@@ -150,7 +191,10 @@ Deno.serve(async (request: Request): Promise<Response> =>
 
     if (!limited?.ok)
     {
-        return response(429,{error:"Request quota reached or permission denied. Try again later."},origin);
+        return response(429,{
+            code:"AI_RATE_LIMIT",
+            error:"AI request quota exceeded or session permissions changed. Try later or use local analysis."
+        },origin);
     }
 
     const system = [
@@ -186,12 +230,18 @@ Deno.serve(async (request: Request): Promise<Response> =>
     }
     catch
     {
-        return response(503,{error:"The AI provider did not respond. Use the local analysis."},origin);
+        return response(503,{
+            code:"AI_PROVIDER_UNREACHABLE",
+            error:"The AI provider could not be reached. Local analysis remains available."
+        },origin);
     }
 
     if (!upstream.ok)
     {
-        return response(503,{error:"The AI provider is temporarily unavailable. Use local analysis."},origin);
+        return response(503,{
+            code:"AI_PROVIDER_REJECTED",
+            error:"The AI provider refused the request. Its key, model access and billing need review."
+        },origin);
     }
 
     const result = await upstream.json().catch(() => null);
@@ -201,7 +251,10 @@ Deno.serve(async (request: Request): Promise<Response> =>
 
     if (!answer)
     {
-        return response(503,{error:"No readable explanation was returned."},origin);
+        return response(503,{
+            code:"AI_EMPTY_RESPONSE",
+            error:"The AI provider returned no readable explanation."
+        },origin);
     }
 
     return response(200,{answer,mode:"read-only",source:"OpenAI Responses API; unverified explanatory text"},origin);

@@ -23,3 +23,15 @@ test("AI endpoint explicitly limits origin and question size", () =>
     assert.match(source,/max_output_tokens:450/);
     assert.match(source,/Request quota reached/);
 });
+
+test("AI backend supports modern Supabase publishable key defaults and authenticated health checks", () =>
+{
+    const source = readFileSync(new URL("../supabase/functions/mars-mission-copilot/index.ts",import.meta.url),"utf8");
+    assert.match(source,/SUPABASE_PUBLISHABLE_KEYS/);
+    assert.match(source,/function publicKey\(/);
+    assert.match(source,/input\?\.action === "status"/);
+    assert.match(source,/AI_NOT_CONFIGURED/);
+    assert.match(source,/AI_PROVIDER_REJECTED/);
+    assert.match(source,/auth\/v1\/user/);
+    assert.ok(source.indexOf('auth/v1/user') < source.indexOf('input?.action === "status"'));
+});

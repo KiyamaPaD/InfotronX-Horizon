@@ -86,3 +86,13 @@ The Supabase security advisor currently reports **Leaked Password Protection Dis
 The static site is published through manual uploads to https://mars-atlas-map.netlify.app/. Updating the GitHub `main` branch **does not automatically publish the latest code to this Netlify site**. Download a ZIP pinned to the chosen SHA, extract it and upload the extracted site folder inside the *existing* Netlify site Deploys section. Retest in an incognito browser; do not mistake local CI for public deployment.
 
 The repository remains a single `main` branch, with separate coauthor work happening on the same branch. Never force-push or overwrite the teammate's work.
+
+## 6. AI service diagnostics / 503 investigation
+
+The Edge Function is deployed and receives authenticated POST requests, but Supabase edge logs for 15 November 2026 show HTTP 503 responses for real prompts. This means the request reached a backend; the error is not evidence that no backend exists. The previous frontend replaced all server errors with the same misleading generic message.
+
+The function now supports both legacy `SUPABASE_ANON_KEY` and the modern Supabase `SUPABASE_PUBLISHABLE_KEYS` JSON dictionary, and offers an authenticated, quota-free `{ "action": "status" }` endpoint. In Analytics → Models → Mission Copilot choose **Check AI service status** to distinguish an unconfigured external model from an unavailable request.
+
+**To enable external generation:** The owner must set `OPENAI_API_KEY` in the Supabase project's Edge Function secrets, directly inside the Supabase dashboard, **never in GitHub, Netlify, a screenshot or chat**. Then verify one successful real request. The key must have API access and billing configured. A status response saying the key is present does **not** prove a model call succeeds.
+
+The local analysis never calls OpenAI, can show deterministic mission facts even when AI is down, and remains usable without login.

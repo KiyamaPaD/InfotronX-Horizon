@@ -46,3 +46,13 @@ test("copilot AI is a separate consent-based read-only flow", () =>
     assert.match(ui,/No mission data are being changed/);
     assert.doesNotMatch(ui,/store\.save|store\.addPoint|store\.deleteRoute/);
 });
+
+test("Copilot shows diagnostic codes and falls back to deterministic analysis", () =>
+{
+    const ui = readFileSync(new URL("../src/mission-copilot-ui.js",import.meta.url),"utf8");
+    assert.match(ui,/copilot-health/);
+    assert.match(ui,/AI_NOT_CONFIGURED/);
+    assert.match(ui,/AI_PROVIDER_REJECTED/);
+    assert.match(ui,/localMissionExplanation\(buildMissionFacts\(store.current,getDem\(\)\)\)/);
+    assert.match(ui,/action:"status"/);
+});
