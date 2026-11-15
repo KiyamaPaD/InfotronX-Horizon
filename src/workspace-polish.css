@@ -898,13 +898,7 @@
 }
 
 /* Real CTX tile boundaries soften into actual lower-detail Viking context. */
-.map-root[data-map-zoom="8"] .map-context-tile
-{
-    filter:grayscale(1) brightness(.82) contrast(.9);
-}
-.map-root[data-map-zoom="9"] .map-context-tile,
-.map-root[data-map-zoom="10"] .map-context-tile,
-.map-root[data-map-zoom="11"] .map-context-tile
+.map-root .map-context-tile
 {
     filter:grayscale(1) brightness(.94) contrast(.96);
 }
