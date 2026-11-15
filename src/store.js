@@ -241,10 +241,39 @@ function readTerrainMetadata(candidate)
     };
 }
 
+// The Supabase client keeps its session in local storage; this reads the user id from it without a network call.
+export function storedSessionUserId()
+{
+    try
+    {
+        for (let index = 0; index < localStorage.length; index++)
+        {
+            const key = localStorage.key(index);
+
+            if (/^sb-.+-auth-token$/.test(key || ""))
+            {
+                const id = JSON.parse(localStorage.getItem(key) || "null")?.user?.id;
+
+                if (typeof id === "string" && id) return id;
+            }
+        }
+    }
+    catch
+    {
+        // Storage can be blocked; the visitor is treated as a guest.
+    }
+
+    return null;
+}
+
 export class MissionStore
 {
-    constructor()
+    constructor({ userId } = {})
     {
+        // Without an account nothing is saved. A device copy exists only for a signed-in user, and only that user can read it back.
+        this.owner = userId !== undefined ? userId : storedSessionUserId();
+        this.persistLocal = Boolean(this.owner);
+        this.loadedActiveId = null;
         this.listeners = new Set();
         this.missions = this.read();
         this.activeId = this.missions.some(mission => mission.id === this.loadedActiveId) ? this.loadedActiveId : this.missions[0].id;
@@ -257,9 +286,20 @@ export class MissionStore
 
     read()
     {
+        if (!this.persistLocal)
+        {
+            return [createMission("Jezero mission")];
+        }
+
         try
         {
             const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+
+            if (stored?.owner !== this.owner)
+            {
+                return [createMission("Jezero mission")];
+            }
+
             const rows = Array.isArray(stored) ? stored : stored?.missions;
             this.loadedActiveId = typeof stored?.activeId === "string" ? stored.activeId : null;
             const missions = Array.isArray(rows) ? rows.slice(0, MAX_MISSIONS).map(validateMission).filter(Boolean).map(removeUntouchedExample) : [];
@@ -322,16 +362,60 @@ export class MissionStore
 
         this.historySnapshot = structuredClone(this.current);
 
-        try
+        if (this.persistLocal)
         {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify({ activeId: this.activeId, missions: this.missions }));
+            try
+            {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify({ owner: this.owner, activeId: this.activeId, missions: this.missions }));
+                this.lastSaveSucceeded = true;
+            }
+            catch (error)
+            {
+                this.lastSaveSucceeded = false;
+                console.warn("Local storage unavailable", error);
+            }
+        }
+        else
+        {
             this.lastSaveSucceeded = true;
         }
-        catch (error)
+
+        for (const listener of this.listeners)
         {
-            this.lastSaveSucceeded = false;
-            console.warn("Local storage unavailable", error);
+            listener();
         }
+    }
+
+    // Called when someone signs in: whatever they have drawn as a guest becomes theirs and starts being saved.
+    attachAccount(userId)
+    {
+        this.owner = userId;
+        this.persistLocal = true;
+        this.save(false);
+    }
+
+    // Called on sign-out: the device copy is removed and the next visitor starts with a clean mission.
+    detachAccount()
+    {
+        this.owner = null;
+        this.persistLocal = false;
+
+        try
+        {
+            localStorage.removeItem(STORAGE_KEY);
+        }
+        catch
+        {
+            // Nothing to clear when storage is blocked.
+        }
+
+        this.missions = [createMission("Jezero mission")];
+        this.activeId = this.missions[0].id;
+        this.undoHistory = [];
+        this.redoHistory = [];
+        this.historyMissionId = this.activeId;
+        this.historySnapshot = structuredClone(this.current);
+        this.lastSaveSucceeded = true;
 
         for (const listener of this.listeners)
         {

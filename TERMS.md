@@ -27,7 +27,7 @@ We may limit or remove accounts and content that break these rules.
 
 ## 4. Accounts, missions and your content
 
-- You can use the planner without an account. Missions are then stored only in your browser.
+- You can use the planner as a guest without an account. Nothing you draw is saved until you sign in, so export a backup if it matters.
 - If you sign in, you can save missions to our cloud library and share them with other signed-in users by email. You decide who can view or edit.
 - You keep the rights to your missions, notes and profile. You give us permission to store and display them as needed to run the service for you and the people you share with.
 - You are responsible for what you write. Do not enter secrets or personal data of other people.

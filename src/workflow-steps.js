@@ -59,7 +59,7 @@ export function mountWorkflowSteps({ shell, store, setMode, loadTerrain, isTerra
     const nav = document.createElement("nav");
     nav.className = "workflow-steps";
     nav.setAttribute("aria-label", "Mission workflow");
-    nav.innerHTML = STEPS.map(step =>
+    nav.innerHTML = '<button type="button" class="workflow-home" data-action="open-home" title="Back to the start page"><span class="workflow-step-number">0</span><span class="workflow-step-label">Start</span></button><span class="workflow-step-line" aria-hidden="true"></span>' + STEPS.map(step =>
         `<button type="button" class="workflow-step" data-step="${step.id}" aria-pressed="false" title="${step.hint}"><span class="workflow-step-number">${step.number}</span><span class="workflow-step-label">${step.label}</span></button>`
     ).join('<span class="workflow-step-line" aria-hidden="true"></span>') +
         '<button type="button" class="workflow-all" data-step="all" aria-pressed="false" title="Show every panel and tool">All tools</button>';

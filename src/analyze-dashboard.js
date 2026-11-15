@@ -323,7 +323,7 @@ export function mountAnalyzeDashboard({ shell, store, getCloud, getDem })
             [others.length > 0, "You compared at least two routes"]
         ];
         const passed = checks.filter(item => item[0]).length;
-        const stepHead = (number, title, help) => `<div class="ad-step-head"><span class="ad-step-no">${number}</span><div><h3>${title}</h3><p>${help}</p></div></div>`;
+        const stepHead = (number, title, help) => `<div class="ad-step-head"><span class="ad-step-no">${number}</span><div><h3>${title}</h3><p>${help}</p></div><button type="button" class="ad-fold" data-ad-fold aria-expanded="true" aria-label="Fold or unfold this step">−</button></div>`;
         const stepFoot = (number, sentence) => `<div class="ad-result"><span>IN YOUR CASE</span><p>${sentence}</p></div>${number < 7 ? `<button class="ad-next" type="button" data-ad-go="${number + 1}">Next step →</button>` : ""}`;
         const chips = [["1", "Size"], ["2", "Height"], ["3", "Legs"], ["4", "Compare"], ["5", "3D"], ["6", "Decide"], ["7", "Ask"]].map(([n, label]) => `<button type="button" class="ad-chip" data-ad-go="${n}"><b>${n}</b> ${label}</button>`).join("");
 
@@ -429,6 +429,17 @@ export function mountAnalyzeDashboard({ shell, store, getCloud, getDem })
         if (suggestion)
         {
             if (!busy) ask(suggestion, useAi);
+            return;
+        }
+
+        const fold = event.target.closest("[data-ad-fold]");
+
+        if (fold)
+        {
+            const section = fold.closest(".ad-step");
+            const folded = section.classList.toggle("is-folded");
+            fold.setAttribute("aria-expanded", String(!folded));
+            fold.textContent = folded ? "+" : "−";
             return;
         }
 

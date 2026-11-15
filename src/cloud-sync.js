@@ -120,7 +120,7 @@ export class MissionCloud
         return mission;
     }
 
-    async saveMission(mission)
+    async saveMission(mission, { snapshot = true } = {})
     {
         this.requireUser();
 
@@ -178,12 +178,17 @@ export class MissionCloud
 
         this.baseRevisions.set(saved.id, saved.revision);
 
-        const snapshot = await this.client.from("mars_mission_versions").insert({
+        if (!snapshot)
+        {
+            return { revision: saved.revision, snapshotSaved: false };
+        }
+
+        const version = await this.client.from("mars_mission_versions").insert({
             mission_id: saved.id, editor_id: this.user.id,
             revision: saved.revision, payload: values.payload
         });
 
-        return { revision: saved.revision, snapshotSaved: !snapshot.error };
+        return { revision: saved.revision, snapshotSaved: !version.error };
     }
 
     async claimEmailInvitations()

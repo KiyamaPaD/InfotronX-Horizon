@@ -5,6 +5,49 @@ import { loadJezeroDem } from "./bundled-dem.js";
 import { MAP_LAYERS, JEZERO_CTX_CONTEXT } from "./constants.js";
 import { addSpaceDecor } from "./space-decor.js";
 import { lowPower, createGovernor } from "./perf.js";
+import { analyzeRoute, formatDistance } from "./geo.js";
+import { MARS_SITES, SITE_TYPES } from "./mars-sites.js";
+import { getLineStyle, mountLineControls } from "./line-style.js";
+import { directionOf, latLonOf, ellipseRadius, parseGlb, subdivide, positionGroups } from "./planet-mesh.js";
+
+// NASA/JPL-Caltech 3D model of Mars: https://science.nasa.gov/resource/planet-mars-3d-model/
+const NASA_MODEL_URL = new URL("../assets/nasa/mars-3d-model.glb", import.meta.url);
+let nasaModel = null;
+
+async function loadNasaModel(passes)
+{
+    if (nasaModel?.passes === passes) return nasaModel;
+
+    const parsed = parseGlb(await (await fetch(NASA_MODEL_URL)).arrayBuffer());
+    // The model's equatorial radius is 500; work in units of one equatorial radius.
+    const dense = subdivide(parsed.positions.map(value => value / 500), parsed.uvs, parsed.indices, passes);
+    const count = dense.positions.length / 3;
+    const directions = new Float32Array(count * 3), radii = new Float32Array(count), lat = new Float32Array(count), lon = new Float32Array(count);
+
+    for (let i = 0; i < count; i++)
+    {
+        const x = dense.positions[i * 3], y = dense.positions[i * 3 + 1], z = dense.positions[i * 3 + 2];
+        const length = Math.hypot(x, y, z) || 1;
+        directions[i * 3] = x / length; directions[i * 3 + 1] = y / length; directions[i * 3 + 2] = z / length;
+        radii[i] = ellipseRadius(x / length, y / length, z / length);
+        const place = latLonOf(x, y, z);
+        lat[i] = place.lat;
+        lon[i] = place.lon;
+    }
+
+    const { group, count: groupCount } = positionGroups(dense.positions);
+    const decode = image => createImageBitmap(new Blob([image.bytes], { type: image.type }), { premultiplyAlpha: "none", colorSpaceConversion: "none" });
+    const [diffuse, normal] = await Promise.all([decode(parsed.diffuse), decode(parsed.normal)]);
+    nasaModel = { passes, directions, radii, lat, lon, uvs: dense.uvs, indices: dense.indices, groups: group, groupCount, diffuse, normal };
+    return nasaModel;
+}
+
+function releaseNasaModel()
+{
+    nasaModel?.diffuse.close();
+    nasaModel?.normal.close();
+    nasaModel = null;
+}
 
 const R = 3396190;
 const THREE_URL = "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
@@ -203,6 +246,21 @@ async function globalMosaic(base, zoom, extension = "jpg", fill = "#6b3a26")
     return canvas;
 }
 
+function disposeTree(root)
+{
+    root.traverse(object =>
+    {
+        object.geometry?.dispose();
+
+        for (const material of [].concat(object.material || []))
+        {
+            material.map?.dispose();
+            material.bumpMap?.dispose();
+            material.dispose();
+        }
+    });
+}
+
 function glowTexture(THREE, stops)
 {
     const canvas = document.createElement("canvas");
@@ -240,10 +298,11 @@ function sampleGrid(grid, point)
 
 const COPY = {
     crater: { title: "Jezero Crater", eyebrow: "3D VIEW · WHOLE CRATER", text: "Whole-crater visualization from NASA MOLA 8-bit grayscale imagery and Viking/HiRISE context. Vertical mapping is illustrative and not calibrated in meters. Use Delta detail for a documented numeric DEM.", switchLabel: "Delta detail · 20 m" },
-    delta: { title: "Delta front", eyebrow: "3D VIEW · DETAIL", text: "USGS CTX heights (20 m grid) with NASA HiRISE imagery (~1.2 m/pixel). Height and curvature are exaggerated for readability.", switchLabel: "Whole crater" }
+    planet: { title: "Whole planet", eyebrow: "3D VIEW · MARS", text: "NASA's own 3D model of Mars (NASA/JPL-Caltech) with one texture, lifted by real MOLA heights (relief exaggerated; set the slider to 1 for true scale). Click a glowing pin for a real place, its facts and NASA photos. Your route follows the surface between waypoints, anywhere on the planet. Distances use Mars's real radius.", switchLabel: "Whole crater" },
+    delta: { title: "Delta front", eyebrow: "3D VIEW · DETAIL", text: "USGS CTX heights (20 m grid) with NASA HiRISE imagery (~1.2 m/pixel). Height and curvature are exaggerated for readability.", switchLabel: "Whole planet" }
 };
 
-export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mode = "crater", onFocusArea, onClose })
+export async function openMap3d({ host, points = [], getPoints, subscribe, onAddWaypoint, routeControls, routeColor = "#ff9a6b", mode = "planet", onFocusArea, onClose })
 {
     const layer = document.createElement("section");
     layer.className = "map-3d-layer";
@@ -251,17 +310,48 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
     layer.innerHTML = `
         <div class="map-3d-canvas"></div>
         <div class="map-3d-panel">
-            <div class="map-3d-head"><div class="map-3d-eyebrow" data-3d="eyebrow"></div><h3 class="map-3d-title" data-3d="title"></h3></div>
+            <div class="map-3d-head"><div><div class="map-3d-eyebrow" data-3d="eyebrow"></div><h3 class="map-3d-title" data-3d="title"></h3></div><button type="button" class="map-3d-fold" data-3d="fold" aria-expanded="true" aria-label="Fold or unfold this panel">−</button></div>
             <p class="map-3d-copy" data-3d="copy"></p>
             <div class="map-3d-group"><span class="map-3d-label">VIEW</span>
-                <label class="map-3d-range">Vertical ×<span data-3d="ex-value">3</span><input data-3d="ex" type="range" min="1" max="8" step="0.5" value="3" /></label>
+                <label class="map-3d-range">Vertical ×<span data-3d="ex-value">3</span><input data-3d="ex" type="range" min="1" max="12" step="0.5" value="6" /></label>
                 <div class="map-3d-actions">
-                    <button type="button" class="btn btn-accent compact" data-3d="fly">Fly in</button>
+                    <button type="button" class="btn btn-accent compact" data-3d="fit" title="Frame the whole route">Fit route</button>
+                    <button type="button" class="btn btn-outline compact" data-3d="add" aria-pressed="false" title="Click the planet to drop a waypoint">Add waypoint</button>
+                    <button type="button" class="btn btn-outline compact" data-3d="fly">Fly in</button>
                     <button type="button" class="btn btn-outline compact" data-3d="spin" aria-pressed="true">Rotate</button>
-                    <button type="button" class="btn btn-outline compact" data-3d="switch"></button>
+                    <button type="button" class="btn btn-outline compact" data-3d="switch" hidden></button>
                 </div>
             </div>
             <div class="map-3d-group"><span class="map-3d-label">YOUR ROUTE</span><p class="map-3d-route" data-3d="route"></p></div>
+            <details class="map-3d-group map-3d-lines"><summary class="map-3d-label">LINES</summary><div data-3d="lines"></div></details>
+            <details class="map-3d-group map-3d-legend" open><summary class="map-3d-label">LEGEND</summary>
+                <ul>
+                    <li><i class="lg3-pin" style="--c:#75d1c8"></i>Landing site of a rover or lander</li>
+                    <li><i class="lg3-pin" style="--c:#e3a06a"></i>Natural feature: volcano, canyon, basin</li>
+                    <li><i class="lg3-pin" style="--c:#75d1c8;--s:9px"></i>First waypoint of your route</li>
+                    <li><i class="lg3-pin" style="--c:#fff;--s:9px"></i>Other waypoints, with a pulsing ring</li>
+                    <li><i class="lg3-line"></i>Your route, along the surface of Mars</li>
+                </ul>
+            </details>
+        </div>
+        <aside class="map-3d-site" data-3d="site" hidden aria-label="Place on Mars">
+            <button type="button" class="map-3d-site-close" data-3d="site-close" aria-label="Close">×</button>
+            <span class="map-3d-site-type" data-3d="site-type"></span>
+            <h3 data-3d="site-name"></h3>
+            <p class="map-3d-site-coords" data-3d="site-coords"></p>
+            <p class="map-3d-site-summary" data-3d="site-summary"></p>
+            <ul class="map-3d-site-facts" data-3d="site-facts"></ul>
+            <div class="map-3d-site-photos" data-3d="site-photos"></div>
+            <p class="map-3d-site-credit">Photos: NASA Image and Video Library. Click one to open it. The summary is written for Mars Atlas.</p>
+            <div class="map-3d-site-actions"><button type="button" class="btn btn-accent compact" data-3d="site-fly">Fly here</button><button type="button" class="btn btn-outline compact" data-3d="site-add">Add as waypoint</button></div>
+        </aside>
+        <div class="map-3d-tip" hidden></div>
+        <div class="map-3d-nav">
+            <button type="button" class="map-3d-compass" data-3d="compass" aria-label="Compass. North is where the red needle points. Click to return to the default view.">
+                <svg viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="25" fill="#0b121bcc" stroke="#ffffff33"/><g data-3d="needle" style="transform-origin:28px 28px"><path d="M28 7 L34 28 L28 24 L22 28 Z" fill="#e3623a"/><path d="M28 49 L34 28 L28 32 L22 28 Z" fill="#aebdca"/></g><text x="28" y="6" text-anchor="middle" font-size="7" font-weight="700" fill="#fff">N</text></svg>
+            </button>
+            <div class="map-3d-poles"><button type="button" data-3d="north" title="Look down on the north pole">N pole</button><button type="button" data-3d="south" title="Look down on the south pole">S pole</button></div>
+            <div class="map-3d-readout" data-3d="readout" aria-live="off"></div>
         </div>
         <button type="button" class="map-3d-close" data-3d="close" aria-label="Close 3D view">✕ 2D map</button>
         <div class="map-3d-status" role="status" data-3d="status">Loading 3D terrain…</div>`;
@@ -272,6 +362,9 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
     let disposed = false;
     let renderer = null;
     let hud = null;
+    let stopListening = null;
+    const currentPoints = () => getPoints ? getPoints() : points;
+    let hudKeep = null;
     let decorHandle = null;
     let skipFrames = false;
     let frameToggle = false;
@@ -284,6 +377,8 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
         if (disposed) return;
         disposed = true;
         renderer?.setAnimationLoop(null);
+        stopListening?.();
+        releaseNasaModel();
         scene?.traverse(object =>
         {
             object.geometry?.dispose();
@@ -417,7 +512,6 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
             renderer.setViewport(0, 0, width, height);
         };
 
-        if (!light) buildHud();
         const tickers = new Set();
         // If frames stay slow, drop the decoration first (level 1), then the extra animation (level 2).
         const governor = createGovernor(level =>
@@ -426,6 +520,7 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
             resize();
             decorHandle?.setVisible(false);
             hud = null;
+            hudKeep = null;
 
             if (level >= 2)
             {
@@ -448,18 +543,572 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
             if (hud && scene) renderHud(now);
         });
 
+        // The whole planet at its true proportions: real Viking colour, MOLA relief (exaggerated) and a route that can run anywhere on it.
+        const buildPlanet = async id =>
+        {
+            status.textContent = "Loading the whole planet…";
+            controls.maxPolarAngle = Math.PI;
+            if (scene) disposeTree(scene);
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x05070d);
+            tickers.clear();
+            hud = null;
+            camera.near = 0.01;
+            camera.far = 400;
+            camera.updateProjectionMatrix();
+            controls.minDistance = 1.12;
+            controls.maxDistance = 14;
+            scene.add(new THREE.HemisphereLight(0xffe2cf, 0x1b2430, 0.55));
+            const sunLight = new THREE.DirectionalLight(0xfff1e0, 2.4);
+            sunLight.position.set(-5, 2.5, 4);
+            scene.add(sunLight);
+            const sunSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(THREE, [[0, "rgba(255,255,255,1)"], [0.1, "rgba(255,236,190,.95)"], [0.3, "rgba(255,170,90,.35)"], [1, "rgba(255,110,50,0)"]]), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, fog: false }));
+            sunSprite.position.set(-30, 12, -22);
+            sunSprite.scale.setScalar(14);
+            scene.add(sunSprite);
+
+            if (!light)
+            {
+                decorHandle = addSpaceDecor(THREE, scene, { radius: 1, center: new THREE.Vector3(), reduced: reducedMotion() });
+                tickers.add(now => decorHandle.update(now));
+            }
+
+            // NASA's own 3D model of Mars (NASA/JPL-Caltech), made denser so real MOLA heights can lift it. One mesh, one texture.
+            const nasa = await loadNasaModel(light ? 2 : 3);
+
+            if (disposed || id !== session) return;
+
+            const vertexCount = nasa.directions.length / 3;
+            const geometry = new THREE.BufferGeometry();
+            const positionArray = new Float32Array(nasa.directions.length);
+            geometry.setAttribute("position", new THREE.BufferAttribute(positionArray, 3));
+            geometry.setAttribute("uv", new THREE.BufferAttribute(nasa.uvs, 2));
+            geometry.setIndex(new THREE.BufferAttribute(nasa.indices, 1));
+            const diffuse = new THREE.Texture(nasa.diffuse);
+            diffuse.flipY = false;
+            diffuse.colorSpace = THREE.SRGBColorSpace;
+            diffuse.anisotropy = renderer.capabilities.getMaxAnisotropy();
+            diffuse.needsUpdate = true;
+            const normalMap = new THREE.Texture(nasa.normal);
+            normalMap.flipY = false;
+            normalMap.anisotropy = renderer.capabilities.getMaxAnisotropy();
+            normalMap.needsUpdate = true;
+            const material = new THREE.MeshStandardMaterial({ map: diffuse, normalMap, normalScale: new THREE.Vector2(1.3, 1.3), roughness: 0.92, metalness: 0 });
+            scene.add(new THREE.Mesh(geometry, material));
+            scene.add(new THREE.Mesh(new THREE.SphereGeometry(1.06, 96, 64), new THREE.ShaderMaterial({
+                transparent: true, side: THREE.BackSide, blending: THREE.AdditiveBlending, depthWrite: false, fog: false,
+                vertexShader: "varying vec3 n; void main(){ n = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+                fragmentShader: "varying vec3 n; void main(){ float i = pow(max(0.0, 0.72 - dot(n, vec3(0.0, 0.0, 1.0))), 3.0); gl_FragColor = vec4(1.0, 0.55, 0.34, 1.0) * i * 1.5; }"
+            })));
+
+            // MOLA grey level 0-255 spans 29.4 km of height; at true scale that is 0.87% of the radius, multiplied by the slider.
+            const relief = { data: null, width: 0, height: 0 };
+            const dispAt = (lat, lon) =>
+            {
+                if (!relief.data) return 0;
+
+                const x = Math.min(relief.width - 1, Math.max(0, (lon + 180) / 360 * relief.width)), y = Math.min(relief.height - 1, Math.max(0, (90 - lat) / 180 * relief.height));
+                const x0 = Math.floor(x), y0 = Math.floor(y), x1 = Math.min(relief.width - 1, x0 + 1), y1 = Math.min(relief.height - 1, y0 + 1), tx = x - x0, ty = y - y0;
+                const grey = (cx, cy) => relief.data[(cy * relief.width + cx) * 4];
+                const value = grey(x0, y0) * (1 - tx) * (1 - ty) + grey(x1, y0) * tx * (1 - ty) + grey(x0, y1) * (1 - tx) * ty + grey(x1, y1) * tx * ty;
+                return value / 255 * 0.00867 * factor;
+            };
+            const applyRelief = () =>
+            {
+                for (let i = 0; i < vertexCount; i++)
+                {
+                    const radius = nasa.radii[i] * (1 + dispAt(nasa.lat[i], nasa.lon[i]));
+                    positionArray[i * 3] = nasa.directions[i * 3] * radius;
+                    positionArray[i * 3 + 1] = nasa.directions[i * 3 + 1] * radius;
+                    positionArray[i * 3 + 2] = nasa.directions[i * 3 + 2] * radius;
+                }
+
+                geometry.attributes.position.needsUpdate = true;
+                geometry.computeVertexNormals();
+
+                // Texture seams duplicate vertices; give each pair the same normal so no line shows.
+                const normals = geometry.attributes.normal.array;
+                const sums = new Float32Array(nasa.groupCount * 3);
+
+                for (let i = 0; i < vertexCount; i++)
+                {
+                    const g = nasa.groups[i] * 3;
+                    sums[g] += normals[i * 3]; sums[g + 1] += normals[i * 3 + 1]; sums[g + 2] += normals[i * 3 + 2];
+                }
+
+                for (let i = 0; i < vertexCount; i++)
+                {
+                    const g = nasa.groups[i] * 3, length = Math.hypot(sums[g], sums[g + 1], sums[g + 2]) || 1;
+                    normals[i * 3] = sums[g] / length; normals[i * 3 + 1] = sums[g + 1] / length; normals[i * 3 + 2] = sums[g + 2] / length;
+                }
+
+                geometry.attributes.normal.needsUpdate = true;
+                geometry.computeBoundingSphere();
+            };
+
+            const toVector = (lat, lon) =>
+            {
+                const d = directionOf(lat, lon);
+                return new THREE.Vector3(d.x, d.y, d.z);
+            };
+            const toLatLon = vector => latLonOf(vector.x, vector.y, vector.z);
+
+            let valid = [];
+            let vectors = [];
+            const readPoints = () =>
+            {
+                valid = currentPoints().filter(point => Number.isFinite(point.lat) && Number.isFinite(point.lon));
+                vectors = valid.map(point => toVector(point.lat, point.lon));
+            };
+            readPoints();
+            const route = new THREE.Group();
+            scene.add(route);
+            let roverTick = null, ringTick = null;
+
+            const drawRoute = () =>
+            {
+                readPoints();
+                route.clear();
+                if (roverTick) { tickers.delete(roverTick); roverTick = null; }
+                if (ringTick) { tickers.delete(ringTick); ringTick = null; }
+
+                if (!vectors.length) return;
+
+                let totalAngle = 0;
+                for (let i = 1; i < vectors.length; i++) totalAngle += Math.acos(Math.max(-1, Math.min(1, vectors[i - 1].dot(vectors[i]))));
+
+                // Thick enough to see on a short route, thin enough not to swallow a long one.
+                const look = getLineStyle();
+                const colour = routeControls?.getColor?.() || routeColor;
+                const tube = Math.max(0.0035, Math.min(0.014, totalAngle * 0.012)) * look.width;
+                const lift = tube * 1.4;
+                const surface = vector => { const { lat, lon } = toLatLon(vector); const n = vector.clone().normalize(); return n.multiplyScalar(ellipseRadius(n.x, n.y, n.z) * (1 + dispAt(lat, lon) + lift)); };
+                const dense = [];
+
+                // Great circles between waypoints, so a long route bends with the planet instead of cutting through it.
+                for (let i = 1; i < vectors.length; i++)
+                {
+                    const a = vectors[i - 1], b = vectors[i];
+                    const omega = Math.acos(Math.max(-1, Math.min(1, a.dot(b))));
+                    const steps = Math.max(2, Math.ceil(omega / 0.008));
+
+                    for (let step = i === 1 ? 0 : 1; step <= steps; step++)
+                    {
+                        const t = step / steps;
+                        const along = omega < 1e-6 ? a.clone() : a.clone().multiplyScalar(Math.sin((1 - t) * omega) / Math.sin(omega)).add(b.clone().multiplyScalar(Math.sin(t * omega) / Math.sin(omega)));
+                        dense.push(surface(along));
+                    }
+                }
+
+                const ringMaterials = [];
+                vectors.forEach((vector, index) =>
+                {
+                    const position = surface(vector).multiplyScalar(1 + tube * 0.4);
+                    const marker = new THREE.Mesh(new THREE.SphereGeometry(Math.max(0.004, tube / look.width * 2.2 * look.markerSize), 16, 12), new THREE.MeshBasicMaterial({ color: index === 0 ? 0x75d1c8 : 0xffffff }));
+                    marker.position.copy(position);
+                    const ring = new THREE.Mesh(new THREE.RingGeometry(tube / look.width * 2.9 * look.markerSize, tube / look.width * 3.5 * look.markerSize, 32), new THREE.MeshBasicMaterial({ color: colour, transparent: true, side: THREE.DoubleSide, depthWrite: false }));
+                    ring.position.copy(position);
+                    ring.lookAt(position.clone().multiplyScalar(2));
+                    route.add(marker, ring);
+                    ringMaterials.push(ring);
+                });
+
+                if (dense.length < 2) return;
+
+                const curve = new THREE.CatmullRomCurve3(dense);
+                const lineMaterial = new THREE.MeshBasicMaterial({ color: colour, transparent: look.opacity < 1, opacity: look.opacity });
+                const outline = new THREE.MeshBasicMaterial({ color: 0x07121a, transparent: true, opacity: 0.55 * look.opacity });
+
+                if (look.style === "dashed")
+                {
+                    // Short pieces with gaps; each piece is its own thin tube.
+                    const on = 14, off = 9;
+
+                    for (let from = 0; from < dense.length - 1; from += on + off)
+                    {
+                        const piece = dense.slice(from, Math.min(dense.length, from + on + 1));
+
+                        if (piece.length < 2) continue;
+
+                        route.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(piece), piece.length, tube, 8, false), lineMaterial));
+                    }
+                }
+                else
+                {
+                    if (look.glow) route.add(new THREE.Mesh(new THREE.TubeGeometry(curve, Math.min(6000, dense.length * 2), tube * 1.7, 8, false), outline));
+
+                    route.add(new THREE.Mesh(new THREE.TubeGeometry(curve, Math.min(6000, dense.length * 2), tube, 8, false), lineMaterial));
+                }
+
+                if (reducedMotion() || !look.animate) return;
+
+                ringTick = now => ringMaterials.forEach((ring, index) =>
+                {
+                    const phase = (now / 1000 * 0.8 + index * 0.23) % 1;
+                    ring.scale.setScalar(1 + phase * 3);
+                    ring.material.opacity = (1 - phase) * 0.8;
+                });
+                tickers.add(ringTick);
+                const rover = new THREE.Mesh(new THREE.SphereGeometry(Math.max(0.006, tube / look.width * 3 * look.markerSize), 16, 12), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+                route.add(rover);
+                const seconds = Math.max(6, Math.min(24, totalAngle * 8));
+                roverTick = now => rover.position.copy(curve.getPointAt((now / 1000 / seconds) % 1));
+                tickers.add(roverTick);
+            };
+
+            const glow = glowTexture(THREE, [[0, "rgba(255,255,255,1)"], [0.35, "rgba(255,255,255,.4)"], [1, "rgba(255,255,255,0)"]]);
+            const surfaceAt = (lat, lon, lift = 0) =>
+            {
+                const direction = toVector(lat, lon);
+                return direction.multiplyScalar(ellipseRadius(direction.x, direction.y, direction.z) * (1 + dispAt(lat, lon) + lift));
+            };
+            const minimumDistance = () => 1 + 0.00867 * factor + 0.008;
+            const fieldOfView = () => Math.atan(Math.tan(camera.fov * Math.PI / 360) * Math.min(1, camera.aspect));
+
+            // The camera glides to look down on a direction from a given distance (planet radius = 1).
+            const flyTo = (direction, distance) =>
+            {
+                controls.target.set(0, 0, 0);
+                const end = direction.clone().normalize().multiplyScalar(Math.max(distance, minimumDistance()));
+
+                if (reducedMotion())
+                {
+                    camera.position.copy(end);
+                    return;
+                }
+
+                const start = camera.position.clone();
+                const begin = performance.now();
+                const step = now =>
+                {
+                    const t = Math.min(1, (now - begin) / 1300);
+                    const eased = 1 - Math.pow(1 - t, 3);
+                    const turn = start.clone().normalize().lerp(end.clone().normalize(), eased).normalize();
+                    camera.position.copy(turn.multiplyScalar(start.length() + (end.length() - start.length()) * eased));
+                    if (t < 1 && !disposed && id === session) requestAnimationFrame(step);
+                };
+                requestAnimationFrame(step);
+            };
+
+            // Fit route: the whole route, with a little room around it, fills the view.
+            const defaultDirection = toVector(18.44, 77.45);
+            const fitRoute = () =>
+            {
+                readPoints();
+
+                if (!vectors.length)
+                {
+                    flyTo(defaultDirection, 3.1);
+                    status.textContent = "Add waypoints and this button frames them all.";
+                    return;
+                }
+
+                const centre = vectors.reduce((sum, vector) => sum.add(vector), new THREE.Vector3()).normalize();
+
+                if (centre.lengthSq() < 0.5)
+                {
+                    flyTo(vectors[0], 3.1);
+                    return;
+                }
+
+                const spread = vectors.reduce((widest, vector) => Math.max(widest, Math.acos(Math.max(-1, Math.min(1, centre.dot(vector))))), 0);
+                const half = Math.min(1.35, Math.max(0.03, spread * 1.3));
+                flyTo(centre, Math.cos(half) + Math.sin(half) / Math.tan(fieldOfView()));
+            };
+
+            // Real places that are always on the planet: where rovers and landers touched down, and the biggest features.
+            const siteGroup = new THREE.Group();
+            scene.add(siteGroup);
+            const siteTargets = [];
+            const drawSites = () =>
+            {
+                siteGroup.clear();
+                siteTargets.length = 0;
+
+                for (const site of MARS_SITES)
+                {
+                    const colour = SITE_TYPES[site.type].colour;
+                    const position = surfaceAt(site.lat, site.lon, 0.006);
+                    const pin = new THREE.Mesh(new THREE.SphereGeometry(0.0105, 12, 8), new THREE.MeshBasicMaterial({ color: colour }));
+                    pin.position.copy(position);
+                    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow, color: colour, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.85 }));
+                    halo.position.copy(position);
+                    halo.scale.setScalar(0.06);
+                    const target = new THREE.Mesh(new THREE.SphereGeometry(0.026, 8, 6), new THREE.MeshBasicMaterial({ visible: false }));
+                    target.position.copy(position);
+                    target.userData.site = site;
+                    siteGroup.add(pin, halo, target);
+                    siteTargets.push(target);
+                }
+            };
+
+            const raycaster = new THREE.Raycaster();
+            const pointerAt = event =>
+            {
+                const box = renderer.domElement.getBoundingClientRect();
+                raycaster.setFromCamera(new THREE.Vector2((event.clientX - box.left) / box.width * 2 - 1, -((event.clientY - box.top) / box.height) * 2 + 1), camera);
+            };
+            const planetSphere = new THREE.Sphere(new THREE.Vector3(), 1);
+            const planetHit = () => raycaster.ray.intersectSphere(planetSphere, new THREE.Vector3());
+            const siteAt = event =>
+            {
+                pointerAt(event);
+                const hit = raycaster.intersectObjects(siteTargets, false)[0];
+
+                if (!hit) return null;
+
+                // A site on the far side is hidden by the planet.
+                const front = planetHit();
+                return !front || hit.distance <= raycaster.ray.origin.distanceTo(front) + 0.04 ? hit.object.userData.site : null;
+            };
+
+            const tip = layer.querySelector(".map-3d-tip");
+            const photos = new Map();
+            let openSiteId = null;
+
+            const showPhotos = async site =>
+            {
+                const box = get("site-photos");
+                box.replaceChildren();
+                const search = "https://images.nasa.gov/search?q=" + encodeURIComponent(site.query);
+
+                try
+                {
+                    if (!photos.has(site.id))
+                    {
+                        box.textContent = "Loading photos from NASA…";
+                        const response = await fetch("https://images-api.nasa.gov/search?media_type=image&page_size=6&q=" + encodeURIComponent(site.query));
+
+                        if (!response.ok) throw new Error("NASA image search unavailable");
+
+                        const json = await response.json();
+                        photos.set(site.id, (json.collection?.items || []).filter(item => item.links?.[0]?.href && item.data?.[0]?.nasa_id).slice(0, 6));
+                    }
+
+                    if (openSiteId !== site.id) return;
+
+                    box.replaceChildren();
+                    const items = photos.get(site.id);
+
+                    for (const item of items)
+                    {
+                        const link = document.createElement("a");
+                        link.href = "https://images.nasa.gov/details/" + encodeURIComponent(item.data[0].nasa_id);
+                        link.target = "_blank";
+                        link.rel = "noopener";
+                        link.title = item.data[0].title || site.name;
+                        const image = document.createElement("img");
+                        image.src = item.links[0].href;
+                        image.alt = item.data[0].title || site.name;
+                        image.loading = "lazy";
+                        link.append(image);
+                        box.append(link);
+                    }
+
+                    if (!items.length) box.textContent = "No photos found.";
+                }
+                catch
+                {
+                    if (openSiteId !== site.id) return;
+                    box.replaceChildren();
+                    const link = document.createElement("a");
+                    link.href = search;
+                    link.target = "_blank";
+                    link.rel = "noopener";
+                    link.textContent = "Photos could not be loaded. Search the NASA library for " + site.name + " →";
+                    box.append(link);
+                }
+            };
+
+            const openSite = site =>
+            {
+                openSiteId = site.id;
+                const panel = get("site");
+                panel.hidden = false;
+                get("site-type").textContent = SITE_TYPES[site.type].label.toUpperCase();
+                get("site-name").textContent = site.name;
+                get("site-coords").textContent = `${Math.abs(site.lat).toFixed(2)}° ${site.lat >= 0 ? "N" : "S"} · ${Math.abs(site.lon).toFixed(2)}° ${site.lon >= 0 ? "E" : "W"}`;
+                get("site-summary").textContent = site.summary;
+                get("site-facts").replaceChildren(...site.facts.map(fact => { const item = document.createElement("li"); item.textContent = fact; return item; }));
+                panel.dataset.site = site.id;
+                showPhotos(site);
+                flyTo(toVector(site.lat, site.lon), 1.45);
+            };
+            get("site-close").addEventListener("click", () => { openSiteId = null; get("site").hidden = true; });
+            get("site-fly").addEventListener("click", () => { const site = MARS_SITES.find(item => item.id === openSiteId); if (site) flyTo(toVector(site.lat, site.lon), 1.2); });
+            get("site-add").addEventListener("click", () =>
+            {
+                const site = MARS_SITES.find(item => item.id === openSiteId);
+
+                if (!site || !onAddWaypoint) return;
+
+                const added = onAddWaypoint({ lat: site.lat, lon: site.lon, name: site.name, description: site.summary, category: site.type === "landing" ? "landmark" : "science", icon: site.type === "landing" ? "star" : "triangle" });
+                status.textContent = added ? site.name + " added to your route." : "The route is full or the place could not be added.";
+            });
+
+            // Click a place to read about it; with "Add waypoint" on, click the planet to drop a waypoint there.
+            let addMode = false;
+            const canvas = renderer.domElement;
+            let downAt = null;
+            canvas.addEventListener("pointerdown", event => { downAt = { x: event.clientX, y: event.clientY }; });
+            canvas.addEventListener("pointerup", event =>
+            {
+                if (!downAt || Math.hypot(event.clientX - downAt.x, event.clientY - downAt.y) > 5) return;
+
+                downAt = null;
+                const site = siteAt(event);
+
+                if (site) { openSite(site); return; }
+
+                if (!addMode || !onAddWaypoint) return;
+
+                pointerAt(event);
+                const point = planetHit();
+
+                if (!point) return;
+
+                const place = toLatLon(point);
+                const added = onAddWaypoint({ lat: Number(place.lat.toFixed(5)), lon: Number(place.lon.toFixed(5)) });
+                status.textContent = added ? "Waypoint placed." : "The route is full.";
+            });
+            let hoverTimer = 0;
+            canvas.addEventListener("pointermove", event =>
+            {
+                if (event.buttons || performance.now() - hoverTimer < 60) return;
+
+                hoverTimer = performance.now();
+                const site = siteAt(event);
+                canvas.style.cursor = site ? "pointer" : addMode ? "crosshair" : "";
+                tip.hidden = !site;
+
+                if (site)
+                {
+                    tip.textContent = site.name;
+                    const box = layer.getBoundingClientRect();
+                    tip.style.left = event.clientX - box.left + 14 + "px";
+                    tip.style.top = event.clientY - box.top + 14 + "px";
+                }
+            });
+            get("fit").addEventListener("click", fitRoute);
+            get("add").addEventListener("click", event =>
+            {
+                addMode = !addMode;
+                event.currentTarget.setAttribute("aria-pressed", String(addMode));
+                canvas.style.cursor = addMode ? "crosshair" : "";
+                status.textContent = addMode ? "Click the planet to drop a waypoint." : "";
+            });
+
+            // Compass and readout, in the spirit of a planetarium: which way is north, how high you are and what is below you.
+            const needle = get("needle");
+            const readout = get("readout");
+            let readoutAt = 0;
+            const ndcA = new THREE.Vector3(), ndcB = new THREE.Vector3(), tangent = new THREE.Vector3(), below = new THREE.Vector3();
+            tickers.add(now =>
+            {
+                if (now - readoutAt < 120) return;
+
+                readoutAt = now;
+                const distance = camera.position.length();
+                below.copy(camera.position).normalize();
+                const place = toLatLon(below);
+                const altitude = (distance - 1) * 3396.19;
+                readout.textContent = `${altitude >= 100 ? Math.round(altitude).toLocaleString("en-US") + " km" : altitude.toFixed(1) + " km"} above the surface · ${Math.abs(place.lat).toFixed(2)}° ${place.lat >= 0 ? "N" : "S"} ${Math.abs(place.lon).toFixed(2)}° ${place.lon >= 0 ? "E" : "W"}`;
+                tangent.set(0, 1, 0).addScaledVector(below, -below.y);
+
+                if (tangent.lengthSq() < 1e-6)
+                {
+                    needle.style.transform = "rotate(0deg)";
+                    return;
+                }
+
+                tangent.normalize().multiplyScalar(0.05).add(below);
+                ndcA.copy(below).project(camera);
+                ndcB.copy(tangent).project(camera);
+                needle.style.transform = `rotate(${Math.atan2(ndcB.x - ndcA.x, ndcB.y - ndcA.y) * 180 / Math.PI}deg)`;
+            });
+            get("north").addEventListener("click", () => flyTo(new THREE.Vector3(0, 1, 0), 2.6));
+            get("south").addEventListener("click", () => flyTo(new THREE.Vector3(0, -1, 0), 2.6));
+            get("compass").addEventListener("click", () => flyTo(defaultDirection, 3.1));
+            get("fold").addEventListener("click", event =>
+            {
+                const folded = layer.querySelector(".map-3d-panel").classList.toggle("is-folded");
+                event.currentTarget.setAttribute("aria-expanded", String(!folded));
+                event.currentTarget.textContent = folded ? "+" : "−";
+            });
+
+            const updateRouteText = () =>
+            {
+                readPoints();
+                let total = 0;
+                for (let i = 1; i < valid.length; i++) total += analyzeRoute([valid[i - 1], valid[i]]).totalDistance;
+                get("route").textContent = valid.length >= 2
+                    ? `Your route: ${valid.length} waypoints, ${formatDistance(total)} along the surface of Mars, anywhere on the planet.`
+                    : valid.length === 1 ? "One waypoint placed. Add another to make a route." : "No route yet. Switch on Add waypoint and click the planet, or open a place and add it.";
+            };
+
+            applyFactor = () =>
+            {
+                applyRelief();
+                drawRoute();
+                drawSites();
+                updateRouteText();
+                controls.minDistance = minimumDistance();
+            };
+
+            // Changes made anywhere else (the 2D map, the editors, undo) show here at once.
+            stopListening?.();
+            const stopStore = subscribe ? subscribe(() => { drawRoute(); updateRouteText(); }) : null;
+            const onLineStyle = () => drawRoute();
+            window.addEventListener("mars-line-style", onLineStyle);
+            stopListening = () => { stopStore?.(); window.removeEventListener("mars-line-style", onLineStyle); };
+            mountLineControls(get("lines"), routeControls);
+            controls.zoomSpeed = 1.3;
+            camera.near = 0.002;
+            camera.updateProjectionMatrix();
+
+            flyIn = () =>
+            {
+                readPoints();
+                const centre = vectors.length ? vectors.reduce((sum, vector) => sum.add(vector), new THREE.Vector3()).normalize() : defaultDirection;
+                const direction = centre.lengthSq() > 0.25 ? centre : defaultDirection;
+                controls.target.set(0, 0, 0);
+                camera.position.copy(direction.clone().multiplyScalar(10));
+                flyTo(direction, 3.1);
+            };
+
+            applyFactor();
+            flyIn();
+            globalMosaic(MOLA_DEM_URL, light ? 1 : 2, "png", "#000000").then(heights =>
+            {
+                if (disposed || id !== session) return;
+                relief.width = heights.width;
+                relief.height = heights.height;
+                relief.data = heights.getContext("2d").getImageData(0, 0, heights.width, heights.height).data;
+                applyFactor();
+                status.textContent = "NASA 3D model of Mars · MOLA relief, exaggerated";
+            }).catch(() => { if (!disposed && id === session) status.textContent = "Whole planet · imagery unavailable"; });
+        };
+
         const build = async which =>
         {
             const id = ++session;
             mode = which;
+            hud = which === "planet" ? null : hudKeep;
+            controls.maxPolarAngle = which === "planet" ? Math.PI : Math.PI * 0.47;
             // A 1.2 km deep crater 50 km wide looks flat at true scale; the delta clip reads well at x3.
-            factor = 3;
+            factor = 6;
             get("ex").value = String(factor);
             get("ex-value").textContent = factor;
             get("eyebrow").textContent = COPY[which].eyebrow;
             get("title").textContent = COPY[which].title;
             get("copy").textContent = COPY[which].text;
             get("switch").textContent = COPY[which].switchLabel;
+            if (which === "planet")
+            {
+                await buildPlanet(id);
+                return;
+            }
+
             status.textContent = which === "crater" ? "Loading MOLA heights…" : "Loading CTX heights…";
             const grid = which === "crater" ? await craterGrid() : await (deltaPromise ??= loadJezeroDem());
 
@@ -510,6 +1159,7 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
                 return bend((u - 0.5) * spanX, patchHeight(elevation, u, v, point.lat, point.lon), (v - 0.5) * spanY);
             };
 
+            if (scene) disposeTree(scene);
             scene = new THREE.Scene();
             tickers.clear();
             scene.background = new THREE.Color(0x0b1118);
@@ -852,7 +1502,7 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
             controls.autoRotate = !controls.autoRotate;
             event.currentTarget.setAttribute("aria-pressed", String(controls.autoRotate));
         });
-        get("switch").addEventListener("click", () => build(mode === "crater" ? "delta" : "crater").catch(() => { status.textContent = "3D terrain could not load. Check your connection."; }));
+        get("switch").addEventListener("click", () => build({ crater: "delta", delta: "planet", planet: "crater" }[mode]).catch(() => { status.textContent = "3D terrain could not load. Check your connection."; }));
         await build(mode);
     }
     catch

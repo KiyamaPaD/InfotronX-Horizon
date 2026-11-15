@@ -16,7 +16,7 @@ function memoryStorage()
 test("checkpoint captures independent route and observation data", () =>
 {
     globalThis.localStorage = memoryStorage();
-    const store = new MissionStore();
+    const store = new MissionStore({ userId: "test-user" });
     const before = store.activeRoute.points.length;
     const snapshot = store.saveCheckpoint("Before route changes");
     assert.ok(snapshot);
@@ -31,9 +31,9 @@ test("checkpoint captures independent route and observation data", () =>
 test("checkpoint persists across reload and JSON validation", () =>
 {
     globalThis.localStorage = memoryStorage();
-    const store = new MissionStore();
+    const store = new MissionStore({ userId: "test-user" });
     store.saveCheckpoint("Saved state");
-    assert.equal(new MissionStore().current.checkpoints[0].label, "Saved state");
+    assert.equal(new MissionStore({ userId: "test-user" }).current.checkpoints[0].label, "Saved state");
     const exported = JSON.parse(JSON.stringify(store.current));
     assert.equal(validateMission(exported).checkpoints.length, 1);
 });
@@ -49,7 +49,7 @@ test("malformed and oversized checkpoints do not bypass bounds", () =>
 test("checkpoint limit blocks unbounded local growth", () =>
 {
     globalThis.localStorage = memoryStorage();
-    const store = new MissionStore();
+    const store = new MissionStore({ userId: "test-user" });
 
     for (let i = 0; i < 8; i++)
     {
@@ -65,7 +65,7 @@ test("checkpoint limit blocks unbounded local growth", () =>
 test("reordering manual waypoints changes route sequence without losing coordinates", () =>
 {
     globalThis.localStorage = memoryStorage();
-    const store = new MissionStore();
+    const store = new MissionStore({ userId: "test-user" });
     store.addPoint({ lat: 18.4400, lon: 77.4500 });
     store.addPoint({ lat: 18.4440, lon: 77.4540 });
     store.addPoint({ lat: 18.4460, lon: 77.4700 });
@@ -82,7 +82,7 @@ test("reordering manual waypoints changes route sequence without losing coordina
 test("user observation may be added as a waypoint manually", () =>
 {
     globalThis.localStorage = memoryStorage();
-    const store = new MissionStore();
+    const store = new MissionStore({ userId: "test-user" });
     store.addObservation({ lat: 18.45160, lon: 77.45920 }, "User note", "A human annotation");
     const note = store.current.observations[0];
     const count = store.activeRoute.points.length;

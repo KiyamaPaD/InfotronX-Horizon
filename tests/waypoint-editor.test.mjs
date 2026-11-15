@@ -38,7 +38,7 @@ test("marker metadata is sanitized and legacy coordinates remain valid", () =>
 test("waypoint editor preserves user fields across save, reload, checkpoint and export", () =>
 {
     globalThis.localStorage = memoryStorage();
-    const store = new MissionStore();
+    const store = new MissionStore({ userId: "test-user" });
 
     store.addPoint({ lat: 18.44, lon: 77.45 });
     const id = store.activeRoute.points[0].id;
@@ -49,7 +49,7 @@ test("waypoint editor preserves user fields across save, reload, checkpoint and 
     }), true);
 
     store.saveCheckpoint("Before sample");
-    const reloaded = new MissionStore();
+    const reloaded = new MissionStore({ userId: "test-user" });
     const point = reloaded.activeRoute.points[0];
     assert.equal(reloaded.activeRoute.color, "#123abc");
     assert.equal(point.name, "Science station");
@@ -71,7 +71,7 @@ test("waypoint editor preserves user fields across save, reload, checkpoint and 
 test("changing metadata does not invalidate DEM, but moving coordinates does", () =>
 {
     globalThis.localStorage = memoryStorage();
-    const store = new MissionStore();
+    const store = new MissionStore({ userId: "test-user" });
     store.addPoint({ lat: 18.44, lon: 77.45 });
     const point = store.activeRoute.points[0];
     store.activeRoute.terrainModel = { source: "test", stats: { distanceMeters: 0, ascentMeters: 0, descentMeters: 0, maxGradePercent: 0 } };
@@ -91,7 +91,7 @@ test("changing metadata does not invalidate DEM, but moving coordinates does", (
 test("undo and redo cover edits, deletions, dragging and branch-off edits", () =>
 {
     globalThis.localStorage = memoryStorage();
-    const store = new MissionStore();
+    const store = new MissionStore({ userId: "test-user" });
     assert.equal(store.canUndo, false);
     assert.equal(store.undo(), false);
     store.addPoint({ lat: 18.44, lon: 77.45 });
@@ -121,7 +121,7 @@ test("undo and redo cover edits, deletions, dragging and branch-off edits", () =
 test("switching missions clears edit history and cannot undo another mission", () =>
 {
     globalThis.localStorage = memoryStorage();
-    const store = new MissionStore();
+    const store = new MissionStore({ userId: "test-user" });
     store.addPoint({ lat: 18.44, lon: 77.45 });
     const initialId = store.current.id;
     assert.equal(store.canUndo, true);
@@ -138,14 +138,14 @@ test("switching missions clears edit history and cannot undo another mission", (
 test("mission metadata and route colors reject unsafe values", () =>
 {
     globalThis.localStorage = memoryStorage();
-    const store = new MissionStore();
+    const store = new MissionStore({ userId: "test-user" });
     assert.equal(store.updateMissionDetails("  Lab A  ", "Field study"), true);
     assert.equal(store.current.title, "Lab A");
     assert.equal(store.current.description, "Field study");
     assert.equal(store.updateMissionDetails(" ", "Ignored"), false);
     assert.equal(store.setRouteColor("expression(alert(1))"), false);
     assert.equal(store.setRouteColor("#abcdef"), true);
-    assert.equal(new MissionStore().activeRoute.color, "#abcdef");
+    assert.equal(new MissionStore({ userId: "test-user" }).activeRoute.color, "#abcdef");
 });
 
 test("UI provides a manual waypoint editor, context actions, and history controls", () =>

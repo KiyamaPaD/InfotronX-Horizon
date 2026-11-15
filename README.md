@@ -28,7 +28,7 @@ The "All tools" view keeps the full science, math and resource workspace.
 - **Explore real terrain data:** study a limited-area USGS/NASA Mars Reconnaissance Orbiter CTX elevation clip near Jezero alongside NASA Mars Trek imagery layers.
 - **Terrain Intelligence V2:** inspect an interactive elevation profile, compare waypoint altitude and mean segment grade, and locate numeric DEM samples directly on the map. [Terrain profile guide](docs/TERRAIN_INTELLIGENCE_V2.md).
 - **Analyze terrain:** elevation and slope profiles, local roughness, line of sight, reachability, contours, and experimental scientific models.
-- **Take your work with you:** Mission Center groups on-device autosave, checkpoints, exports, mission links and an authenticated cloud library with sharing by verified teammate email (no automatic email delivery).
+- **Take your work with you:** Sign in once and your missions save automatically (guests are never saved). Mission Center groups checkpoints, exports, mission links and an authenticated cloud library with sharing by verified teammate email (no automatic email delivery).
 - **See what's needed in Science:** Analytics provides an explicit guide for required waypoint counts, numeric DEM availability and route alternatives; tools can be expanded and opened without automatic sample points.
 - **Visualize your mission graph:** a weighted waypoint-connectivity diagram complements the existing segment distances, elevation, slope/roughness, reachability, contour and route comparison charts.
 - **Create a private Crew Profile:** signed-in Mars Atlas accounts can save a callsign, mission role, interests, biography and an optional private profile image. Roles are user-supplied, not NASA credentials. [Crew profile documentation](docs/CREW_PROFILES.md).
@@ -48,7 +48,7 @@ The map uses the NASA Viking global color mosaic as its default (zoom 3–7). In
 | Manual mission workspace and analysis modules | Implemented; team browser testing in progress |
 | NASA/USGS DEM | Bundled numerical clip, **not** a complete Jezero elevation survey |
 | NASA background maps | External image services; actual tile loading depends on connectivity |
-| Mission saving | Browser-local storage, user exports and an optional authenticated Supabase cloud library |
+| Mission saving | Guests: not saved. Signed-in users: automatic cloud saving with a device copy, plus user exports |
 | Team account access | Authenticated cloud save/open with per-mission viewer/editor roles; email-based viewer/editor access (no automatic invitation emails); real-user flows need verification |
 | Live simultaneous editing | **Not implemented** — cloud snapshots are opened and saved explicitly. Team chat uses Realtime independently of document editing |
 | Mission chat | RLS-protected conversations for cloud mission members; real two-account production test pending |

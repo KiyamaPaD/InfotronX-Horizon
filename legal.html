@@ -55,7 +55,7 @@
 <p>We may limit or remove accounts and content that break these rules.</p>
 <h3>4. Accounts, missions and your content</h3>
 <ul>
-<li>You can use the planner without an account. Missions are then stored only in your browser.</li>
+<li>You can use the planner as a guest without an account. Nothing you draw is saved until you sign in, so export a backup if it matters.</li>
 <li>If you sign in, you can save missions to our cloud library and share them with other signed-in users by email. You decide who can view or edit.</li>
 <li>You keep the rights to your missions, notes and profile. You give us permission to store and display them as needed to run the service for you and the people you share with.</li>
 <li>You are responsible for what you write. Do not enter secrets or personal data of other people.</li>
@@ -79,14 +79,15 @@
 <p><em>Last updated: 15 November 2026. Plain-language template for an independent student project. Have it reviewed by a qualified person before relying on it legally, and fill in the details in square brackets.</em></p>
 <h3>Summary</h3>
 <ul>
-<li>You can use the planner <strong>without an account</strong>. Your missions then stay in your browser and are not sent to us.</li>
+<li>You can use the planner <strong>as a guest, without an account</strong>. Nothing you draw is saved: it stays in the page and is gone when you reload or close it.</li>
+<li>Sign in and your work is saved automatically to your account.</li>
 <li>We do <strong>not</strong> use advertising, tracking or analytics.</li>
 <li>If you create an account, we store the data you give us so the cloud library, sharing and chat can work.</li>
 </ul>
 <h3>Who is responsible</h3>
 <p>InfotronX Horizon, an independent student team. Contact: mario2008toth@gmail.ro.</p>
 <h3>What happens without an account</h3>
-<p>Your missions, routes, notes and settings are saved in your browser's local storage. We never receive them. See the <a href="#cookies">Cookies and local storage</a> page.</p>
+<p>As a guest, your missions, routes and notes exist only in the open page and are not saved or sent to us. The page warns you before you close it with unsaved work. Small interface choices (for example that you have seen the tour) are kept in your browser. See the <a href="#cookies">Cookies and local storage</a> page.</p>
 <h3>What the site loads from other services</h3>
 <p>When you open Mars Atlas your browser contacts these services, which can see your IP address and browser details. We do not control them.</p>
 <ul>
@@ -121,10 +122,11 @@
 <section id="cookies"><h2>Cookies and local storage</h2>
 <p><em>Last updated: 15 November 2026.</em></p>
 <h3>Short version</h3>
-<p>Mars Atlas <strong>does not set cookies</strong> and does not use advertising or analytics trackers. It keeps a few settings in your browser's <strong>local storage</strong>, which is needed for the site to remember your work. Because this is strictly necessary and does not track you, we do not show a cookie banner.</p>
+<p>Mars Atlas <strong>does not set cookies</strong> and does not use advertising or analytics trackers. It keeps a few choices in your browser's <strong>local storage</strong>, which is needed for the site to remember your layout and, for signed-in users, an offline copy of their missions. Because this is strictly necessary and does not track you, we do not show a cookie banner.</p>
 <h3>What is stored</h3>
 <table><thead><tr><th>Key</th><th>What it keeps</th><th>Why</th></tr></thead><tbody>
-<tr><td><code>mars-atlas.missions.v1</code></td><td>Your missions, routes, waypoints and notes</td><td>Autosave on this device</td></tr>
+<tr><td><code>mars-atlas.missions.v1</code></td><td>A copy of the signed-in user's missions, tagged with their account. Removed when they sign out. Guests never get this</td><td>Offline copy for a signed-in user</td></tr>
+<tr><td><code>mars-guest-session</code> (session storage)</td><td>That you chose to continue as a guest</td><td>Do not ask again until you close the tab</td></tr>
 <tr><td><code>mars-atlas.workflow-step</code></td><td>The last step you used (Explore, Plan, Analyze, All tools)</td><td>Return to where you were</td></tr>
 <tr><td><code>mars-panel-left</code>, <code>mars-panel-right</code></td><td>Whether a side panel is hidden</td><td>Remember your layout</td></tr>
 <tr><td><code>mars-tutorial-seen</code></td><td>That you have seen the tour</td><td>Do not repeat it</td></tr>
@@ -147,6 +149,7 @@
 <li><strong>CTX Jezero mosaic</strong>: NASA / JPL-Caltech / MSSS (Mars Reconnaissance Orbiter), served by NASA Mars Trek.</li>
 <li><strong>MOLA elevation and relief shading</strong>: NASA / Goddard Space Flight Center (Mars Global Surveyor), with HRSC context from ESA / DLR / FU Berlin, served by NASA Mars Trek.</li>
 <li><strong>CTX terrain model of the Mars 2020 landing site</strong> (the bundled 20 m elevation clip): USGS Astrogeology Science Center. Fergason, R. L., et al. (2020). DOI <a href="https://doi.org/10.5066/P906QQT8" rel="noopener">10.5066/P906QQT8</a>.</li>
+<li><strong>3D model of Mars</strong> (the planet in the 3D view, with its texture and normal map): NASA/JPL-Caltech, https://science.nasa.gov/resource/planet-mars-3d-model/. The file is included unchanged as <code>assets/nasa/mars-3d-model.glb</code>; the app makes its mesh denser and lifts it with MOLA heights.</li>
 <li>Mars Trek: https://trek.nasa.gov/mars/</li>
 </ul>
 <p>Please check each provider's own terms before reusing their imagery.</p>

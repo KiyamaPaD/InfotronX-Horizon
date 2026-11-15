@@ -604,22 +604,25 @@ export function mountCloudWorkspace({ store, notify })
             : "Pending: no confirmed Mars Atlas account matches this exact email yet. No email was sent. Use Copy invite to send instructions.");
     }));
 
-    cloud.initialize().then(enabled =>
+    const ready = cloud.initialize().then(enabled =>
     {
         account.hidden = false;
 
         if (!enabled)
         {
-            get("#cloud-status").textContent = "Cloud service is not configured. Your device library and exports remain available.";
+            get("#cloud-status").textContent = "Cloud service is not configured. Exports remain available.";
             get("#cloud-auth-form").hidden = true;
         }
+
+        return enabled;
     }).catch(error =>
     {
         console.warn("Cloud sign-in could not be initialized:", error);
         account.hidden = false;
-        get("#cloud-status").textContent = "Cloud connection unavailable. Device saves and exports are still available.";
+        get("#cloud-status").textContent = "Cloud connection unavailable. Exports remain available.";
         get("#cloud-auth-form").hidden = true;
+        return false;
     });
 
-    return { cloud };
+    return { cloud, ready, account };
 }

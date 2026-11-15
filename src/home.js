@@ -312,11 +312,11 @@ function pageMarkup()
         </footer>`;
 }
 
-export function mountHome({ onStart, onDemo, onTour } = {})
+export function mountHome({ onStart, onDemo, onTour, force = false } = {})
 {
     try
     {
-        if (localStorage.getItem(SKIP_KEY) === "1") return null;
+        if (!force && localStorage.getItem(SKIP_KEY) === "1") return null;
     }
     catch { /* storage blocked: show the intro */ }
 
@@ -330,6 +330,7 @@ export function mountHome({ onStart, onDemo, onTour } = {})
     const app = document.getElementById("app");
     if (app) app.inert = true;
     root.querySelector('[data-home="start"]').focus({ preventScroll: true });
+    try { root.querySelector('[data-home="remember"]').checked = localStorage.getItem(SKIP_KEY) === "1"; } catch { /* storage blocked */ }
 
     const state = { closing: false, disposed: false, dive: null, after: null };
     const parts = {};

@@ -17,47 +17,20 @@ import { mountMissionCopilot } from "./mission-copilot-ui.js";
 import { mountWorkflowSteps } from "./workflow-steps.js";
 import { animateNumber } from "./motion.js";
 import { Tutorial } from "./tutorial.js";
+import { TUTORIAL_STEPS } from "./tutorial-steps.js";
 import { enableCardTilt } from "./tilt.js";
 import { mountHome } from "./home.js";
 import { mountAnalyzeDashboard } from "./analyze-dashboard.js";
+import { mountAccount } from "./account.js";
+import { mountLineControls } from "./line-style.js";
+import { mountQuickWaypoint, quickWaypointEnabled } from "./quick-waypoint.js";
 
 const store = new MissionStore();
+const routeControls = () => ({ getColor: () => store.activeRoute.color, setColor: color => store.setRouteColor(color) });
+const quickWaypoint = mountQuickWaypoint({ store, notify: message => notify(message), openFullEditor: id => openWaypointEditor(id) });
 const imported = readSharedMission();
 
-const tutorialSteps = [
-    {
-        element: ".brand",
-        title: "Bun venit pe Marte!",
-        text: "Acesta este Mars Atlas, centrul tău de control pentru explorarea craterului Jezero.",
-        position: "bottom"
-    },
-    {
-        element: "#left-sidebar",
-        title: "Planificator Misiune",
-        text: "Aici poți crea rute noi și poți alege ce instrumente de desen să folosești pe hartă.",
-        position: "right"
-    },
-    {
-        element: ".map-controls",
-        title: "Control Hartă",
-        text: "Folosește aceste butoane pentru zoom și pentru a activa modul 3D imersiv.",
-        position: "left"
-    },
-    {
-        element: "#right-sidebar",
-        title: "Analiză Științifică",
-        text: "Aici vei găsi telemetria rutei tale, grafice de elevație și notele de teren.",
-        position: "left"
-    },
-    {
-        element: ".header-share",
-        title: "Partajează Misiunea",
-        text: "Când ești gata, poți trimite planul tău de misiune oricui printr-un link unic.",
-        position: "bottom"
-    }
-];
-
-const tutorial = new Tutorial(tutorialSteps);
+const tutorial = new Tutorial(TUTORIAL_STEPS);
 
 if (imported)
 {
@@ -75,7 +48,7 @@ app.innerHTML = `
         <header class="header" role="banner">
             <div class="brand"><div class="brand-symbol"><span></span></div><div><div class="brand-wordmark">MARS <strong>ATLAS</strong></div><div class="brand-subline">INFOTRONX HORIZON</div></div></div>
             <div class="header-center"><span class="header-center-title">Jezero Crater <span class="header-divider"></span> Mars</span></div>
-            <div class="header-actions"><button class="btn btn-outline compact" id="start-tutorial">Tutorial</button><button class="btn btn-outline compact header-copilot" data-action="open-copilot">Insights <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M4 4h8v8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="edition-pill">NASA SPACE APPS · 2026</span><button class="btn btn-quiet compact header-help" data-action="show-guide" aria-label="Open help and keyboard shortcuts">? <span>Help</span></button><button class="btn btn-accent compact header-share" data-action="share">Share mission <span aria-hidden="true">↗</span></button></div>
+            <div class="header-actions"><button class="btn btn-outline compact" id="start-tutorial" title="A step-by-step tour of every part of the app, plus keyboard shortcuts">Help & tour</button><button class="btn btn-outline compact header-copilot" data-action="open-copilot">Insights <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M4 4h8v8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="edition-pill">NASA SPACE APPS · 2026</span><button class="btn btn-accent compact header-share" data-action="share">Share mission <span aria-hidden="true">↗</span></button></div>
         </header>
         <div class="workspace">
                         <aside class="sidebar sidebar-left" id="left-sidebar">
@@ -85,11 +58,11 @@ app.innerHTML = `
                     <div class="panel-section"><div class="panel-title-row"><div class="section-label">MAP DATA</div><span class="tiny-pill">NASA TREK</span></div><div id="layer-buttons" class="layer-buttons"></div><div class="layer-description" id="layer-description"></div></div>
 
                 </div>
-                <div class="sidebar-foot"><span class="dot-green"></span> <span id="storage-status">SAVED ON THIS DEVICE</span> </div>
+                <div class="sidebar-foot"><span class="dot-green"></span> <span id="storage-status">NOT SAVED · SIGN IN TO KEEP YOUR WORK</span> </div>
             </aside>
             <main class="center-column">
                 <div class="map-titlebar"><div class="map-title-copy"><div class="titlebar-kicker"><span class="titlebar-live-dot"></span> EXPLORE · PLAN · ANALYZE <span>/</span> JEZERO REGION</div><div class="map-title">Explore Jezero <span class="map-title-small">/ Mars</span></div></div><div class="map-title-actions"><div class="map-data-badge"><span class="map-source-eyebrow">CURRENT IMAGERY</span><strong id="map-source-name">VIKING GLOBAL</strong></div><span class="map-zoom-text" id="zoom-text">ZOOM 7</span><button class="btn btn-outline map-focus-btn" data-action="focus-mode" aria-pressed="false" title="Expand map workspace"><span aria-hidden="true">⛶</span> <span>Focus map</span></button></div></div>
-                <div class="map-wrap"><div class="map-root" id="map-root" role="region" tabindex="-1" aria-label="Interactive Mars map. Draw routes with map tools or enter waypoint coordinates manually."></div><button type="button" class="panel-toggle panel-toggle-left" data-action="toggle-left" aria-label="Hide left panel" aria-pressed="false">‹</button><button type="button" class="panel-toggle panel-toggle-right" data-action="toggle-right" aria-label="Hide right panel" aria-pressed="false">›</button><div class="map-context-menu" id="map-context-menu" role="menu" aria-label="Map actions" hidden><button type="button" role="menuitem" data-context-action="edit-waypoint">✎ Edit waypoint</button><button type="button" role="menuitem" data-context-action="delete-waypoint">× Delete waypoint</button><button type="button" role="menuitem" data-context-action="edit-observation">✎ Edit observation</button><button type="button" role="menuitem" data-context-action="delete-observation">× Delete observation</button><button type="button" role="menuitem" data-context-action="add-waypoint">＋ Place waypoint here</button><button type="button" role="menuitem" data-context-action="add-note">◇ Add field note here</button></div><div class="map-top-overlay"><div class="mode-indicator"><span class="indicator-symbol" aria-hidden="true">⌖</span><span id="mode-description">Explore mode · drag to navigate</span></div><div class="planet-tag"><span class="planet-tag-indicator"></span> PLANET MARS <span>·</span> JEZERO</div></div><div class="mobile-map-toolbar" role="group" aria-label="Map editing tools"><button data-mode="pan" class="active" aria-pressed="true">↔ Explore</button><button data-mode="draw" aria-pressed="false">✎ Draw</button><button data-mode="edit" aria-pressed="false">◎ Move</button><button data-mode="observe" aria-pressed="false">✧ Note</button></div><div class="map-controls"><button data-action="zoom-in" title="Maximum map detail" aria-label="Zoom in" disabled>＋</button><button data-action="zoom-out" title="Zoom out" aria-label="Zoom out">−</button><span class="control-break"></span><button data-action="focus-route" title="Fit active route" aria-label="Fit active route">⌖</button><button data-action="reset-map" title="Reset map" aria-label="Reset map">⟲</button><span class="control-break"></span><button data-action="open-3d" class="map-3d-toggle" title="3D terrain view" aria-label="Open 3D terrain view">3D</button></div><div class="map-bottom-overlay"><div class="live-coordinate" id="live-coordinates">18.44460° N · 77.45090° E</div><span class="map-scale">SPHERICAL DISTANCE MODEL</span></div></div>
+                <div class="map-wrap"><div class="map-root" id="map-root" role="region" tabindex="-1" aria-label="Interactive Mars map. Draw routes with map tools or enter waypoint coordinates manually."></div><button type="button" class="panel-toggle panel-toggle-left" data-action="toggle-left" aria-label="Hide left panel" aria-pressed="false">‹</button><button type="button" class="panel-toggle panel-toggle-right" data-action="toggle-right" aria-label="Hide right panel" aria-pressed="false">›</button><div class="map-context-menu" id="map-context-menu" role="menu" aria-label="Map actions" hidden><button type="button" role="menuitem" data-context-action="edit-waypoint">✎ Edit waypoint</button><button type="button" role="menuitem" data-context-action="delete-waypoint">× Delete waypoint</button><button type="button" role="menuitem" data-context-action="edit-observation">✎ Edit observation</button><button type="button" role="menuitem" data-context-action="delete-observation">× Delete observation</button><button type="button" role="menuitem" data-context-action="add-waypoint">＋ Place waypoint here</button><button type="button" role="menuitem" data-context-action="add-note">◇ Add field note here</button></div><div class="map-top-overlay"><div class="mode-indicator"><span class="indicator-symbol" aria-hidden="true">⌖</span><span id="mode-description">Explore mode · drag to navigate</span></div><div class="planet-tag"><span class="planet-tag-indicator"></span> PLANET MARS <span>·</span> JEZERO</div></div><div class="mobile-map-toolbar" role="group" aria-label="Map editing tools"><button data-mode="pan" class="active" aria-pressed="true">↔ Explore</button><button data-mode="draw" aria-pressed="false">✎ Draw</button><button data-mode="edit" aria-pressed="false">◎ Move</button><button data-mode="observe" aria-pressed="false">✧ Note</button></div><div class="map-controls"><button data-action="zoom-in" title="Maximum map detail" aria-label="Zoom in" disabled>＋</button><button data-action="zoom-out" title="Zoom out" aria-label="Zoom out">−</button><span class="control-break"></span><button data-action="focus-route" title="Fit active route" aria-label="Fit active route">⌖</button><button data-action="reset-map" title="Reset map" aria-label="Reset map">⟲</button><span class="control-break"></span><button data-action="open-3d" class="map-3d-toggle" title="3D terrain view" aria-label="Open 3D terrain view">3D</button></div><details class="map-lines"><summary>Lines</summary><div data-lines></div></details><details class="map-legend" open><summary>Legend</summary><ul><li><i class="lg-line"></i>Your route, drawn in the route's colour</li><li><span class="lg-symbols">● ◆ ■ ▲ ★</span>Waypoint, in the shape you choose</li><li><span class="lg-symbols">✎</span>Field note</li><li><i class="lg-dash"></i>Distance is measured along the surface of Mars</li></ul></details><div class="map-bottom-overlay"><div class="live-coordinate" id="live-coordinates">18.44460° N · 77.45090° E</div><span class="map-scale">SPHERICAL DISTANCE MODEL</span></div></div>
                 <div class="bottom-area"><div class="bottom-section-header"><div><span class="section-label">ROUTE COMPARISON</span><p>Compare route distances. Shorter does not necessarily mean safer.</p></div><div class="bottom-section-actions"><button class="btn btn-quiet small" data-action="show-route-guide">How to choose a route</button><button class="btn btn-outline small" data-action="simulate-detour">↗ Simulate a detour</button></div></div><div class="route-comparison" id="route-comparison"></div></div>
             </main>
                         <aside class="sidebar sidebar-right" id="right-sidebar">
@@ -109,7 +82,7 @@ app.innerHTML = `
             </aside>
         </div>
         <footer class="global-footer"><span>© 2026 INFOTRONX HORIZON · MARS ATLAS · <nav class="legal-links" aria-label="Legal"><a href="./legal.html#terms">Terms</a><a href="./legal.html#privacy">Privacy</a><a href="./legal.html#cookies">Cookies</a><a href="./legal.html#credits">Credits</a></nav></span><span>Planning tool · Terrain hazards are not assessed</span></footer>
-        <nav class="mobile-dock" aria-label="Mobile workspace navigation"><button data-action="show-map" class="mobile-dock-btn active" aria-pressed="true"><span aria-hidden="true">⌖</span> Map</button><button data-action="show-planner" class="mobile-dock-btn" aria-pressed="false"><span aria-hidden="true">☷</span> Planner</button><button data-action="show-analytics" class="mobile-dock-btn" aria-pressed="false"><span aria-hidden="true">◫</span> Science</button><button data-action="show-guide" class="mobile-dock-btn"><span aria-hidden="true">?</span> Help</button></nav><button type="button" class="mobile-panel-scrim" data-action="show-map" aria-label="Close panel" hidden></button>
+        <nav class="mobile-dock" aria-label="Mobile workspace navigation"><button data-action="show-map" class="mobile-dock-btn active" aria-pressed="true"><span aria-hidden="true">⌖</span> Map</button><button data-action="show-planner" class="mobile-dock-btn" aria-pressed="false"><span aria-hidden="true">☷</span> Planner</button><button data-action="show-analytics" class="mobile-dock-btn" aria-pressed="false"><span aria-hidden="true">◫</span> Science</button><button data-action="start-tutorial" class="mobile-dock-btn"><span aria-hidden="true">?</span> Help</button></nav><button type="button" class="mobile-panel-scrim" data-action="show-map" aria-label="Close panel" hidden></button>
         <div class="toast-stack" id="toasts" aria-live="polite" aria-atomic="false"></div>
         <dialog class="modal guide-modal" id="guide-modal" aria-labelledby="guide-title"><div class="modal-header"><span class="section-label">FIELD OPERATIONS / QUICK GUIDE</span><button class="modal-x" type="button" data-action="close-modal" aria-label="Close guide">×</button></div><h2 id="guide-title">Your mission starts here.</h2><p>Use the map directly to build and inspect a mission plan in three steps.</p><div class="guide-steps"><div><span>01</span><div><strong>Draw your path</strong><p>Choose Draw, then tap the map to place waypoints. Use Move to adjust them.</p></div></div><div><span>02</span><div><strong>Study the route</strong><p>Open Science to compare distance, read route checks and inspect observations.</p></div></div><div><span>03</span><div><strong>Save and share</strong><p>Mission changes save locally. Create checkpoints, export data or share a link.</p></div></div></div><div class="guide-shortcuts"><strong>Keyboard shortcuts</strong><span>D · Draw</span><span>M · Move</span><span>E · Explore</span><span>N · Observe</span><span>Ctrl+Z / Ctrl+Y · Undo / Redo</span><span>Right click · Map actions</span><span>Esc · Explore / close panel</span></div><div class="guide-disclaimer">Routes are analytical plans, not certified for real astronaut navigation.</div><div class="dialog-actions"><button class="btn btn-accent" data-action="close-modal">Start exploring ↗</button></div></dialog>
         <dialog class="modal guide-modal" id="route-guide-modal" aria-labelledby="route-guide-title"><div class="modal-header"><span class="section-label">ROUTE PLANNING / HOW TO CHOOSE</span><button class="modal-x" type="button" data-action="close-modal" aria-label="Close route guide">×</button></div><h2 id="route-guide-title">Choosing between routes</h2><p>The app compares the routes you create. It does not decide for you, and it picks the best of the options you calculated, not a proven optimum.</p><div class="guide-steps"><div><span>01</span><div><strong>Decide what matters most</strong><p>Shortest distance, gentlest slopes, or the least ground without elevation data. Write it down; it is the rule you will judge every route by.</p></div></div><div><span>02</span><div><strong>Build two or three alternatives</strong><p>Draw a first route, then use Duplicate and move waypoints, or Simulate a detour. Keep the same start and end so the routes are comparable.</p></div></div><div><span>03</span><div><strong>Compare distance</strong><p>Route comparison shows the surface distance of each route, calculated on Mars's radius. A shorter route is not automatically safer.</p></div></div><div><span>04</span><div><strong>Check slope and elevation</strong><p>Open the Terrain tab. Slopes and climbs are only computed where elevation data exists. If a stretch has no data, treat it as unknown, never as safe.</p></div></div><div><span>05</span><div><strong>Avoid exclusion zones</strong><p>Mark any area you want to stay out of and let the route recalculate. A route that crosses one has to justify why.</p></div></div><div><span>06</span><div><strong>Choose and record why</strong><p>Pick the route that best fits the rule from step 01, and add a field note with the reason. This is a planning aid, not a navigation or safety approval.</p></div></div></div><div class="dialog-actions"><button class="btn btn-accent" type="button" data-action="close-modal">Got it</button></div></dialog>
@@ -183,6 +156,10 @@ const map = new MarsMap(get("#map-root"), store, {
             if (!store.addPoint(point))
             {
                 notify(`Route limit reached (${MAX_POINTS_PER_ROUTE} points).`);
+            }
+            else if (quickWaypointEnabled())
+            {
+                quickWaypoint.open(store.activeRoute.points.at(-1).id);
             }
         }
         else if (mode === "observe")
@@ -417,7 +394,7 @@ function render()
     drawRouteGraph(get("#route-connectivity-graph"), mission.routes, mission.activeRouteId);
     renderInspector();
     renderCheckpoints();
-    get("#storage-status").textContent = store.lastSaveSucceeded ? "SAVED ON THIS DEVICE" : "SAVE FAILED · EXPORT A BACKUP";
+    get("#storage-status").textContent = !store.persistLocal ? "NOT SAVED · SIGN IN TO KEEP YOUR WORK" : store.lastSaveSucceeded ? "SAVED ON THIS DEVICE" : "SAVE FAILED · EXPORT A BACKUP";
     get("#active-route-color").value = route.color;
     get("[data-action='undo-edit']").disabled = !store.canUndo;
     get("[data-action='redo-edit']").disabled = !store.canRedo;
@@ -829,6 +806,7 @@ document.addEventListener("click", event =>
         case "focus-route": map.focusRoute(); break;
                 case "reset-map": map.flyTo(JEZERO, 11); break;
         case "start-tutorial": tutorial.start(); break;
+        case "open-home": openHome(); break;
         case "toggle-left": togglePanel("left"); break;
         case "toggle-right": togglePanel("right"); break;
         case "open-3d":
@@ -837,7 +815,18 @@ document.addEventListener("click", event =>
             {
                 import("./map-3d.js").then(({ openMap3d }) => openMap3d({
                     host: get(".map-wrap"),
-                    points: store.activeRoute.points,
+                    getPoints: () => store.activeRoute.points,
+                    subscribe: listener => store.subscribe(listener),
+                    onAddWaypoint: coordinate =>
+                    {
+                        const added = store.addPoint(coordinate);
+
+                        if (!added) notify(`Route limit reached (${MAX_POINTS_PER_ROUTE} points).`);
+                        else if (!coordinate.name && quickWaypointEnabled()) quickWaypoint.open(store.activeRoute.points.at(-1).id);
+
+                        return added;
+                    },
+                    routeControls: routeControls(),
                     routeColor: store.activeRoute.color || "#ff9a6b",
                     onFocusArea: point => map.flyTo(point, 11)
                 }));
@@ -1150,11 +1139,15 @@ render();
 
 get("#start-tutorial").onclick = () => tutorial.start();
 enableCardTilt();
-mountHome({
+let tourRequested = false;
+const homeCallbacks = {
     onStart: () => get('.workflow-step[data-step="plan"]')?.click(),
     onDemo: () => get('[data-action="load-review-demo"]')?.click(),
-    onTour: () => tutorial.start()
-});
+    onTour: () => { tourRequested = true; tutorial.start(); }
+};
+mountHome(homeCallbacks);
+// The start page can be opened again from the navigation bar, without reloading the site.
+const openHome = () => { if (!document.querySelector(".home")) mountHome({ ...homeCallbacks, force: true }); };
 
 function togglePanel(side)
 {
@@ -1171,7 +1164,13 @@ function togglePanel(side)
 try
 {
     for (const side of ["left", "right"]) if (localStorage.getItem("mars-panel-" + side) === "hidden") togglePanel(side);
-    if (!localStorage.getItem("mars-tutorial-seen") && !document.querySelector(".home")) setTimeout(() => tutorial.start(), 2500);
+    // The tour starts once the welcome screen and the sign-in window are out of the way.
+    window.addEventListener("mars-gate-closed", () =>
+    {
+        if (tourRequested || !localStorage.getItem("mars-tutorial-seen")) setTimeout(() => tutorial.start(), 700);
+        // The planet in 3D is where the app begins.
+        setTimeout(() => { if (!document.querySelector(".map-3d-layer")) get("[data-action='open-3d']")?.click(); }, 350);
+    }, { once: true });
 }
 catch {}
 
@@ -1192,3 +1191,7 @@ if (imported)
 }
 
 mountAnalyzeDashboard({ shell: get("#mars-shell"), store, getCloud: () => cloudWorkspace.cloud, getDem: () => scienceWorkbench.numericDem });
+
+mountAccount({ store, cloudWorkspace, notify, shell: get("#mars-shell") });
+
+mountLineControls(get("[data-lines]"), routeControls());

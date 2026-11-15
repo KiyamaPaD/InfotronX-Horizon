@@ -30,8 +30,8 @@ test("legacy example cleanup preserves user metadata after an actual storage rel
         memoryStorage();
         const mission = createDemoMission();
         edit(mission);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify([mission]));
-        const store = new MissionStore();
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ owner: "test-user", missions: [mission] }));
+        const store = new MissionStore({ userId: "test-user" });
         assert.equal(store.activeRoute.points.length, 4);
         assert.equal(store.current.observations.length, 1);
         assert.deepEqual(store.activeRoute.points, mission.routes[0].points);
@@ -55,7 +55,7 @@ test("imported duplicate identifiers cannot delete multiple unrelated records", 
             { id: "note", lat: 19, lon: 78, title: "Second" }
         ]
     };
-    const store = new MissionStore();
+    const store = new MissionStore({ userId: "test-user" });
     assert.equal(store.importMission(candidate), true);
     assert.equal(new Set(store.current.routes.map(route => route.id)).size, 2);
     assert.equal(new Set(store.current.routes.flatMap(route => route.points.map(item => item.id))).size, 3);
@@ -79,7 +79,7 @@ test("checkpoint restoration retains independently addressable routes and waypoi
             { id: "route", points: [] }
         ]
     };
-    const store = new MissionStore();
+    const store = new MissionStore({ userId: "test-user" });
     assert.equal(store.importMission({ routes: [], checkpoints: [checkpoint, checkpoint] }), true);
     assert.notEqual(store.current.checkpoints[0].id, store.current.checkpoints[1].id);
     assert.equal(store.restoreCheckpoint(store.current.checkpoints[0].id), true);
@@ -109,8 +109,8 @@ test("duplicate mission ids in local storage do not make deletion erase both mis
     memoryStorage();
     const first = createMission("First mission");
     const second = { ...createMission("Second mission"), id: first.id };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ activeId: first.id, missions: [first, second] }));
-    const store = new MissionStore();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ owner: "test-user", activeId: first.id, missions: [first, second] }));
+    const store = new MissionStore({ userId: "test-user" });
     assert.equal(store.current.title, "First mission");
     assert.notEqual(store.missions[0].id, store.missions[1].id);
     store.deleteMission(first.id);
@@ -120,7 +120,7 @@ test("duplicate mission ids in local storage do not make deletion erase both mis
 test("duplicating a route is a single complete undoable action", () =>
 {
     memoryStorage();
-    const store = new MissionStore();
+    const store = new MissionStore({ userId: "test-user" });
     store.addPoint({ lat: 18, lon: 77, name: "Science stop" });
     const originalId = store.activeRoute.id;
     let notifications = 0;
