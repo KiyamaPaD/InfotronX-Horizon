@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { MarsMap } from "../src/map.js";
 import { MissionStore } from "../src/store.js";
-import { JEZERO } from "../src/constants.js";
+import { JEZERO, MAP_LAYERS } from "../src/constants.js";
 
 test("rapid wheel events result in one bounded zoom change", async () =>
 {
@@ -258,4 +258,20 @@ test("native useful zoom limits avoid enlarging regional relief imagery", () =>
     // Switching to Viking should never increase detail beyond its native limit.
     map.setLayer("viking");
     assert.ok(map.zoom <= 8);
+});
+
+
+test("CTX stops at stable zoom 10 without requesting unavailable level 11", () =>
+{
+    const ctx = MAP_LAYERS.find(layer => layer.id === "ctx");
+    assert.equal(ctx.maxUsefulZoom, 10);
+    const map = Object.create(MarsMap.prototype);
+    map.zoom = 10;
+    map.layerMaxZoom = ctx.maxUsefulZoom;
+    let renders = 0;
+    map.render = () => renders++;
+    map.options = { onViewChange() { throw new Error("Unexpected map update"); } };
+    map.changeZoom(1);
+    assert.equal(map.zoom, 10);
+    assert.equal(renders, 0);
 });

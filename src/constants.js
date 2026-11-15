@@ -15,7 +15,7 @@ export const MAP_LAYERS = [
         description: "Mars Reconnaissance Orbiter CTX global image mosaic. Visual planning context, not a certified hazard map.",
         url: "https://trek.nasa.gov/tiles/Mars/EQ/CTX_beta01_uncontrolled_5m_Caltech/1.0.0",
         extensions: ["jpg", "png"],
-        maxUsefulZoom: 13
+        maxUsefulZoom: 10
     },
     {
         id: "mola",

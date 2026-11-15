@@ -775,3 +775,26 @@
         font-size:11px;
     }
 }
+
+
+/* Clearly distinguish available map detail from an unloaded zoom level. */
+.map-controls button:disabled
+{
+    opacity:.48;
+    cursor:not-allowed;
+}
+
+.cloud-member-row
+{
+    flex-wrap:wrap;
+}
+
+.cloud-member-row .btn
+{
+    min-height:38px;
+}
+
+.cloud-member-row span
+{
+    flex:1 1 185px;
+}

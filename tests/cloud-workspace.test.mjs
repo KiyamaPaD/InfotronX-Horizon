@@ -60,3 +60,15 @@ test("Mission Center remains visible on mobile despite legacy header selectors",
     assert.match(css, /\.header-actions #mission-hub-open/);
     assert.match(css, /display:inline-flex!important/);
 });
+
+
+test("email invitation distinguishes active access from pending and offers a copyable note", () =>
+{
+    assert.match(ui, /Pending — email account not yet connected/);
+    assert.match(ui, /Copy invite/);
+    assert.match(ui, /navigator\.clipboard\.writeText\(text\)/);
+    assert.match(ui, /accessList\.members\.some/);
+    assert.match(ui, /Access active/);
+    assert.match(ui, /no confirmed Mars Atlas account matches/);
+    assert.doesNotMatch(ui, /No invitation email is sent automatically/);
+});

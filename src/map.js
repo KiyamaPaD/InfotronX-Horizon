@@ -22,7 +22,7 @@ export class MarsMap
         this.container = container;
         this.store = store;
         this.options = options;
-        this.zoom = 11;
+        this.zoom = 10;
         this.center = { ...JEZERO };
         this.layer = MAP_LAYERS[0];
         this.layerMaxZoom = Math.min(11, this.layer.maxUsefulZoom || 13);
@@ -154,6 +154,11 @@ export class MarsMap
 
     setLayer(id)
     {
+        if (id === this.layer.id)
+        {
+            return;
+        }
+
         this.capabilityRequest++;
         this.activeTiles.clear();
         this.container.classList.remove("map-has-imagery");
@@ -204,7 +209,14 @@ export class MarsMap
 
     changeZoom(delta)
     {
-        this.zoom = clamp(this.zoom + delta, 3, this.layerMaxZoom);
+        const nextZoom = clamp(this.zoom + delta, 3, this.layerMaxZoom);
+
+        if (nextZoom === this.zoom)
+        {
+            return;
+        }
+
+        this.zoom = nextZoom;
         this.render();
         this.options.onViewChange?.(this.center, this.zoom);
     }

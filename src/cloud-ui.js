@@ -40,7 +40,7 @@ export function mountCloudWorkspace({ store, notify })
         '<div class="cloud-actions"><button id="cloud-open" type="button" class="btn btn-outline">Open selected mission</button>',
         '<button id="cloud-signout" type="button" class="btn btn-muted">Sign out</button></div>',
         '<div class="cloud-share" id="cloud-share" hidden><h3>Share selected mission</h3>',
-        '<p>Choose a mission you own, enter your teammate\'s email and select a role. They can access it after signing in with that address. No invitation email is sent automatically.</p>',
+        '<p>Enter the exact email used for your teammate\'s Mars Atlas account. Access activates immediately for confirmed accounts; otherwise it remains pending until that address is registered and confirmed. No invitation email is sent.</p>',
         '<label>Teammate email<input id="cloud-member-email" type="email" maxlength="254" placeholder="teammate@example.com" autocomplete="off" /></label>',
         '<label>Access<select id="cloud-member-access"><option value="viewer">Can view</option><option value="editor">Can edit</option></select></label>',
         '<button id="cloud-invite" type="button" class="btn btn-outline">Share by email</button>',
@@ -209,7 +209,7 @@ export function mountCloudWorkspace({ store, notify })
 
         if (!isOwner)
         {
-            return;
+            return { members: [], pending: [] };
         }
 
         const [members, pending] = await Promise.all([
@@ -254,7 +254,7 @@ export function mountCloudWorkspace({ store, notify })
         if (pending.length)
         {
             const title = document.createElement("h4");
-            title.textContent = "Waiting for sign-in";
+            title.textContent = "Pending — email account not yet connected";
             pendingList.append(title);
         }
 
@@ -276,7 +276,23 @@ export function mountCloudWorkspace({ store, notify })
                 message("Pending invitation cancelled.");
             }));
 
-            item.append(info, cancel);
+            const copy = document.createElement("button");
+            copy.type = "button";
+            copy.className = "btn btn-outline";
+            copy.textContent = "Copy invite";
+            copy.setAttribute("aria-label", "Copy sign-in instructions for " + invite.email);
+            copy.addEventListener("click", () => run(async () =>
+            {
+                const text = "You have been invited to collaborate on a Mars Atlas mission as "
+                    + (invite.access === "editor" ? "an editor" : "a viewer")
+                    + ". Open " + window.location.origin
+                    + ", create or sign in to your account using exactly "
+                    + invite.email + ", confirm your email, then open Mission Center → Cloud library.";
+                await navigator.clipboard.writeText(text);
+                message("Invitation instructions copied. Send them to your teammate.");
+            }));
+
+            item.append(info, copy, cancel);
             pendingList.append(item);
         }
 
@@ -287,6 +303,8 @@ export function mountCloudWorkspace({ store, notify })
             empty.textContent = "This mission is private. Share it with a teammate by email.";
             list.append(empty);
         }
+
+        return { members, pending };
     }
 
     async function updateLibrary(preferredId = null)
@@ -487,8 +505,12 @@ export function mountCloudWorkspace({ store, notify })
         const access = get("#cloud-member-access").value;
         await cloud.shareByEmail(row.id, email, access);
         get("#cloud-member-email").value = "";
-        await refreshMembers();
-        message("Access saved. Ask your teammate to open Mars Atlas and sign in using that email.");
+        const accessList = await refreshMembers();
+        const isActive = accessList.members.some(member => member.email?.toLowerCase() === email.toLowerCase());
+
+        message(isActive
+            ? "Access active. This teammate can open the mission in their Cloud library."
+            : "Pending: no confirmed Mars Atlas account matches this exact email yet. No email was sent. Use Copy invite to send instructions.");
     }));
 
     cloud.initialize().then(enabled =>
