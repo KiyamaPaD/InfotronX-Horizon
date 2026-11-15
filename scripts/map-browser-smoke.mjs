@@ -6,6 +6,14 @@ const browser = await chromium.launch({ headless: true, args: ["--no-sandbox"] }
 const page = await browser.newPage({ viewport: { width: 1480, height: 960 }, deviceScaleFactor: 1 });
 const network = [];
 const errors = [];
+const responses = [];
+page.on("response", response =>
+{
+    if (response.url().includes("/tiles/Mars/EQ/"))
+    {
+        responses.push({ status: response.status(), url: response.url() });
+    }
+});
 page.on("pageerror", error => errors.push(error.message));
 page.on("request", request =>
 {
@@ -45,6 +53,7 @@ async function inspect(label)
     });
 
     console.log(JSON.stringify({ label, ...info }));
+    console.log(JSON.stringify({ nasaResponses: responses.length, failed: responses.filter(item => item.status >= 400).slice(-8) }));
     return info;
 }
 
@@ -89,7 +98,7 @@ try
     await zoomUntil(8);
 
     await page.waitForFunction(() =>
-        [...document.querySelectorAll(".map-background-tile")].some(item => item.dataset.state === "loaded"),
+        [...document.querySelectorAll(".map-background-tile")].some(item => item.dataset.state === "loaded" && item.style.display !== "none" && item.getBoundingClientRect().right > document.querySelector("#map-root").getBoundingClientRect().left && item.getBoundingClientRect().left < document.querySelector("#map-root").getBoundingClientRect().right),
         null, { timeout: 25000 });
 
     const view8 = await inspect("HiRISE selector at zoom 8");
@@ -102,7 +111,7 @@ try
 
     await zoomUntil(11);
     await page.waitForFunction(() =>
-        [...document.querySelectorAll(".map-hires-tile")].some(item => item.dataset.state === "loaded"),
+        [...document.querySelectorAll(".map-hires-tile")].some(item => item.dataset.state === "loaded" && item.style.display !== "none" && item.getBoundingClientRect().right > document.querySelector("#map-root").getBoundingClientRect().left),
         null, { timeout: 25000 });
 
     const view11 = await inspect("HiRISE at zoom 11");
