@@ -44,8 +44,12 @@ export class MarsMap
         this.capabilitiesReady = false;
         this.capabilitiesTimer = null;
 
-        this.container.innerHTML = `<div class="map-fallback" aria-hidden="true"><div class="fallback-globe"></div><div class="coordinate-grid"></div></div><div class="map-tiles"></div><svg class="map-overlays" role="img" aria-label="Editable mission route overlays"></svg><div class="map-attribution">Map tiles © NASA / JPL · Mars Trek</div><div class="map-load-notice" role="status">Loading Mars imagery…</div>`;
+        this.container.innerHTML = `<div class="map-fallback" aria-hidden="true"><div class="fallback-globe"></div><div class="coordinate-grid"></div></div><div class="map-background-tiles"></div><div class="map-tiles"></div><svg class="map-overlays" role="img" aria-label="Editable mission route overlays"></svg><div class="map-attribution">Map tiles © NASA / JPL · Mars Trek</div><div class="map-load-notice" role="status">Loading Mars imagery…</div>`;
         this.tileContainer = this.container.querySelector(".map-tiles");
+        this.backgroundTileContainer = this.container.querySelector(".map-background-tiles");
+        this.backgroundTiles = new Map();
+        this.backgroundActiveTiles = new Set();
+        this.backgroundTileCacheLimit = 24;
         this.overlay = this.container.querySelector(".map-overlays");
         this.notice = this.container.querySelector(".map-load-notice");
 
@@ -149,15 +153,7 @@ export class MarsMap
                 this.options.onViewChange?.(this.center, this.zoom);
             }
 
-            for (const [key, image] of this.tiles)
-            {
-                if (image.dataset.state !== "loaded")
-                {
-                    this.releaseTile(image);
-                    this.tiles.delete(key);
-                }
-            }
-
+            // Metadata updates must not cancel images already loading.
             this.render();
         }
         catch
@@ -196,6 +192,7 @@ export class MarsMap
         this.capabilityRequest++;
         clearTimeout(this.capabilitiesTimer);
         this.activeTiles.clear();
+        this.backgroundActiveTiles.clear();
         this.container.classList.remove("map-has-imagery");
         this.notice.textContent = "Loading Mars imagery…";
         this.layer = MAP_LAYERS.find(layer => layer.id === id) || MAP_LAYERS[0];
@@ -679,6 +676,358 @@ export class MarsMap
         return tile;
     }
 
+    createBackgroundTile(x, y, zoom)
+    {
+        const source = MAP_LAYERS.find(item => item.id === "viking");
+        const tile = document.createElement("img");
+        tile.className = "map-background-tile";
+        tile.alt = "";
+        tile.draggable = false;
+        tile.decoding = "async";
+        tile.dataset.state = "loading";
+        tile.style.opacity = "0";
+        const candidates = this.tileCandidates(x, y, zoom, source);
+        let attempt = 0;
+        let disposed = false;
+
+        const report = () =>
+        {
+            if (!disposed && this.layer.id === "hirise")
+            {
+                this.updateHiRISEStatus();
+            }
+        };
+
+        const next = () =>
+        {
+            if (disposed)
+            {
+                return;
+            }
+
+            attempt++;
+
+            if (attempt < candidates.length)
+            {
+                tile.src = candidates[attempt];
+                return;
+            }
+
+            tile.dataset.state = "error";
+            tile.dataset.failedAt = String(Date.now());
+            tile.style.opacity = "0";
+            report();
+        };
+
+        tile.onload = () =>
+        {
+            if (disposed)
+            {
+                return;
+            }
+
+            if (tile.naturalWidth < 240 || tile.naturalHeight < 240)
+            {
+                next();
+                return;
+            }
+
+            tile.dataset.state = "loaded";
+            tile.style.opacity = "1";
+            report();
+        };
+
+        tile.onerror = next;
+        tile.startLoading = () => { tile.src = candidates[0]; };
+        tile.dispose = () =>
+        {
+            disposed = true;
+            tile.onload = null;
+            tile.onerror = null;
+            tile.removeAttribute("src");
+        };
+
+        return tile;
+    }
+
+    renderBackgroundTiles(width, height, center)
+    {
+        const source = MAP_LAYERS.find(item => item.id === "viking");
+        const level = Math.min(this.zoom, source.maxUsefulZoom);
+        const ratio = 2 ** (this.zoom - level);
+        const size = 256 * ratio;
+        const minX = Math.floor((center.x - width / 2) / size);
+        const maxX = Math.floor((center.x + width / 2) / size);
+        const minY = Math.floor((center.y - height / 2) / size);
+        const maxY = Math.floor((center.y + height / 2) / size);
+        const worldWidth = 2 ** (level + 1);
+        const worldHeight = 2 ** level;
+        const active = new Set();
+
+        this.backgroundTileContainer.style.display = "";
+
+        for (let y = minY; y <= maxY; y++)
+        {
+            for (let x = minX; x <= maxX; x++)
+            {
+                if (x < 0 || y < 0 || x >= worldWidth || y >= worldHeight)
+                {
+                    continue;
+                }
+
+                const key = level + "-" + x + "-" + y;
+                active.add(key);
+                let tile = this.backgroundTiles.get(key);
+
+                if (tile?.dataset.state === "error" && Date.now() - Number(tile.dataset.failedAt) >= 16000)
+                {
+                    this.releaseTile(tile);
+                    this.backgroundTiles.delete(key);
+                    tile = null;
+                }
+
+                if (!tile)
+                {
+                    tile = this.createBackgroundTile(x, y, level);
+                    this.backgroundTiles.set(key, tile);
+                    this.backgroundTileContainer.appendChild(tile);
+                    tile.startLoading();
+                }
+
+                tile.style.left = Math.round(x * size - center.x + width / 2) + "px";
+                tile.style.top = Math.round(y * size - center.y + height / 2) + "px";
+                tile.style.width = size + "px";
+                tile.style.height = size + "px";
+                tile.style.display = "";
+            }
+        }
+
+        this.backgroundActiveTiles = active;
+
+        for (const [key, tile] of this.backgroundTiles)
+        {
+            if (!active.has(key))
+            {
+                tile.style.display = "none";
+            }
+        }
+
+        if (this.backgroundTiles.size > this.backgroundTileCacheLimit)
+        {
+            for (const [key, tile] of this.backgroundTiles)
+            {
+                if (active.has(key))
+                {
+                    continue;
+                }
+
+                this.releaseTile(tile);
+                this.backgroundTiles.delete(key);
+
+                if (this.backgroundTiles.size <= this.backgroundTileCacheLimit - 4)
+                {
+                    break;
+                }
+            }
+        }
+    }
+
+    createHiRISETile(x, y, zoom)
+    {
+        const tile = document.createElement("img");
+        tile.className = "map-hires-tile";
+        tile.alt = "";
+        tile.draggable = false;
+        tile.decoding = "async";
+        tile.dataset.state = "loading";
+        tile.style.opacity = "0";
+        const candidates = this.tileCandidates(x, y, zoom, this.layer);
+        let attempt = 0;
+        let disposed = false;
+
+        const report = () =>
+        {
+            if (!disposed && this.layer.id === "hirise")
+            {
+                this.updateHiRISEStatus();
+            }
+        };
+
+        const next = () =>
+        {
+            if (disposed)
+            {
+                return;
+            }
+
+            attempt++;
+
+            if (attempt < candidates.length)
+            {
+                tile.src = candidates[attempt];
+                return;
+            }
+
+            tile.dataset.state = "error";
+            tile.dataset.failedAt = String(Date.now());
+            tile.style.opacity = "0";
+            report();
+        };
+
+        tile.onload = () =>
+        {
+            if (disposed)
+            {
+                return;
+            }
+
+            if (tile.naturalWidth < 240 || tile.naturalHeight < 240)
+            {
+                next();
+                return;
+            }
+
+            tile.dataset.state = "loaded";
+            tile.style.opacity = "1";
+            report();
+        };
+
+        tile.onerror = next;
+        tile.startLoading = () => { tile.src = candidates[0]; };
+        tile.dispose = () =>
+        {
+            disposed = true;
+            tile.onload = null;
+            tile.onerror = null;
+            tile.removeAttribute("src");
+        };
+
+        return tile;
+    }
+
+    renderHiRISETiles(width, height, center)
+    {
+        this.renderBackgroundTiles(width, height, center);
+        const active = new Set();
+
+        if (this.zoom >= 9)
+        {
+            const minX = Math.floor((center.x - width / 2) / 256);
+            const maxX = Math.floor((center.x + width / 2) / 256);
+            const minY = Math.floor((center.y - height / 2) / 256);
+            const maxY = Math.floor((center.y + height / 2) / 256);
+            const worldWidth = 2 ** (this.zoom + 1);
+            const worldHeight = 2 ** this.zoom;
+
+            for (let y = minY; y <= maxY; y++)
+            {
+                for (let x = minX; x <= maxX; x++)
+                {
+                    if (x < 0 || y < 0 || x >= worldWidth || y >= worldHeight
+                        || this.getImageryLayer(this.zoom, x, y).id !== "hirise")
+                    {
+                        continue;
+                    }
+
+                    const key = "hirise-" + this.zoom + "-" + x + "-" + y;
+                    active.add(key);
+                    let tile = this.tiles.get(key);
+
+                    if (tile?.dataset.state === "error" && Date.now() - Number(tile.dataset.failedAt) >= 16000)
+                    {
+                        this.releaseTile(tile);
+                        this.tiles.delete(key);
+                        tile = null;
+                    }
+
+                    if (!tile)
+                    {
+                        tile = this.createHiRISETile(x, y, this.zoom);
+                        this.tiles.set(key, tile);
+                        this.tileContainer.appendChild(tile);
+                        tile.startLoading();
+                    }
+
+                    tile.style.left = Math.round(x * 256 - center.x + width / 2) + "px";
+                    tile.style.top = Math.round(y * 256 - center.y + height / 2) + "px";
+                    tile.style.display = "";
+                }
+            }
+        }
+
+        this.activeTiles = active;
+
+        for (const [key, tile] of this.tiles)
+        {
+            if (!active.has(key))
+            {
+                tile.style.display = "none";
+            }
+        }
+
+        if (this.tiles.size > this.tileCacheLimit)
+        {
+            for (const [key, tile] of this.tiles)
+            {
+                if (active.has(key))
+                {
+                    continue;
+                }
+
+                this.releaseTile(tile);
+                this.tiles.delete(key);
+
+                if (this.tiles.size <= this.tileCacheLimit - 12)
+                {
+                    break;
+                }
+            }
+        }
+
+        this.updateHiRISEStatus();
+    }
+
+    updateHiRISEStatus()
+    {
+        let loaded = 0;
+        let waiting = 0;
+
+        for (const key of this.backgroundActiveTiles)
+        {
+            const tile = this.backgroundTiles.get(key);
+
+            if (tile?.dataset.state === "loaded")
+            {
+                loaded++;
+            }
+            else if (tile?.dataset.state !== "error")
+            {
+                waiting++;
+            }
+        }
+
+        for (const key of this.activeTiles)
+        {
+            const tile = this.tiles.get(key);
+
+            if (tile?.dataset.state === "loaded")
+            {
+                loaded++;
+            }
+            else if (tile?.dataset.state !== "error")
+            {
+                waiting++;
+            }
+        }
+
+        const anyImagery = loaded > 0;
+        this.container.classList.toggle("map-has-imagery", anyImagery);
+        this.notice.classList.remove("map-preview-notice");
+        this.notice.hidden = anyImagery || (!this.backgroundActiveTiles.size && !this.activeTiles.size);
+        this.notice.textContent = waiting > 0
+            ? "Loading Mars imagery…" : "NASA imagery is unavailable for this area.";
+    }
+
     renderTiles()
     {
         if (this.capabilitiesReady === false)
@@ -695,6 +1044,14 @@ export class MarsMap
         }
 
         const center = project(this.center, this.zoom);
+
+        if (this.layer.id === "hirise")
+        {
+            this.renderHiRISETiles(width, height, center);
+            return;
+        }
+
+        this.backgroundTileContainer.style.display = "none";
         const minX = Math.floor((center.x - width / 2) / 256);
         const maxX = Math.floor((center.x + width / 2) / 256);
         const minY = Math.floor((center.y - height / 2) / 256);

@@ -847,3 +847,32 @@
     background:#14212ddd;
     color:#c1d5de;
 }
+
+
+/* One continuous Viking layer replaces per-HiRISE-tile enlarged previews. */
+.map-background-tiles
+{
+    position:absolute;
+    inset:0;
+    overflow:hidden;
+    pointer-events:none;
+    filter:grayscale(1);
+}
+.map-background-tile
+{
+    position:absolute;
+    display:block;
+    max-width:none;
+    pointer-events:none;
+    image-rendering:auto;
+}
+.map-tiles .map-hires-tile
+{
+    position:absolute;
+    display:block;
+    width:256px;
+    height:256px;
+    max-width:none;
+    pointer-events:none;
+    image-rendering:auto;
+}
