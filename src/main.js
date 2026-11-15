@@ -409,6 +409,7 @@ function setMode(mode)
 {
     currentMode = mode;
     map.setMode(mode);
+    window.dispatchEvent(new CustomEvent("mars-mode", { detail: mode }));
     document.querySelectorAll("button[data-mode]").forEach(button =>
     {
         const active = button.dataset.mode === mode;
@@ -816,6 +817,18 @@ document.addEventListener("click", event =>
                 import("./map-3d.js").then(({ openMap3d }) => openMap3d({
                     host: get(".map-wrap"),
                     getPoints: () => store.activeRoute.points,
+                    getRoutes: () => store.current.routes.map(item => ({ id: item.id, name: item.name, color: item.color, active: item.id === store.current.activeRouteId, points: item.points })),
+                    getObservations: () => store.current.observations,
+                    getMode: () => currentMode,
+                    setMode: mode => setMode(mode),
+                    onMovePoint: (id, coordinate, persist) => store.movePoint(id, coordinate, persist),
+                    onSelectWaypoint: id => openWaypointEditor(id),
+                    onSelectObservation: id => openObservationEditor(id),
+                    onObserve: coordinate => openObservationAt(coordinate),
+                    canUndo: () => store.canUndo,
+                    canRedo: () => store.canRedo,
+                    onUndo: () => { if (!store.undo()) notify("Nothing to undo in this mission."); },
+                    onRedo: () => { if (!store.redo()) notify("Nothing to redo in this mission."); },
                     subscribe: listener => store.subscribe(listener),
                     onAddWaypoint: coordinate =>
                     {

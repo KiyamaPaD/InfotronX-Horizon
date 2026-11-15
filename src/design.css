@@ -2463,3 +2463,5 @@ a:not(.source-link):hover
 .map-3d-panel { max-height: calc(100% - 190px); overflow-y: auto; scrollbar-width: thin; }
 .map-3d-nav { bottom: 16px; }
 @media (max-height: 640px) { .map-3d-panel { max-height: calc(100% - 32px); } .map-3d-nav { display: none; } }
+
+.map-3d-tools .btn { flex: 1 1 22%; padding-inline: 6px; }
