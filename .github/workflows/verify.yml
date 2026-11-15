@@ -26,3 +26,29 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         continue-on-error: true
         run: node scripts/probe-nasa-tiles.mjs
+
+
+  map-browser:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[browser]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium for real map smoke test
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Test live NASA image loading in browser
+        run: |
+          python3 -m http.server 4173 >/tmp/mars-atlas-http.log 2>&1 &
+          node scripts/map-browser-smoke.mjs
+      - name: Upload map screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mars-map-browser-evidence
+          path: browser-map-evidence/
+          if-no-files-found: ignore
