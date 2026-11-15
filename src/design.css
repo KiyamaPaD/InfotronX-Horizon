@@ -2010,7 +2010,7 @@ a:not(.source-link):hover
     border-left: 1px solid #577085;
     border-top: 1px solid #577085;
     transform: rotate(45deg);
-    z-index: -1;
+    z-index: 1;
 }
 
 .tutorial-highlight:not(.map-controls) {

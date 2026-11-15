@@ -91,41 +91,49 @@ export class Tutorial {
 
     positionBox(rect, position) {
         this.pointer.hidden = false;
+        // Reset everything from the previous step, then place the box and aim the pointer at the target's centre.
+        this.pointer.style.cssText = '';
         const gap = 20;
+        const width = this.box.offsetWidth, height = this.box.offsetHeight;
         let top, left;
 
         if (position === 'bottom') {
             top = rect.bottom + gap;
-            left = rect.left + rect.width / 2 - 160;
-            this.pointer.style.top = '-10px';
-            this.pointer.style.left = '50%';
-            this.pointer.style.transform = 'translateX(-50%) rotate(45deg)';
+            left = rect.left + rect.width / 2 - width / 2;
         } else if (position === 'top') {
-            top = rect.top - this.box.offsetHeight - gap;
-            left = rect.left + rect.width / 2 - 160;
-            this.pointer.style.bottom = '-10px';
-            this.pointer.style.left = '50%';
-            this.pointer.style.transform = 'translateX(-50%) rotate(45deg)';
+            top = rect.top - height - gap;
+            left = rect.left + rect.width / 2 - width / 2;
         } else if (position === 'right') {
-            top = rect.top + rect.height / 2 - this.box.offsetHeight / 2;
+            top = rect.top + rect.height / 2 - height / 2;
             left = rect.right + gap;
-            this.pointer.style.left = '-10px';
-            this.pointer.style.top = '50%';
-            this.pointer.style.transform = 'translateY(-50%) rotate(45deg)';
-        } else if (position === 'left') {
-            top = rect.top + rect.height / 2 - this.box.offsetHeight / 2;
-            left = rect.left - 320 - gap;
-            this.pointer.style.right = '-10px';
-            this.pointer.style.top = '50%';
-            this.pointer.style.transform = 'translateY(-50%) rotate(45deg)';
+        } else {
+            top = rect.top + rect.height / 2 - height / 2;
+            left = rect.left - width - gap;
         }
 
-        // Keep inside window
-        left = Math.max(10, Math.min(left, window.innerWidth - 330));
-        top = Math.max(10, Math.min(top, window.innerHeight - this.box.offsetHeight - 10));
-
+        left = Math.max(10, Math.min(left, window.innerWidth - width - 10));
+        top = Math.max(10, Math.min(top, window.innerHeight - height - 10));
         this.box.style.top = `${top}px`;
         this.box.style.left = `${left}px`;
         this.box.style.transform = 'none';
+
+        const line = '1px solid #577085';
+        const centreX = Math.max(24, Math.min(width - 24, rect.left + rect.width / 2 - left));
+        const centreY = Math.max(24, Math.min(height - 24, rect.top + rect.height / 2 - top));
+        const style = this.pointer.style;
+        style.border = '0';
+
+        // The diamond sits on the edge facing the target; only its two outer sides get a line.
+        if (position === 'bottom') {
+            style.left = `${centreX - 10}px`; style.top = '-10px'; style.borderTop = line; style.borderLeft = line;
+        } else if (position === 'top') {
+            style.left = `${centreX - 10}px`; style.top = `${height - 10}px`; style.borderBottom = line; style.borderRight = line;
+        } else if (position === 'right') {
+            style.top = `${centreY - 10}px`; style.left = '-10px'; style.borderBottom = line; style.borderLeft = line;
+        } else {
+            style.top = `${centreY - 10}px`; style.left = `${width - 10}px`; style.borderTop = line; style.borderRight = line;
+        }
+
+        style.transform = 'rotate(45deg)';
     }
 }
