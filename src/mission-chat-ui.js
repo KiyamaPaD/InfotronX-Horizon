@@ -292,8 +292,8 @@ export function mountMissionChat({ dialog, cloud, notify, run, openCloudTab })
         onUserChanged: () =>
         {
             clear();
-            el("#team-chat-login").hidden = !cloud.user;
-            el("#team-chat-signed").hidden = Boolean(!cloud.user);
+            el("#team-chat-login").hidden = Boolean(cloud.user);
+            el("#team-chat-signed").hidden = !cloud.user;
         },
         leave: clear,
         get selectedMissionId() { return activeId; }

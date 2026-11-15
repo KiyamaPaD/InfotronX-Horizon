@@ -1699,3 +1699,141 @@
         font-size:10px;
     }
 }
+
+/* Team chat: real mission-scoped collaboration, private to Supabase members. */
+.cloud-modal .mission-hub-tabs
+{
+    grid-template-columns:repeat(5,minmax(0,1fr));
+}
+#hub-chat
+{
+    min-width:0;
+}
+#team-chat-login
+{
+    padding:12px;
+    border:1px solid #375263;
+    border-radius:9px;
+    background:#152633;
+}
+#team-chat-messages
+{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    min-height:110px;
+    max-height:350px;
+    overflow-y:auto;
+    padding:12px;
+    margin:10px 0 14px;
+    border:1px solid #385364;
+    border-radius:10px;
+    background:#0c202b;
+}
+.team-chat-message
+{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    padding:10px;
+    border:1px solid #3a5060;
+    border-radius:8px;
+    background:#18303f;
+    min-width:0;
+}
+.team-chat-message p
+{
+    margin:0;
+    overflow-wrap:anywhere;
+    white-space:pre-wrap;
+    color:#e1edf2;
+    font-size:12px;
+    line-height:1.6;
+}
+.team-chat-heading
+{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    flex-wrap:wrap;
+    color:#90ddc9;
+    font-size:11px;
+}
+.team-chat-heading time
+{
+    color:#a5bac9;
+    font-size:10px;
+}
+.team-chat-row-actions
+{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:6px;
+}
+.team-chat-row-actions button,
+.team-chat-row-actions select
+{
+    font-size:10px;
+    min-height:29px;
+    padding:5px 8px;
+}
+#team-chat-send
+{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+}
+#team-chat-send label
+{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    color:#bad0d9;
+    font-size:11px;
+}
+#team-chat-send textarea
+{
+    width:100%;
+    min-height:75px;
+    resize:vertical;
+    background:#0f2330;
+    border:1px solid #4c6474;
+    border-radius:7px;
+    padding:9px;
+    color:#ecf6fa;
+}
+.team-chat-actions
+{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+}
+#team-chat-status
+{
+    color:#acd7c8;
+    font-size:11px;
+}
+#team-chat-blocks
+{
+    margin:10px 0;
+    padding:9px 12px;
+    border:1px solid #385264;
+    border-radius:7px;
+    color:#bccdd5;
+}
+.team-chat-block-row
+{
+    display:flex;
+    gap:12px;
+    align-items:center;
+    justify-content:space-between;
+    padding:8px 0;
+}
+@media(max-width:660px)
+{
+    .cloud-modal .mission-hub-tabs
+    {
+        grid-template-columns:repeat(2,minmax(0,1fr));
+    }
+}

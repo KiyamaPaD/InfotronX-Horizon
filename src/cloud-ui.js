@@ -1,5 +1,6 @@
 import { MissionCloud } from "./cloud-sync.js";
 import { mountCrewProfile } from "./crew-profile-ui.js";
+import { mountMissionChat } from "./mission-chat-ui.js";
 
 export function mountCloudWorkspace({ store, notify })
 {
@@ -129,6 +130,11 @@ export function mountCloudWorkspace({ store, notify })
 
     function showHubTab(name)
     {
+        if (name !== "chat")
+        {
+            missionChat?.leave();
+        }
+
         for (const panel of dialog.querySelectorAll("[data-hub-panel]"))
         {
             panel.hidden = panel.dataset.hubPanel !== name;
@@ -189,6 +195,7 @@ export function mountCloudWorkspace({ store, notify })
         get("#cloud-status").textContent = user ? "Your cloud library is available." : "Sign in to access your cloud missions.";
 
         crewProfile.onUserChanged(user);
+        missionChat.onUserChanged(user);
 
         if (!user)
         {
@@ -200,6 +207,14 @@ export function mountCloudWorkspace({ store, notify })
 
     const crewProfile = mountCrewProfile({
         dialog, cloud, store, run, openCloudTab: () => showHubTab("cloud")
+    });
+    const missionChat = mountMissionChat({
+        dialog, cloud, notify, run, openCloudTab: () => showHubTab("cloud")
+    });
+    dialog.querySelector('[data-hub-tab="chat"]').addEventListener("click", () =>
+    {
+        showHubTab("chat");
+        missionChat.open();
     });
 
     function message(value)
