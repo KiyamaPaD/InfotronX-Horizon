@@ -9,7 +9,7 @@ A manual-first Mars mission-planning workspace developed by **InfotronX Horizon*
 [![Verify](https://github.com/KiyamaPaD/Mars-Atlas/actions/workflows/verify.yml/badge.svg)](https://github.com/KiyamaPaD/Mars-Atlas/actions/workflows/verify.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**[Open Mars Atlas](https://mars-atlas-mu.vercel.app)** · **[Team testing guide](docs/BETA_TESTING.md)** · **[Report a bug](https://github.com/KiyamaPaD/Mars-Atlas/issues/new?template=bug_report.md)**
+**[Open Mars Atlas](https://mars-atlas-mu.vercel.app)** · **[Team testing guide](docs/BETA_TESTING.md)** · **[V2 product roadmap](docs/PRODUCT_ROADMAP_V2.md)** · **[Report a bug](https://github.com/KiyamaPaD/Mars-Atlas/issues/new?template=bug_report.md)**
 
 > **Team-testing stage.** A successful deployment and automated checks do not replace testing the interactive map in a real browser. If you see a Vercel access screen, request a shareable link from the maintainer.
 
@@ -22,6 +22,9 @@ A manual-first Mars mission-planning workspace developed by **InfotronX Horizon*
 - **Terrain Intelligence V2:** inspect an interactive elevation profile, compare waypoint altitude and mean segment grade, and locate numeric DEM samples directly on the map. [Terrain profile guide](docs/TERRAIN_INTELLIGENCE_V2.md).
 - **Analyze terrain:** elevation and slope profiles, local roughness, line of sight, reachability, contours, and experimental scientific models.
 - **Take your work with you:** Mission Center groups on-device autosave, checkpoints, exports, mission links and an authenticated cloud library with sharing by verified teammate email (no automatic email delivery).
+- **See what's needed in Science:** Analytics provides an explicit guide for required waypoint counts, numeric DEM availability and route alternatives; tools can be expanded and opened without automatic sample points.
+- **Visualize your mission graph:** a weighted waypoint-connectivity diagram complements the existing segment distances, elevation, slope/roughness, reachability, contour and route comparison charts.
+- **Create a private Crew Profile:** signed-in Mars Atlas accounts can save a callsign, mission role, interests, biography and an optional private profile image. Roles are user-supplied, not NASA credentials. [Crew profile documentation](docs/CREW_PROFILES.md).
 
 ## Explore and analyze
 

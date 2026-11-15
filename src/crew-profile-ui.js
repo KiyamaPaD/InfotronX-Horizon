@@ -109,17 +109,19 @@ export function mountCrewProfile({ dialog, cloud, store, run, openCloudTab })
             }
 
             setMessage("Saving profile securely…");
+            const file = avatarFile.files?.[0];
+
+            if (file && (!["image/png", "image/jpeg", "image/webp"].includes(file.type) ||
+                file.size <= 0 || file.size > MAX_AVATAR_BYTES))
+            {
+                throw new Error("Choose a PNG, JPEG or WebP image up to 2 MB.");
+            }
+
             const values = Object.fromEntries(new FormData(form).entries());
             await service.save(values);
-            const file = avatarFile.files?.[0];
 
             if (file)
             {
-                if (file.size > MAX_AVATAR_BYTES)
-                {
-                    throw new Error("Avatar must be 2 MB or smaller.");
-                }
-
                 await service.uploadAvatar(file);
                 avatarFile.value = "";
             }
