@@ -71,7 +71,7 @@
 .home-stat { padding: 26px 22px; border-radius: 20px; border: 1px solid #33424f; background: #0e1822e6; transform: perspective(700px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); transition: transform .18s ease-out, opacity .7s, border-color .25s; }
 .home-stat:hover { border-color: #f0a27a; }
 .home-stat strong { display: block; font-size: clamp(30px, 3.2vw, 44px); font-weight: 700; color: #ffcaa8; }
-.home-stat span:last-child { display: block; margin-top: 8px; color: #aebdca; font-size: 14px; }
+.home-stat > span { display: block; margin-top: 8px; color: #aebdca; font-size: 14px; }
 .home-features { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; }
 .home-card { padding: 28px; border-radius: 22px; border: 1px solid #33424f; background: linear-gradient(160deg, #162230f2, #0f1923f2); transform: perspective(700px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); transition: transform .18s ease-out, opacity .7s calc(var(--i, 0) * .12s), border-color .25s; }
 .home-card:hover { border-color: #f0a27a; }
@@ -131,3 +131,4 @@
 @keyframes home-sheen { 0%, 60% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
 @keyframes home-fade { from { opacity: .4; } to { opacity: 1; } }
 @keyframes home-orbit { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.home-stat strong span { display: inline; margin: 0; font: inherit; color: inherit; }
