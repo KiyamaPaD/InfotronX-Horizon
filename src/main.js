@@ -77,6 +77,14 @@ let currentMode = "pan";
 let modalAction = "new-mission";
 let observationCoordinate = null;
 let pointBeingEdited = null;
+let editingWaypointId = null;
+let mapContextTarget = null;
+
+get("#waypoint-category-input").innerHTML = WAYPOINT_CATEGORIES.map(item =>
+    `<option value="${item.id}">${safe(item.label)}</option>`).join("");
+get("#waypoint-icon-input").innerHTML = MARKER_ICONS.map(item =>
+    `<option value="${item.id}">${item.symbol} ${safe(item.label)}</option>`).join("");
+
 
 function notify(message)
 {
@@ -117,26 +125,8 @@ const map = new MarsMap(get("#map-root"), store, {
         zoomIn.title = zoomIn.disabled ? "Maximum available map detail" : "Zoom in";
         get("[data-action='zoom-out']").disabled = zoom <= 3;
     },
-    onWaypointSelect: id =>
-    {
-        if (get("#analytics-panel").hidden)
-        {
-            get("[data-tab='analytics']").click();
-        }
-
-        const picker = [...document.querySelectorAll("[data-point-icon]")].find(input => input.dataset.pointIcon === id);
-
-        if (picker)
-        {
-            if (window.matchMedia("(max-width: 1200px)").matches)
-            {
-                setMobilePanel("analytics");
-            }
-
-            picker.scrollIntoView({ block: "nearest", behavior: "smooth" });
-            picker.focus({ preventScroll: true });
-        }
-    },
+    onWaypointSelect: id => openWaypointEditor(id),
+    onContextMenu: details => showMapContextMenu(details),
     onMapClick: (point, mode) =>
 {
         if (mode === "draw")
@@ -160,6 +150,63 @@ const scienceWorkbench = initScienceWorkbench({ store, map, notify });
 mountCloudWorkspace({ store, notify });
 setupAnalyticsNavigation(get("#analytics-panel"));
 
+function closeMapContextMenu()
+{
+    get("#map-context-menu").hidden = true;
+    mapContextTarget = null;
+}
+
+function showMapContextMenu(details)
+{
+    const menu = get("#map-context-menu");
+    mapContextTarget = details;
+
+    menu.querySelectorAll("[data-context-action]").forEach(button =>
+    {
+        const onlyMarker = ["edit-waypoint", "delete-waypoint"].includes(button.dataset.contextAction);
+        button.hidden = onlyMarker ? !details.pointId : Boolean(details.pointId);
+    });
+
+    menu.style.left = Math.max(8, Math.min(details.clientX, window.innerWidth - 246)) + "px";
+    menu.style.top = Math.max(8, Math.min(details.clientY, window.innerHeight - 178)) + "px";
+    menu.hidden = false;
+    menu.querySelector("button:not([hidden])")?.focus();
+}
+
+function openObservationAt(point)
+{
+    observationCoordinate = point;
+    get("#observation-location").textContent = `${formatCoordinate(point.lat, "lat")} · ${formatCoordinate(point.lon, "lon")}`;
+    get("#observation-form").reset();
+    get("#observation-modal").showModal();
+}
+
+function openWaypointEditor(id)
+{
+    const index = store.activeRoute.points.findIndex(point => point.id === id);
+
+    if (index < 0)
+    {
+        return;
+    }
+
+    const point = store.activeRoute.points[index];
+    editingWaypointId = id;
+    closeMapContextMenu();
+    get("#waypoint-editor-title").textContent = waypointLabel(point, index);
+    get("#waypoint-name-input").value = point.name || "";
+    get("#waypoint-category-input").value = point.category || "navigation";
+    get("#waypoint-description-input").value = point.description || "";
+    get("#waypoint-icon-input").value = normalizeMarkerIcon(point.icon);
+    get("#waypoint-color-input").value = point.color || store.activeRoute.color;
+    get("#waypoint-use-route-color").checked = !point.color;
+    get("#waypoint-color-input").disabled = !point.color;
+    get("#waypoint-lat-input").value = point.lat;
+    get("#waypoint-lon-input").value = point.lon;
+    get("#waypoint-editor-modal").showModal();
+    get("#waypoint-name-input").focus();
+}
+
 function renderRoutes()
 {
     get("#route-count").textContent = String(store.current.routes.length).padStart(2, "0");
@@ -179,7 +226,7 @@ function renderLayers()
 function renderWaypoints()
 {
     get("#point-summary").textContent = `${store.activeRoute.points.length} PLACED`;
-    get("#waypoint-list").innerHTML = store.activeRoute.points.length ? store.activeRoute.points.map((point, index) => `<div class="waypoint-row"><span class="waypoint-index">${String(index + 1).padStart(2, "0")}</span><div class="waypoint-coordinates"><strong>${formatCoordinate(point.lat, "lat")}</strong><small>${formatCoordinate(point.lon, "lon")}</small></div><button class="edit-point-btn point-order-btn" title="Move waypoint earlier" aria-label="Move waypoint earlier" data-move-point="${safe(point.id)}" data-point-direction="-1" ${index === 0 ? "disabled" : ""}>↑</button><button class="edit-point-btn point-order-btn" title="Move waypoint later" aria-label="Move waypoint later" data-move-point="${safe(point.id)}" data-point-direction="1" ${index === store.activeRoute.points.length - 1 ? "disabled" : ""}>↓</button><select class="marker-icon-select" data-point-icon="${safe(point.id)}" title="Change marker icon" aria-label="Change waypoint ${index + 1} marker icon">${MARKER_ICONS.map(icon => `<option value="${icon.id}" ${normalizeMarkerIcon(point.icon) === icon.id ? "selected" : ""}>${icon.symbol} ${icon.label}</option>`).join("")}</select><button class="edit-point-btn" title="Edit exact coordinates" aria-label="Edit exact coordinates" data-edit-point="${safe(point.id)}">Edit</button><button class="remove-btn" title="Delete waypoint" aria-label="Delete waypoint" data-delete-point="${safe(point.id)}">×</button></div>`).join("") : `<div class="empty-inline">Draw your first waypoint on the map.</div>`;
+    get("#waypoint-list").innerHTML = store.activeRoute.points.length ? store.activeRoute.points.map((point, index) => `<div class="waypoint-row"><span class="waypoint-index">${String(index + 1).padStart(2, "0")}</span><div class="waypoint-coordinates"><strong>${safe(waypointLabel(point, index))}</strong><small>${safe(categoryLabel(point.category))} · ${formatCoordinate(point.lat, "lat")} · ${formatCoordinate(point.lon, "lon")}</small></div><button class="edit-point-btn point-order-btn" title="Move waypoint earlier" aria-label="Move waypoint earlier" data-move-point="${safe(point.id)}" data-point-direction="-1" ${index === 0 ? "disabled" : ""}>↑</button><button class="edit-point-btn point-order-btn" title="Move waypoint later" aria-label="Move waypoint later" data-move-point="${safe(point.id)}" data-point-direction="1" ${index === store.activeRoute.points.length - 1 ? "disabled" : ""}>↓</button><select class="marker-icon-select" data-point-icon="${safe(point.id)}" title="Change marker icon" aria-label="Change waypoint ${index + 1} marker icon">${MARKER_ICONS.map(icon => `<option value="${icon.id}" ${normalizeMarkerIcon(point.icon) === icon.id ? "selected" : ""}>${icon.symbol} ${icon.label}</option>`).join("")}</select><button class="edit-point-btn" title="Edit exact coordinates" aria-label="Edit exact coordinates" data-edit-point="${safe(point.id)}">Edit</button><button class="remove-btn" title="Delete waypoint" aria-label="Delete waypoint" data-delete-point="${safe(point.id)}">×</button></div>`).join("") : `<div class="empty-inline">Draw your first waypoint on the map.</div>`;
 }
 
 function renderObservations()
@@ -235,6 +282,9 @@ function render()
     renderInspector();
     renderCheckpoints();
     get("#storage-status").textContent = store.lastSaveSucceeded ? "SAVED ON THIS DEVICE" : "SAVE FAILED · EXPORT A BACKUP";
+    get("#active-route-color").value = route.color;
+    get("[data-action='undo-edit']").disabled = !store.canUndo;
+    get("[data-action='redo-edit']").disabled = !store.canRedo;
     renderRouteComparison(get("#route-comparison"), mission.routes, mission.activeRouteId);
     renderRouteComparison(get("#route-comparison-mobile"), mission.routes, mission.activeRouteId);
     scienceWorkbench.render();
@@ -286,10 +336,12 @@ function toggleFocusMode()
 function openMissionModal(action)
 {
     modalAction = action;
-    get("#modal-eyebrow").textContent = action === "new-mission" ? "NEW MISSION" : action === "rename-route" ? "RENAME ROUTE" : "RENAME MISSION";
-    get("#modal-title").textContent = action === "new-mission" ? "Create a mission" : action === "rename-route" ? "Rename active route" : "Rename your mission";
+    get("#modal-eyebrow").textContent = action === "new-mission" ? "NEW MISSION" : action === "rename-route" ? "RENAME ROUTE" : "EDIT MISSION";
+    get("#modal-title").textContent = action === "new-mission" ? "Create a mission" : action === "rename-route" ? "Rename active route" : "Edit mission details";
     get("#mission-submit").textContent = action === "new-mission" ? "Create mission" : action === "rename-route" ? "Rename route" : "Rename mission";
     get("#mission-input").value = action === "new-mission" ? "" : action === "rename-route" ? store.activeRoute.name : store.current.title;
+    get("#mission-description-field").hidden = action === "rename-route";
+    get("#mission-description-input").value = action === "new-mission" ? "" : store.current.description;
     get("#mission-modal").showModal();
     get("#mission-input").focus();
 }
@@ -325,7 +377,7 @@ function createMissionBrief(mission)
             lines.push("The imported DEM source and route have NOT been independently scientifically validated.");
         }
 
-        route.points.forEach((point, index) => lines.push(`${index + 1}. ${formatCoordinate(point.lat, "lat")}, ${formatCoordinate(point.lon, "lon")}`));
+        route.points.forEach((point, index) => lines.push(`${index + 1}. ${waypointLabel(point, index)} [${categoryLabel(point.category)}] — ${formatCoordinate(point.lat, "lat")}, ${formatCoordinate(point.lon, "lon")}${point.description ? ` · ${point.description}` : ""}`));
     }
 
     lines.push("", "## Saved checkpoints", `Local checkpoint count: ${mission.checkpoints?.length || 0}`);
@@ -410,6 +462,47 @@ document.addEventListener("click", event =>
     const checkpointToRestore = event.target.closest("[data-restore-checkpoint]")?.dataset.restoreCheckpoint;
     const checkpointToDelete = event.target.closest("[data-delete-checkpoint]")?.dataset.deleteCheckpoint;
     const tab = event.target.closest("[data-tab]")?.dataset.tab;
+    const contextAction = event.target.closest("[data-context-action]")?.dataset.contextAction;
+
+    if (contextAction && mapContextTarget)
+    {
+        const target = mapContextTarget;
+        closeMapContextMenu();
+
+        if (contextAction === "edit-waypoint" && target.pointId)
+        {
+            openWaypointEditor(target.pointId);
+        }
+        else if (contextAction === "delete-waypoint" && target.pointId)
+        {
+            if (confirm("Delete this waypoint? You can use Undo to restore it."))
+            {
+                store.removePoint(target.pointId);
+            }
+        }
+        else if (contextAction === "add-waypoint")
+        {
+            if (store.addPoint(target.coordinate))
+            {
+                openWaypointEditor(store.activeRoute.points.at(-1).id);
+            }
+            else
+            {
+                notify("Invalid coordinates or waypoint limit reached.");
+            }
+        }
+        else if (contextAction === "add-note")
+        {
+            openObservationAt(target.coordinate);
+        }
+
+        return;
+    }
+
+    if (!event.target.closest("#map-context-menu"))
+    {
+        closeMapContextMenu();
+    }
 
     if (action === "load-review-demo")
     {
@@ -460,17 +553,7 @@ document.addEventListener("click", event =>
 
     if (pointToEdit)
     {
-        const point = store.activeRoute.points.find(item => item.id === pointToEdit);
-
-        if (point)
-        {
-            pointBeingEdited = point.id;
-            get("#latitude-input").value = point.lat;
-            get("#longitude-input").value = point.lon;
-            get("#coordinate-modal h2").textContent = "Edit waypoint coordinates";
-            get("#coordinate-submit-label").textContent = "Update waypoint";
-            get("#coordinate-modal").showModal();
-        }
+        openWaypointEditor(pointToEdit);
     }
 
     if (pointToDelete)
@@ -551,12 +634,25 @@ document.addEventListener("click", event =>
             openMissionModal(action);
             break;
         case "open-library": get("#mission-hub-open")?.click(); break;
-        case "close-modal": event.target.closest("dialog")?.close(); break;
+        case "close-modal":
+            event.target.closest("dialog")?.close();
+            editingWaypointId = null;
+            break;
+        case "delete-editing-waypoint":
+            if (editingWaypointId && confirm("Delete this waypoint? You can use Undo to restore it."))
+            {
+                store.removePoint(editingWaypointId);
+                get("#waypoint-editor-modal").close();
+                editingWaypointId = null;
+            }
+            break;
         case "add-coordinates": pointBeingEdited = null; get("#coordinate-form").reset(); get("#coordinate-modal h2").textContent = "Enter coordinates"; get("#coordinate-submit-label").textContent = "Add waypoint"; get("#coordinate-modal").showModal(); break;
         case "delete-route": if (store.current.routes.length < 2) { notify("Keep at least one route in the mission."); } else if (confirm("Delete the active route?")) { store.deleteRoute(store.activeRoute.id); } break;
         case "new-route": if (store.addRoute(`Route ${store.current.routes.length + 1}`)) { setMode("draw"); notify("New route created. Click the map to add waypoints."); } else { notify("Route limit reached (15). Export or start another mission."); } break;
         case "duplicate-route": if (store.duplicateRoute()) { setMode("edit"); notify("Route duplicated. Drag waypoints to create a comparison."); } else { notify("Route limit reached (15)."); } break;
         case "undo-point": store.undoPoint(); break;
+        case "undo-edit": if (!store.undo()) notify("Nothing to undo in this mission."); break;
+        case "redo-edit": if (!store.redo()) notify("Nothing to redo in this mission."); break;
         case "clear-route":
             if (store.activeRoute.points.length && confirm("Remove all waypoints from this route? Export a backup first if needed."))
             {
@@ -627,6 +723,7 @@ get("#mission-form").addEventListener("submit", event =>
 {
     event.preventDefault();
     const title = get("#mission-input").value.trim();
+    const description = get("#mission-description-input").value.trim();
 
     if (!title)
     {
@@ -641,6 +738,7 @@ get("#mission-form").addEventListener("submit", event =>
             return;
         }
 
+        store.updateMissionDetails(title, description || store.current.description);
         setMode("draw");
     }
     else if (modalAction === "rename-route")
@@ -650,8 +748,7 @@ get("#mission-form").addEventListener("submit", event =>
     }
     else
     {
-        store.current.title = title;
-        store.save();
+        store.updateMissionDetails(title, description);
     }
 
     get("#mission-modal").close();
@@ -662,9 +759,14 @@ get("#mission-form").addEventListener("submit", event =>
 document.addEventListener("change", event =>
 {
     const waypointPicker = event.target.closest("[data-point-icon]");
+    const routeColor = event.target.closest("#active-route-color");
     const observationPicker = event.target.closest("[data-observation-icon]");
 
-    if (waypointPicker)
+    if (routeColor)
+    {
+        store.setRouteColor(routeColor.value);
+    }
+    else if (waypointPicker)
     {
         store.setPointIcon(waypointPicker.dataset.pointIcon, waypointPicker.value);
     }
@@ -672,6 +774,46 @@ document.addEventListener("change", event =>
     {
         store.setObservationIcon(observationPicker.dataset.observationIcon, observationPicker.value);
     }
+});
+
+get("#waypoint-use-route-color").addEventListener("change", event =>
+{
+    get("#waypoint-color-input").disabled = event.target.checked;
+
+    if (event.target.checked)
+    {
+        get("#waypoint-color-input").value = store.activeRoute.color;
+    }
+});
+
+get("#waypoint-editor-form").addEventListener("submit", event =>
+{
+    event.preventDefault();
+
+    if (!editingWaypointId)
+    {
+        return;
+    }
+
+    const changed = store.updateWaypoint(editingWaypointId, {
+        lat: Number(get("#waypoint-lat-input").value),
+        lon: Number(get("#waypoint-lon-input").value),
+        name: get("#waypoint-name-input").value,
+        category: get("#waypoint-category-input").value,
+        description: get("#waypoint-description-input").value,
+        icon: get("#waypoint-icon-input").value,
+        color: get("#waypoint-use-route-color").checked ? null : get("#waypoint-color-input").value
+    });
+
+    if (!changed)
+    {
+        notify("Invalid waypoint coordinates.");
+        return;
+    }
+
+    get("#waypoint-editor-modal").close();
+    editingWaypointId = null;
+    notify("Waypoint updated and saved locally.");
 });
 
 get("#coordinate-form").addEventListener("submit", event =>
@@ -753,24 +895,50 @@ window.addEventListener("keydown", event =>
         return;
     }
 
-    if (event.target instanceof HTMLElement && ["INPUT", "TEXTAREA"].includes(event.target.tagName))
+    if (event.key === "Escape")
+    {
+        if (!get("#map-context-menu").hidden)
+        {
+            closeMapContextMenu();
+            event.preventDefault();
+            return;
+        }
+
+        if (!document.querySelector("dialog[open]"))
+        {
+            setMode("pan");
+            setMobilePanel("map");
+        }
+    }
+
+    if (event.target instanceof HTMLElement &&
+        (["INPUT", "TEXTAREA", "SELECT"].includes(event.target.tagName) || event.target.isContentEditable))
     {
         return;
     }
 
-    if (event.key.toLowerCase() === "z" && (event.ctrlKey || event.metaKey))
+    if (document.querySelector("dialog[open]"))
+    {
+        return;
+    }
+
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z")
     {
         event.preventDefault();
-        store.undoPoint();
+        if (event.shiftKey) store.redo();
+        else store.undo();
+        return;
     }
 
-    if (event.key === "Escape")
+    if ((event.ctrlKey || event.metaKey) &&
+        (event.key.toLowerCase() === "y" || event.key.toLowerCase() === "z" && event.shiftKey))
     {
-        setMode("pan");
-        setMobilePanel("map");
+        event.preventDefault();
+        store.redo();
+        return;
     }
 
-    if (event.altKey || event.ctrlKey || event.metaKey || event.repeat || document.querySelector("dialog[open]"))
+    if (event.altKey || event.ctrlKey || event.metaKey || event.repeat)
     {
         return;
     }
