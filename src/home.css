@@ -132,3 +132,16 @@
 @keyframes home-fade { from { opacity: .4; } to { opacity: 1; } }
 @keyframes home-orbit { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 .home-stat strong span { display: inline; margin: 0; font: inherit; color: inherit; }
+
+/* Tools bar */
+.home-tech { padding-bottom: 20px; }
+.home-marquee { overflow: hidden; mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+.home-marquee-track { display: flex; gap: 14px; width: max-content; animation: home-marquee 55s linear infinite; }
+.home-marquee:hover .home-marquee-track { animation-play-state: paused; }
+.home-tool { display: inline-flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 14px; border: 1px solid #33424f; background: #0e1822e6; white-space: nowrap; }
+.home-tool svg { width: 28px; height: 28px; flex: none; }
+.home-tool b { font-size: 15px; }
+.home-tool small { color: #8da0b0; font-size: 12px; }
+.home-tech-note { margin: 12px 0 0; color: #6f8294; font-size: 12px; }
+@keyframes home-marquee { to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .home-marquee-track { animation: none; flex-wrap: wrap; width: auto; } }
