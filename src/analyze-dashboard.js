@@ -177,7 +177,7 @@ export function mountAnalyzeDashboard({ shell, store })
         const summary = dem ? summarizeTerrainProfile(dem, points, profile) : null;
         const hasHeights = Boolean(summary && summary.knownCount >= 2);
         const longest = analysis.segments.reduce((best, segment) => segment.distance > best.distance ? segment : best, analysis.segments[0]);
-        const kpi = (label, valueHtml, note, tag) => `<div class="ad-kpi"><span class="ad-kpi-label">${label}</span><strong>${valueHtml}</strong><small>${note}</small><em>${tag}</em></div>`;
+        const kpi = (label, valueHtml, note, tag, hint = "") => `<div class="ad-kpi"><span class="ad-kpi-label">${label}</span><strong>${valueHtml}</strong><small>${note}</small><em${hint ? ` title="${hint}"` : ""}>${tag}</em></div>`;
 
         const total = analysis.totalDistance;
         const share = Math.round(longest.distance / Math.max(1, total) * 100);
@@ -225,9 +225,10 @@ export function mountAnalyzeDashboard({ shell, store })
                     ${kpi("WAYPOINTS", `<span data-count="${points.length}" data-kind="integer">0</span>`, `${analysis.segments.length} legs`, "Your plan")}
                     ${kpi("LONGEST LEG", `<span data-count="${longest.distance}" data-kind="distance">0 m</span>`, `Leg ${longest.index}`, "Calculated")}
                     ${hasHeights
-                        ? kpi("CLIMB / DESCENT", `<span data-count="${summary.ascentMeters}" data-kind="meters">0 m</span> <small class="ad-split">/ ${Math.round(summary.descentMeters)} m</small>`, steepest === null ? "Max slope unknown" : `Steepest ${steepest.toFixed(1)}%`, "Calculated from DEM")
+                        ? kpi("HEIGHT CHANGE", `<span data-count="${summary.ascentMeters}" data-kind="meters">0 m</span> <small class="ad-split">up · ${Math.round(summary.descentMeters)} m down</small>`, steepest === null ? "Steepest slope unknown" : `Steepest slope ${steepest.toFixed(1)}%: ${steepest.toFixed(1)} m of rise per 100 m`, "Calculated · DEM", "DEM = digital elevation model, a grid of heights (USGS CTX, 20 m cells)")
                         : kpi("ELEVATION", "—", "No height data here", "Unknown")}
                 </div>
+                <p class="ad-note"><b>Distance</b> is measured along the surface using Mars's radius. <b>Height change</b> adds up every climb and every descent between samples, using the DEM (digital elevation model: a grid of heights derived from orbital images). <b>Slope %</b> is metres of rise per 100 m travelled. A route with no height data is marked Unknown, never assumed flat.</p>
                 ${stepFoot(1, sentences.size)}
             </section>
             <section class="ad-step" id="ad-step-2">

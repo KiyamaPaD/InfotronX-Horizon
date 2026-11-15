@@ -2206,9 +2206,9 @@ a:not(.source-link):hover
 .ad-kpi { position: relative; padding: 18px; border-radius: 16px; border: 1px solid #3a4a58; background: #111d29; transform: perspective(700px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); transition: transform .18s ease-out, border-color .25s; }
 .ad-kpi:hover { border-color: #e39165; }
 .ad-kpi strong { display: block; margin: 8px 0 4px; font: 700 clamp(28px, 2.6vw, 38px) 'Space Grotesk', sans-serif; color: #fff; }
-.ad-kpi small { color: #9fb0bf; }
+.ad-kpi > small { display: block; color: #9fb0bf; line-height: 1.4; }
 .ad-split { font-size: 16px !important; }
-.ad-kpi em { position: absolute; top: 14px; right: 14px; padding: 2px 8px; border-radius: 999px; background: #1d3a37; color: #8fe0d6; font: 700 10px sans-serif; letter-spacing: .6px; text-transform: uppercase; }
+.ad-kpi em { display: inline-block; margin-top: 12px; padding: 3px 10px; border-radius: 999px; background: #1d3a37; color: #8fe0d6; font: 700 10px sans-serif; letter-spacing: .6px; text-transform: uppercase; }
 
 .ad-card { padding: 18px; border-radius: 16px; border: 1px solid #364655; background: #0e1822; }
 .ad-chart-wrap { position: relative; }
@@ -2265,3 +2265,26 @@ a:not(.source-link):hover
     .ad-line, .ad-area, .ad-bar-track i, .ad-route-line, .ad-plane, .ad-step, .ad-empty, .ad-empty-orb, .analyze-dashboard { animation: none !important; }
     .ad-line, .ad-route-line { stroke-dashoffset: 0; }
 }
+
+/* 3D view panel: head, description, then labelled groups */
+.map-3d-panel { width: min(330px, calc(100% - 32px)); padding: 16px 18px; }
+.map-3d-head { display: grid; gap: 4px; }
+.map-3d-title { margin: 0; font-size: 20px; font-family: 'Space Grotesk', sans-serif; color: #fff; }
+.map-3d-copy { margin: 8px 0 0; color: #aebdca; }
+.map-3d-group { margin-top: 12px; padding-top: 12px; border-top: 1px solid #ffffff1a; }
+.map-3d-label { display: block; margin-bottom: 8px; font-size: 10px; font-weight: 800; letter-spacing: .18em; color: #e99570; }
+.map-3d-group .map-3d-route { margin: 0; }
+
+/* All tools: one clean science workspace */
+.workflow-ready[data-step="all"] .sidebar-left .last-section { display: none; }
+.analytics-categories { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.analytics-categories button { padding: 10px 12px; border-radius: 12px; font-weight: 700; text-align: center; transition: transform .2s, border-color .2s, background .2s; }
+.analytics-categories button:hover { transform: translateY(-2px); }
+.analytics-quickbar { gap: 10px; }
+.analytics-collapsible { border-radius: 14px; }
+.analytics-readiness details { border-radius: 14px; }
+
+.legal-links { display: inline-flex; gap: 12px; margin-left: 12px; }
+.legal-links a { color: inherit; opacity: .8; text-decoration: none; }
+.legal-links a:hover, .legal-links a:focus-visible { opacity: 1; text-decoration: underline; }
+.home-disclaimer a { color: #f0b090; }

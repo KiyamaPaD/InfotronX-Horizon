@@ -303,7 +303,7 @@ function pageMarkup()
         <section class="home-section">
             <h2 class="home-h2 reveal">Built on real data</h2>
             <ul class="home-sources reveal">${SOURCES.map(text => `<li>${text}</li>`).join("")}</ul>
-            <p class="home-disclaimer reveal">Mars Atlas is an independent project. It is not certified or approved by NASA, and it is a planning aid, not for real navigation. The globe above uses NASA Viking and MOLA imagery. Built with AI assistance (Claude by Anthropic) for code and documentation.</p>
+            <p class="home-disclaimer reveal">Mars Atlas is an independent project. It is not certified or approved by NASA, and it is a planning aid, not for real navigation. The globe above uses NASA Viking and MOLA imagery. <a href="./legal.html#terms">Terms</a> · <a href="./legal.html#privacy">Privacy</a> · <a href="./legal.html#cookies">Cookies</a> · <a href="./legal.html#credits">Credits</a> Built with AI assistance (Claude by Anthropic) for code and documentation.</p>
         </section>
         <footer class="home-footer reveal">
             <button type="button" class="home-btn home-btn-primary" data-home="start">Start exploring <span aria-hidden="true">→</span></button>

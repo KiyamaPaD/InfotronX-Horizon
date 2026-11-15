@@ -14,8 +14,8 @@ export function setupAnalyticsNavigation(panel, options = {})
 
     const groupDefinitions = [
         { id: "overview", label: "Overview", items: ["MISSION TELEMETRY", "SEGMENT DISTANCES", "ROUTE CONNECTIVITY GRAPH", "ROUTE INSPECTOR", "WAYPOINT COORDINATES"] },
-        { id: "terrain", label: "Terrain", items: ["DEM ROUTE LAB", "3D TERRAIN EXPLORER", "TERRAIN INTELLIGENCE", "ADVANCED MATHEMATICS LAB"] },
-        { id: "models", label: "Models", items: ["MARSWALK RESOURCE MODEL", "MISSION STRESS LAB", "ADVANCED ALGORITHMS", "MISSION COPILOT"] },
+        { id: "terrain", label: "Terrain & math", items: ["DEM ROUTE LAB", "3D TERRAIN EXPLORER", "TERRAIN INTELLIGENCE", "ADVANCED MATHEMATICS LAB"] },
+        { id: "models", label: "Models & resources", items: ["MARSWALK RESOURCE MODEL", "MISSION STRESS LAB", "ADVANCED ALGORITHMS", "MISSION COPILOT"] },
         { id: "mission", label: "Mission", items: ["MISSION CHECKPOINTS", "ROUTE INSIGHTS", "DATA SOURCES", "DATA INTEGRITY"] }
     ];
 
@@ -47,7 +47,7 @@ export function setupAnalyticsNavigation(panel, options = {})
     readiness.className = "analytics-readiness";
     readiness.setAttribute("aria-label", "How to activate science tools");
     readiness.innerHTML = `
-        <details open>
+        <details>
             <summary>How to unlock the science tools <span aria-hidden="true">▾</span></summary>
             <p>Modules stay available to explore. Some calculations need real user data before they can run.</p>
             <div class="analytics-ready-list">
@@ -173,6 +173,8 @@ export function setupAnalyticsNavigation(panel, options = {})
         categories.append(button);
     }
 
+    const groupsSeen = new Set();
+
     sections.forEach((section, index) =>
     {
         const heading = section.querySelector(".panel-title-row .section-label");
@@ -185,7 +187,9 @@ export function setupAnalyticsNavigation(panel, options = {})
 
         const title = heading.textContent.trim().replace(/\s+/g, " ");
         const group = groupDefinitions.find(definition => definition.items.includes(title))?.id || "models";
-        const expanded = true;
+        // Calm by default: only the first tool of each group is open, the rest are one click away.
+        const expanded = !groupsSeen.has(group);
+        groupsSeen.add(group);
         const id = "analytics-section-" + index;
         section.id = id;
         section.dataset.analyticsGroup = group;
