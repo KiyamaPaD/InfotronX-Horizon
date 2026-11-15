@@ -1,4 +1,4 @@
-import { marsDistance } from "./geo.js";
+import { isValidCoordinate, marsDistance } from "./geo.js";
 import { planRouteOnDem } from "./terrain.js";
 import { validateEvaAssumptions } from "./resources.js";
 
@@ -108,9 +108,11 @@ export function estimateResourceEnvelope(distanceMeters, assumptions = {}, optio
 
 export function measureRouteChange(reference, candidate)
 {
-    if (!Array.isArray(reference) || !Array.isArray(candidate))
+    if (!Array.isArray(reference) || !Array.isArray(candidate)
+        || reference.length < 2 || candidate.length < 2
+        || !reference.every(isValidCoordinate) || !candidate.every(isValidCoordinate))
     {
-        throw new Error("Routes must be waypoint arrays.");
+        throw new Error("Route comparison requires two or more valid Martian coordinates per route.");
     }
 
     const length = points => points.slice(1).reduce((sum, point, i) => sum + marsDistance(points[i], point), 0);
