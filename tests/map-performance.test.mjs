@@ -336,3 +336,60 @@ test("CTX stops at stable zoom 10 without requesting unavailable level 11", () =
     assert.equal(map.zoom, 10);
     assert.equal(renders, 0);
 });
+
+
+test("first visit waits for WMTS metadata instead of immediately guessing NASA tile URLs", () =>
+{
+    const map = Object.create(MarsMap.prototype);
+    let downloads = 0;
+    map.capabilitiesReady = false;
+    map.container = { clientWidth: 900, clientHeight: 500 };
+    map.createTile = () => { downloads++; };
+    map.renderTiles();
+    assert.equal(downloads, 0);
+});
+
+test("an unavailable parent tile falls back to its true grandparent location", () =>
+{
+    withFakeTiles(() =>
+    {
+        const map = testMap();
+        const tile = map.createTile(13, 22, 10, 0, 0);
+        const [preview] = tile.children;
+        tile.startLoading();
+        assert.match(preview.src, /\/9\/11\/6\.jpg$/);
+
+        const firstCandidates = map.tileCandidates(6, 11, 9);
+        for (let i = 0; i < firstCandidates.length; i++)
+        {
+            preview.onerror();
+        }
+
+        assert.match(preview.src, /\/8\/5\/3\.jpg$/);
+        assert.equal(preview.style.width, "1024px");
+        assert.equal(preview.style.height, "1024px");
+        assert.equal(preview.style.left, "-256px");
+        assert.equal(preview.style.top, "-512px");
+
+        preview.onload();
+        assert.equal(tile.dataset.preview, "loaded");
+        assert.equal(preview.style.opacity, "1");
+    });
+});
+
+test("partially available NASA map data is reported without disguising missing areas", () =>
+{
+    const map = Object.create(MarsMap.prototype);
+    const classes = new Map();
+    map.container = { classList: { toggle(name, enabled) { classes.set(name, enabled); } } };
+    map.notice = { classList: { toggle(name, enabled) { classes.set(name, enabled); } }, textContent: "", hidden: false };
+    map.activeTiles = new Set(["one", "two"]);
+    map.tiles = new Map([
+        ["one", { dataset: { state: "loaded", preview: "error" } }],
+        ["two", { dataset: { state: "error", preview: "error" } }]
+    ]);
+    map.updateImageryStatus();
+    assert.equal(classes.get("map-preview-notice"), true);
+    assert.equal(map.notice.hidden, false);
+    assert.match(map.notice.textContent, /unavailable/);
+});
