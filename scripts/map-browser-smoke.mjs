@@ -151,6 +151,8 @@ try
     assert.ok(view8.backdropLoaded > 0);
     assert.equal(view8.detailVisible, 0);
     assert.equal(view8.contextVisible, 0, "Zoom 8 must not show a sharp isolated CTX rectangle");
+    assert.equal(await page.locator(".map-overlays .route-node").count(), 0,
+        "Fresh missions must not contain automatically created waypoints");
     assert.ok(view8.bannerHidden);
     await page.locator("#map-root").screenshot({ path: "browser-map-evidence/zoom8.png" });
 
@@ -164,6 +166,8 @@ try
     const view9 = await inspect("NASA controlled CTX at zoom 9");
     assert.ok(view9.contextLoaded > 0);
     assert.ok(view9.contextWidths.every(width => width === 256));
+    const contextMask = await page.locator(".map-context-tiles").evaluate(element => getComputedStyle(element).maskImage);
+    assert.match(contextMask, /linear-gradient/i, "CTX must use a geographic feather mask");
     await page.locator("#map-root").screenshot({ path: "browser-map-evidence/zoom9-context.png" });
 
     await zoomUntil(11);
@@ -185,6 +189,8 @@ try
     assert.ok(full11.contextWidths.every(width => width === 256));
     assert.ok(view11.bannerHidden);
     assert.ok(view11.detailWidths.every(width => width === 256));
+    const hiriseMask = await page.locator(".map-tiles").evaluate(element => getComputedStyle(element).maskImage);
+    assert.match(hiriseMask, /linear-gradient/i, "HiRISE must use a geographic feather mask");
     await page.locator("#map-root").screenshot({ path: "browser-map-evidence/zoom11.png" });
 
     const requestsAt11 = network.filter(url => url.includes("Mars_Viking_MDIM21")).length;
