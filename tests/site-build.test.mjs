@@ -8,7 +8,7 @@ test('deployment output includes referenced app assets and excludes internal fil
 {
     execFileSync(process.execPath,['scripts/build-site.mjs'],{cwd:root});
     const out = new URL('dist/',root);
-    assert.deepEqual(readdirSync(out).sort(),['404.html','LICENSE','_headers','assets','index.html','src'].sort());
+    assert.deepEqual(readdirSync(out).sort(),['404.html','LICENSE','_headers','assets','checklist.html','index.html','legal.html','src'].sort());
     const html = readFileSync(new URL('index.html',out),'utf8');
     for (const [,path] of html.matchAll(/(?:src|href)="\.\/([^"]+)"/g))
     {

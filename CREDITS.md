@@ -33,7 +33,7 @@ AI tools helped write code and documentation. People reviewed and tested the res
 
 ## Team
 
-Built by **InfotronX Horizon** for the NASA Space Apps Challenge 2026. Contributors are listed in the [GitHub contributors page](https://github.com/KiyamaPaD/Mars-Atlas/graphs/contributors).
+Built by **InfotronX Horizon** for the NASA Space Apps Challenge 2026. Contributors are listed in the [GitHub contributors page](https://github.com/mari0-th/InfotronX-Horizon/graphs/contributors).
 
 ## Copyright
 

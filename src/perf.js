@@ -2,6 +2,18 @@
 // if frames stay slow. Decoration is dropped first; the map, route and terrain always stay.
 export function lowPower()
 {
+    try
+    {
+        const choice = localStorage.getItem("mars-perf");
+
+        if (choice === "light") return true;
+        if (choice === "full") return false;
+    }
+    catch
+    {
+        // Storage blocked: decide from the computer itself.
+    }
+
     const memory = navigator.deviceMemory || 8;
     const cores = navigator.hardwareConcurrency || 8;
     return memory <= 4 || cores <= 4 || matchMedia("(prefers-reduced-motion: reduce)").matches;

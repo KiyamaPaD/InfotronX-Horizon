@@ -6,6 +6,7 @@ import { profileRouteOnDem } from "./terrain.js";
 import { summarizeTerrainProfile } from "./terrain-profile-v2.js";
 import { animateNumber, prefersReducedMotion } from "./motion.js";
 import { estimateMarswalk } from "./resources.js";
+import { getPref, setPref } from "./settings.js";
 import { COMPANIONS, supplyKit, pointOfNoReturn } from "./companions.js";
 import { buildMissionFacts } from "./mission-copilot.js";
 import { askCopilot } from "./copilot-client.js";
@@ -424,6 +425,16 @@ export function mountAnalyzeDashboard({ shell, store, getCloud, getDem })
                 <div class="ad-result"><span>GOOD TO KNOW</span><p>AI answers are unverified explanations, not NASA measurements. The assistant cannot change, save or share your route. Limit: five AI questions every ten minutes.</p></div>
             </section>${safetyHtml}`;
 
+        for (const section of dashboard.querySelectorAll(".ad-step"))
+        {
+            if (getPref("ad-fold:" + section.id, false))
+            {
+                section.classList.add("is-folded");
+                const button = section.querySelector("[data-ad-fold]");
+                if (button) { button.textContent = "+"; button.setAttribute("aria-expanded", "false"); }
+            }
+        }
+
         paintChat();
         const askBox = dashboard.querySelector(".ad-ask-form textarea");
         if (askBox) askBox.value = draft;
@@ -475,6 +486,7 @@ export function mountAnalyzeDashboard({ shell, store, getCloud, getDem })
             const folded = section.classList.toggle("is-folded");
             fold.setAttribute("aria-expanded", String(!folded));
             fold.textContent = folded ? "+" : "−";
+            setPref("ad-fold:" + section.id, folded);
             return;
         }
 

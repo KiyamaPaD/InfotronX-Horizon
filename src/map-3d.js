@@ -8,6 +8,7 @@ import { lowPower, createGovernor } from "./perf.js";
 import { analyzeRoute, formatDistance } from "./geo.js";
 import { MARS_SITES, SITE_TYPES } from "./mars-sites.js";
 import { getLineStyle, mountLineControls } from "./line-style.js";
+import { rememberDetails, getPref, setPref } from "./settings.js";
 import { directionOf, latLonOf, ellipseRadius, parseGlb, subdivide, positionGroups } from "./planet-mesh.js";
 
 // NASA/JPL-Caltech 3D model of Mars: https://science.nasa.gov/resource/planet-mars-3d-model/
@@ -298,7 +299,7 @@ function sampleGrid(grid, point)
 
 const COPY = {
     crater: { title: "Jezero Crater", eyebrow: "3D VIEW · WHOLE CRATER", text: "Whole-crater visualization from NASA MOLA 8-bit grayscale imagery and Viking/HiRISE context. Vertical mapping is illustrative and not calibrated in meters. Use Delta detail for a documented numeric DEM.", switchLabel: "Delta detail · 20 m" },
-    planet: { title: "Whole planet", eyebrow: "3D VIEW · MARS", text: "NASA's own 3D model of Mars (NASA/JPL-Caltech) with one texture, lifted by real MOLA heights (relief exaggerated; set the slider to 1 for true scale). Click a glowing pin for a real place, its facts and NASA photos. Your route follows the surface between waypoints, anywhere on the planet. Distances use Mars's real radius.", switchLabel: "Whole crater" },
+    planet: { title: "Whole planet", eyebrow: "3D VIEW · MARS", text: "NASA's own 3D model of Mars (NASA/JPL-Caltech) with a single texture. The relief comes from the 8-bit NASA MOLA mosaic, about 115 m per grey level, so it is approximate; the slider exaggerates it. Click a glowing pin for a real place, its facts and NASA photos. Your route follows the surface between waypoints, anywhere on the planet. Distances use Mars's real radius.", switchLabel: "Whole crater" },
     delta: { title: "Delta front", eyebrow: "3D VIEW · DETAIL", text: "USGS CTX heights (20 m grid) with NASA HiRISE imagery (~1.2 m/pixel). Height and curvature are exaggerated for readability.", switchLabel: "Whole planet" }
 };
 
@@ -333,8 +334,8 @@ export async function openMap3d({ host, points = [], groundAt, getPoints, getRou
             <div class="map-3d-group"><span class="map-3d-label">YOUR ROUTE</span><p class="map-3d-route" data-3d="route"></p>
                 <div class="map-3d-actions"><button type="button" class="btn btn-accent compact" data-3d="preview" aria-pressed="false">▶ Fly over the route</button><button type="button" class="btn btn-outline compact" data-3d="speed" title="Fly-over speed" style="flex:0 0 auto">1×</button></div>
             </div>
-            <details class="map-3d-group map-3d-lines"><summary class="map-3d-label">LINES</summary><div data-3d="lines"></div></details>
-            <details class="map-3d-group map-3d-legend" open><summary class="map-3d-label">LEGEND</summary>
+            <details class="map-3d-group map-3d-lines" data-pref="3d-lines"><summary class="map-3d-label">LINES</summary><div data-3d="lines"></div></details>
+            <details class="map-3d-group map-3d-legend" data-pref="3d-legend" open><summary class="map-3d-label">LEGEND</summary>
                 <ul>
                     <li><i class="lg3-pin" style="--c:#75d1c8"></i>Landing site of a rover or lander</li>
                     <li><i class="lg3-pin" style="--c:#e3a06a"></i>Natural feature: volcano, canyon, basin</li>
@@ -362,7 +363,7 @@ export async function openMap3d({ host, points = [], groundAt, getPoints, getRou
             <div class="map-3d-profile-head"><span>HEIGHT ALONG THE ROUTE</span><button type="button" class="map-3d-fold" data-3d="profile-fold" aria-label="Fold or unfold the profile">−</button></div>
             <svg viewBox="0 0 560 120" role="img" aria-label="Elevation profile of the route" preserveAspectRatio="none"></svg>
             <p class="map-3d-profile-read" data-profile-read>Move over the profile to see the height at each point.</p>
-            <p class="map-3d-profile-note">Heights from NASA MOLA (about 463 m grid), measured from the Mars datum. Small features are not resolved.</p>
+            <p class="map-3d-profile-note">Heights come from the 8-bit NASA MOLA mosaic (about 115 m per grey level on a grid of about 463 m), relative to the Mars datum. Treat them as approximate; small features are not resolved.</p>
         </div>
         <div class="map-3d-nav">
             <button type="button" class="map-3d-compass" data-3d="compass" aria-label="Compass. The turning dial shows north, east, south, west and the points between. Click to return to the default view."><svg viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="38" fill="#0b121bdd" stroke="#ffffff40"/><circle cx="40" cy="40" r="30" fill="none" stroke="#ffffff1a"/><g data-3d="needle" style="transform-origin:40px 40px"><line x1="40" y1="4" x2="40" y2="11" stroke="#e7eef4" stroke-width="1.6" transform="rotate(0 40 40)"/><line x1="40" y1="5" x2="40" y2="8" stroke="#8da0b0" stroke-width="1" transform="rotate(15 40 40)"/><line x1="40" y1="5" x2="40" y2="8" stroke="#8da0b0" stroke-width="1" transform="rotate(30 40 40)"/><line x1="40" y1="4" x2="40" y2="11" stroke="#e7eef4" stroke-width="1.6" transform="rotate(45 40 40)"/><line x1="40" y1="5" x2="40" y2="8" stroke="#8da0b0" stroke-width="1" transform="rotate(60 40 40)"/><line x1="40" y1="5" x2="40" y2="8" stroke="#8da0b0" stroke-width="1" transform="rotate(75 40 40)"/><line x1="40" y1="4" x2="40" y2="11" stroke="#e7eef4" stroke-width="1.6" transform="rotate(90 40 40)"/><line x1="40" y1="5" x2="40" y2="8" stroke="#8da0b0" stroke-width="1" transform="rotate(105 40 40)"/><line x1="40" y1="5" x2="40" y2="8" stroke="#8da0b0" stroke-width="1" transform="rotate(120 40 40)"/><line x1="40" y1="4" x2="40" y2="11" stroke="#e7eef4" stroke-width="1.6" transform="rotate(135 40 40)"/><line x1="40" y1="5" x2="40" y2="8" stroke="#8da0b0" stroke-width="1" transform="rotate(150 40 40)"/><line x1="40" y1="5" x2="40" y2="8" stroke="#8da0b0" stroke-width="1" transform="rotate(165 40 40)"/><line x1="40" y1="4" x2="40" y2="11" stroke="#e7eef4" stroke-width="1.6" transform="rotate(180 40 40)"/><line x1="40" y1="5" x2="40" y2="8" stroke="#8da0b0" stroke-width="1" transform="rotate(195 40 40)"/><line x1="40" y1="5" x2="40" y2="8" stroke="#8da0b0" stroke-width="1" transform="rotate(210 40 40)"/><line x1="40" y1="4" x2="40" y2="11" stroke="#e7eef4" stroke-width="1.6" transform="rotate(225 40 40)"/><line x1="40" y1="5" x2="40" y2="8" stroke="#8da0b0" stroke-width="1" transform="rotate(240 40 40)"/><line x1="40" y1="5" x2="40" y2="8" stroke="#8da0b0" stroke-width="1" transform="rotate(255 40 40)"/><line x1="40" y1="4" x2="40" y2="11" stroke="#e7eef4" stroke-width="1.6" transform="rotate(270 40 40)"/><line x1="40" y1="5" x2="40" y2="8" stroke="#8da0b0" stroke-width="1" transform="rotate(285 40 40)"/><line x1="40" y1="5" x2="40" y2="8" stroke="#8da0b0" stroke-width="1" transform="rotate(300 40 40)"/><line x1="40" y1="4" x2="40" y2="11" stroke="#e7eef4" stroke-width="1.6" transform="rotate(315 40 40)"/><line x1="40" y1="5" x2="40" y2="8" stroke="#8da0b0" stroke-width="1" transform="rotate(330 40 40)"/><line x1="40" y1="5" x2="40" y2="8" stroke="#8da0b0" stroke-width="1" transform="rotate(345 40 40)"/><text x="40" y="22" text-anchor="middle" font-size="9" font-weight="700" fill="#ff7a5c" transform="rotate(0 40 40)">N</text><text x="40" y="22" text-anchor="middle" font-size="6" font-weight="700" fill="#aebdca" transform="rotate(45 40 40)">NE</text><text x="40" y="22" text-anchor="middle" font-size="8" font-weight="700" fill="#e7eef4" transform="rotate(90 40 40)">E</text><text x="40" y="22" text-anchor="middle" font-size="6" font-weight="700" fill="#aebdca" transform="rotate(135 40 40)">SE</text><text x="40" y="22" text-anchor="middle" font-size="8" font-weight="700" fill="#e7eef4" transform="rotate(180 40 40)">S</text><text x="40" y="22" text-anchor="middle" font-size="6" font-weight="700" fill="#aebdca" transform="rotate(225 40 40)">SW</text><text x="40" y="22" text-anchor="middle" font-size="8" font-weight="700" fill="#e7eef4" transform="rotate(270 40 40)">W</text><text x="40" y="22" text-anchor="middle" font-size="6" font-weight="700" fill="#aebdca" transform="rotate(315 40 40)">NW</text><path d="M40 30 L44 40 L40 37 L36 40 Z" fill="#e3623a"/><path d="M40 50 L44 40 L40 43 L36 40 Z" fill="#aebdca"/></g><path d="M40 0 L44 5 L36 5 Z" fill="#75d1c8"/></svg></button>
@@ -374,6 +375,7 @@ export async function openMap3d({ host, points = [], groundAt, getPoints, getRou
         <button type="button" class="map-3d-close" data-3d="close" aria-label="Close 3D view">✕ 2D map</button>
         <div class="map-3d-status" role="status" data-3d="status">Loading 3D terrain…</div>`;
     host.appendChild(layer);
+    rememberDetails(layer);
     requestAnimationFrame(() => layer.classList.add("is-open"));
     const get = name => layer.querySelector(`[data-3d="${name}"]`);
     const status = get("status");
@@ -594,7 +596,7 @@ export async function openMap3d({ host, points = [], groundAt, getPoints, getRou
                 tickers.add(now => decorHandle.update(now));
             }
 
-            // NASA's own 3D model of Mars (NASA/JPL-Caltech), made denser so real MOLA heights can lift it. One mesh, one texture.
+            // NASA's own 3D model of Mars (NASA/JPL-Caltech), made denser so MOLA heights (8-bit, approximate) can lift it. One mesh, one texture.
             const nasa = await loadNasaModel(light ? 2 : 3);
 
             if (disposed || id !== session) return;
@@ -623,7 +625,7 @@ export async function openMap3d({ host, points = [], groundAt, getPoints, getRou
             });
             scene.add(new THREE.Mesh(new THREE.SphereGeometry(1.06, 96, 64), haloMaterial));
 
-            // MOLA grey level 0-255 spans 29.4 km of height; at true scale that is 0.87% of the radius, multiplied by the slider.
+            // MOLA grey level 0-255 spans 29.4 km of height (about 115 m per level); that is 0.87% of the radius, multiplied by the slider.
             const relief = { data: null, width: 0, height: 0 };
             const dispAt = (lat, lon) =>
             {
@@ -1385,11 +1387,18 @@ export async function openMap3d({ host, points = [], groundAt, getPoints, getRou
             get("north").addEventListener("click", () => flyTo(new THREE.Vector3(0, 1, 0), 2.6));
             get("south").addEventListener("click", () => flyTo(new THREE.Vector3(0, -1, 0), 2.6));
             get("compass").addEventListener("click", () => flyTo(defaultDirection, 3.1));
+            const foldPanel = (folded, button) =>
+            {
+                layer.querySelector(".map-3d-panel").classList.toggle("is-folded", folded);
+                button.setAttribute("aria-expanded", String(!folded));
+                button.textContent = folded ? "+" : "−";
+            };
+            foldPanel(Boolean(getPref("3d-panel-folded", false)), get("fold"));
             get("fold").addEventListener("click", event =>
             {
-                const folded = layer.querySelector(".map-3d-panel").classList.toggle("is-folded");
-                event.currentTarget.setAttribute("aria-expanded", String(!folded));
-                event.currentTarget.textContent = folded ? "+" : "−";
+                const folded = !layer.querySelector(".map-3d-panel").classList.contains("is-folded");
+                foldPanel(folded, event.currentTarget);
+                setPref("3d-panel-folded", folded);
             });
 
             // Fly-over of the route, with the height profile underneath. The marker on the profile and the camera move together.
@@ -1491,8 +1500,10 @@ export async function openMap3d({ host, points = [], groundAt, getPoints, getRou
             {
                 const folded = profile.classList.toggle("is-folded");
                 event.currentTarget.textContent = folded ? "+" : "−";
+                setPref("3d-profile-folded", folded);
             });
 
+            if (getPref("3d-profile-folded", false)) { profile.classList.add("is-folded"); get("profile-fold").textContent = "+"; }
             const previewButton = get("preview");
             let speed = 1;
             const stopPreview = () =>
@@ -1937,7 +1948,7 @@ export async function openMap3d({ host, points = [], groundAt, getPoints, getRou
                 const target = new THREE.Matrix4().makeBasis(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, -1));
                 body.quaternion.setFromRotationMatrix(target.multiply(local.transpose()));
             }
-            // Real Viking colour for the whole planet, and the real MOLA heights raised as relief all over it.
+            // Real Viking colour for the whole planet, and the MOLA heights (8-bit, approximate) raised as relief all over it.
             globalMosaic(VIKING_URL, light ? 2 : 3).then(colour =>
             {
                 if (disposed || id !== session) return;

@@ -4,10 +4,10 @@
 
 Mars Atlas is a manual-first Mars mission-planning workspace. Draw a route across Jezero Crater, read its distance, slopes and heights from public NASA and USGS data, compare alternatives and see it in 3D. Built by **InfotronX Horizon** for the NASA Space Apps Challenge 2026.
 
-[![Verify](https://github.com/KiyamaPaD/Mars-Atlas/actions/workflows/verify.yml/badge.svg)](https://github.com/KiyamaPaD/Mars-Atlas/actions/workflows/verify.yml)
+[![Verify](https://github.com/mari0-th/InfotronX-Horizon/actions/workflows/verify.yml/badge.svg)](https://github.com/mari0-th/InfotronX-Horizon/actions/workflows/verify.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**[Open Mars Atlas](https://mars-atlas-map.netlify.app/)** · [Releases](https://github.com/KiyamaPaD/Mars-Atlas/releases) · [Changelog](CHANGELOG.md) · [Credits](CREDITS.md) · [Report a bug](https://github.com/KiyamaPaD/Mars-Atlas/issues/new?template=bug_report.md)
+**[Open Mars Atlas](https://mars-atlas-mu.vercel.app/)** · [Releases](https://github.com/mari0-th/InfotronX-Horizon/releases) · [Changelog](CHANGELOG.md) · [Credits](CREDITS.md) · [Report a bug](https://github.com/mari0-th/InfotronX-Horizon/issues/new?template=bug_report.md)
 
 > Mars Atlas is an independent educational project. It is a planning aid, **not** a navigation tool, and it is **not** certified, endorsed or approved by NASA.
 
@@ -141,8 +141,8 @@ The scientific analyses are educational approximations, not real mission-operati
 Requires **Git** and **Node.js 22+**. The development server uses Python 3 (`npm run dev`).
 
 ```bash
-git clone https://github.com/KiyamaPaD/Mars-Atlas.git
-cd Mars-Atlas
+git clone https://github.com/mari0-th/InfotronX-Horizon.git
+cd InfotronX-Horizon
 npm run dev
 ```
 

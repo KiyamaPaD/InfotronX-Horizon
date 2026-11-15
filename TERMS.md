@@ -4,7 +4,7 @@
 
 ## 1. Who we are
 
-Mars Atlas is developed by **InfotronX Horizon** ("we", "us"), an independent student team. Contact: mario2008toth@gmail.ro. The source code is published at https://github.com/KiyamaPaD/Mars-Atlas under the MIT licence.
+Mars Atlas is developed by **InfotronX Horizon** ("we", "us"), an independent student team. Contact: mario2008toth@gmail.ro. The source code is published at https://github.com/mari0-th/InfotronX-Horizon under the MIT licence.
 
 ## 2. What Mars Atlas is, and what it is not
 
