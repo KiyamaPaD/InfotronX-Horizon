@@ -2481,3 +2481,14 @@ a:not(.source-link):hover
 .wp-photo { display: grid; gap: 8px; margin-bottom: 6px; }
 .wp-photo img { max-width: 100%; max-height: 180px; border-radius: 10px; object-fit: cover; }
 .field-hint { margin: 0 0 10px; color: #8da0b0; font-size: 12px; }
+
+/* Surface view figure */
+.map-3d-pegman { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 12px; border: 1px dashed #75d1c8; background: #101a24e6; color: #75d1c8; font-size: 11px; cursor: grab; user-select: none; }
+.map-3d-pegman svg { width: 14px; height: 20px; }
+.map-3d-pegman:active { cursor: grabbing; }
+.map-pegman { cursor: grab; color: #f0b090; }
+.map-pegman svg { width: 14px; height: 20px; }
+.map-3d-ground { position: absolute; left: 50%; bottom: 16px; z-index: 6; transform: translateX(-50%); display: grid; gap: 6px; justify-items: center; padding: 10px 16px; border: 1px solid #75d1c866; border-radius: 14px; background: #0b121bee; color: #e7eef4; text-align: center; max-width: min(520px, calc(100% - 32px)); }
+.map-3d-ground[hidden] { display: none; }
+.map-3d-ground strong { font-size: 10px; letter-spacing: .2em; color: #75d1c8; }
+.map-3d-ground small { color: #8da0b0; }

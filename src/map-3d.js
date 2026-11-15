@@ -302,7 +302,7 @@ const COPY = {
     delta: { title: "Delta front", eyebrow: "3D VIEW · DETAIL", text: "USGS CTX heights (20 m grid) with NASA HiRISE imagery (~1.2 m/pixel). Height and curvature are exaggerated for readability.", switchLabel: "Whole planet" }
 };
 
-export async function openMap3d({ host, points = [], getPoints, getRoutes, getObservations, getLinks, onNodeClick, subscribe, getMode, setMode, onAddWaypoint, onMovePoint, onSelectWaypoint, onSelectObservation, onObserve, canUndo, canRedo, onUndo, onRedo, routeControls, routeColor = "#ff9a6b", mode = "planet", onFocusArea, onClose })
+export async function openMap3d({ host, points = [], groundAt, getPoints, getRoutes, getObservations, getLinks, onNodeClick, subscribe, getMode, setMode, onAddWaypoint, onMovePoint, onSelectWaypoint, onSelectObservation, onObserve, canUndo, canRedo, onUndo, onRedo, routeControls, routeColor = "#ff9a6b", mode = "planet", onFocusArea, onClose })
 {
     const layer = document.createElement("section");
     layer.className = "map-3d-layer";
@@ -356,6 +356,7 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
             <div class="map-3d-site-actions"><button type="button" class="btn btn-accent compact" data-3d="site-fly">Fly here</button><button type="button" class="btn btn-outline compact" data-3d="site-add">Add as waypoint</button></div>
         </aside>
         <div class="map-3d-tip" hidden></div>
+        <div class="map-3d-ground" data-3d="ground" hidden><strong>SURFACE VIEW</strong><span data-3d="ground-read"></span><small>Drag to look · ↑ ↓ walk · ← → turn · PageUp/PageDown or wheel for height · Shift to go faster</small><button type="button" class="btn btn-accent compact" data-3d="ground-exit">Back to the planet</button></div>
         <div class="map-3d-profile" data-3d="profile" hidden>
             <div class="map-3d-profile-head"><span>HEIGHT ALONG THE ROUTE</span><button type="button" class="map-3d-fold" data-3d="profile-fold" aria-label="Fold or unfold the profile">−</button></div>
             <svg viewBox="0 0 560 120" role="img" aria-label="Elevation profile of the route" preserveAspectRatio="none"></svg>
@@ -369,6 +370,7 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
             <div class="map-3d-poles"><button type="button" data-3d="north" title="Look down on the north pole">N pole</button><button type="button" data-3d="south" title="Look down on the south pole">S pole</button></div>
             <div class="map-3d-readout" data-3d="readout" aria-live="off"></div>
             <div class="map-3d-readout" data-3d="pointer" aria-live="off"></div>
+            <div class="map-3d-pegman" data-3d="pegman" draggable="true" title="Drag onto the planet to stand on its surface" role="img" aria-label="Surface view figure: drag it onto the planet"><svg viewBox="0 0 24 32" aria-hidden="true"><circle cx="12" cy="6" r="4" fill="currentColor"/><path d="M5 30 L8 14 Q12 11 16 14 L19 30 L15 30 L12 21 L9 30 Z" fill="currentColor"/></svg><span>Drag me onto Mars</span></div>
         </div>
         <button type="button" class="map-3d-close" data-3d="close" aria-label="Close 3D view">✕ 2D map</button>
         <div class="map-3d-status" role="status" data-3d="status">Loading 3D terrain…</div>`;
@@ -381,6 +383,7 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
     let hud = null;
     let stopListening = null;
     let stopTools = null;
+    let groundHook = null;
     const currentPoints = () => getPoints ? getPoints() : points;
     let hudKeep = null;
     let decorHandle = null;
@@ -1442,6 +1445,146 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
             const baseStop = stopListening;
             stopTools = (previousStop => () => { previousStop?.(); stopPreview(); })(stopTools);
 
+            // Surface view: drag the little figure onto the planet to stand there and look around.
+            // The height model is coarse (a point every few kilometres), so this is a low flight over the ground, not a photograph of it.
+            let ground = null;
+            const keysDown = new Set();
+            const groundPanel = get("ground");
+            const frameAt = (lat, lon) => ({
+                up: toVector(lat, lon),
+                east: toVector(lat, lon + 0.05).sub(toVector(lat, lon - 0.05)).normalize(),
+                north: toVector(Math.min(89.9, lat + 0.05), lon).sub(toVector(Math.max(-89.9, lat - 0.05), lon)).normalize()
+            });
+            const groundPose = () =>
+            {
+                const frame = frameAt(ground.lat, ground.lon);
+                const radius = ellipseRadius(frame.up.x, frame.up.y, frame.up.z) * (1 + dispAt(ground.lat, ground.lon)) + ground.height;
+                const position = frame.up.clone().multiplyScalar(radius);
+                const flat = Math.cos(ground.pitch);
+                const forward = frame.north.clone().multiplyScalar(Math.cos(ground.yaw) * flat).addScaledVector(frame.east, Math.sin(ground.yaw) * flat).addScaledVector(frame.up, Math.sin(ground.pitch));
+                return { position, up: frame.up, target: position.clone().add(forward) };
+            };
+            const compassWord = yaw => ["N", "NE", "E", "SE", "S", "SW", "W", "NW"][Math.round((((yaw * 180 / Math.PI) % 360) + 360) % 360 / 45) % 8];
+            const groundTick = (now) =>
+            {
+                if (!ground?.ready) return;
+
+                const delta = Math.min(0.05, (now - (ground.last || now)) / 1000);
+                ground.last = now;
+                const fast = keysDown.has("Shift") ? 4 : 1;
+
+                if (keysDown.has("ArrowLeft")) ground.yaw -= 1.1 * delta;
+                if (keysDown.has("ArrowRight")) ground.yaw += 1.1 * delta;
+                if (keysDown.has("PageUp")) ground.height = Math.min(0.03, ground.height * (1 + 1.5 * delta));
+                if (keysDown.has("PageDown")) ground.height = Math.max(0.0004, ground.height / (1 + 1.5 * delta));
+
+                const move = (keysDown.has("ArrowUp") ? 1 : 0) - (keysDown.has("ArrowDown") ? 1 : 0);
+
+                if (move)
+                {
+                    const step = move * fast * 0.25 * ground.height * delta * 180 / Math.PI;
+                    ground.lat = Math.max(-89.5, Math.min(89.5, ground.lat + step * Math.cos(ground.yaw)));
+                    ground.lon = ((ground.lon + step * Math.sin(ground.yaw) / Math.max(0.05, Math.cos(ground.lat * Math.PI / 180)) + 540) % 360) - 180;
+                }
+
+                const pose = groundPose();
+                camera.up.copy(pose.up);
+                camera.position.copy(pose.position);
+                camera.lookAt(pose.target);
+                get("ground-read").textContent = `Facing ${compassWord(ground.yaw)} · ${Math.abs(ground.lat).toFixed(2)}° ${ground.lat >= 0 ? "N" : "S"} ${Math.abs(ground.lon).toFixed(2)}° ${ground.lon >= 0 ? "E" : "W"} · ${(ground.height * 3396.19).toFixed(1)} km up`;
+            };
+            tickers.add(groundTick);
+            const onGroundKey = event =>
+            {
+                if (!ground) return;
+
+                if (event.type === "keyup") { keysDown.delete(event.key); return; }
+
+                if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "PageUp", "PageDown"].includes(event.key) || event.key === "Shift")
+                {
+                    keysDown.add(event.key);
+                    if (event.key !== "Shift") event.preventDefault();
+                }
+            };
+            const exitGround = () =>
+            {
+                if (!ground) return;
+
+                const here = toVector(ground.lat, ground.lon);
+                ground = null;
+                keysDown.clear();
+                window.removeEventListener("keydown", onGroundKey);
+                window.removeEventListener("keyup", onGroundKey);
+                groundPanel.hidden = true;
+                controls.enabled = true;
+                camera.up.set(0, 1, 0);
+                camera.position.copy(here.clone().multiplyScalar(1.5));
+                flyTo(here, 2.2);
+            };
+            const enterGround = (lat, lon) =>
+            {
+                stopPreview();
+                ground = { lat, lon, yaw: 0, pitch: -0.15, height: 0.0012, ready: false };
+                controls.enabled = false;
+                const start = camera.position.clone();
+                const startUp = camera.up.clone();
+                const pose = groundPose();
+                const begin = performance.now();
+                groundPanel.hidden = false;
+                get("ground-read").textContent = "Descending…";
+                const descend = now =>
+                {
+                    if (!ground || disposed) return;
+
+                    const t = Math.min(1, (now - begin) / 2200);
+                    const eased = 1 - Math.pow(1 - t, 3);
+                    const turn = start.clone().normalize().lerp(pose.position.clone().normalize(), eased).normalize();
+                    camera.position.copy(turn.multiplyScalar(start.length() + (pose.position.length() - start.length()) * eased));
+                    camera.up.copy(startUp).lerp(pose.up, eased).normalize();
+                    camera.lookAt(new THREE.Vector3().lerp(pose.target, eased));
+
+                    if (t < 1) requestAnimationFrame(descend);
+                    else { ground.ready = true; window.addEventListener("keydown", onGroundKey); window.addEventListener("keyup", onGroundKey); }
+                };
+                requestAnimationFrame(descend);
+            };
+            groundHook = enterGround;
+            get("ground-exit").addEventListener("click", exitGround);
+
+            // Look around by dragging; the wheel changes the height.
+            let look = null;
+            canvas.addEventListener("pointerdown", event => { if (ground?.ready && event.button === 0) look = { x: event.clientX, y: event.clientY }; });
+            window.addEventListener("pointerup", () => { look = null; });
+            canvas.addEventListener("pointermove", event =>
+            {
+                if (!look || !ground?.ready) return;
+
+                ground.yaw -= (event.clientX - look.x) * 0.004;
+                ground.pitch = Math.max(-1.3, Math.min(1.3, ground.pitch + (event.clientY - look.y) * 0.004));
+                look = { x: event.clientX, y: event.clientY };
+            });
+            canvas.addEventListener("wheel", event =>
+            {
+                if (!ground?.ready) return;
+
+                event.preventDefault();
+                ground.height = Math.max(0.0004, Math.min(0.03, ground.height * Math.exp(event.deltaY * 0.0012)));
+            }, { passive: false });
+
+            // The little figure.
+            const figure = get("pegman");
+            figure.addEventListener("dragstart", event => { event.dataTransfer.setData("text/plain", "pegman"); event.dataTransfer.effectAllowed = "move"; });
+            canvas.addEventListener("dragover", event => event.preventDefault());
+            canvas.addEventListener("drop", event =>
+            {
+                event.preventDefault();
+                const place = placeAt(event);
+
+                if (place) enterGround(place.lat, place.lon);
+                else status.textContent = "Drop the figure on the planet.";
+            });
+            stopTools = (previousStop => () => { previousStop?.(); exitGround(); })(stopTools);
+
             const updateRouteText = () =>
             {
                 readPoints();
@@ -1910,6 +2053,7 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
         });
         get("switch").addEventListener("click", () => build({ crater: "delta", delta: "planet", planet: "crater" }[mode]).catch(() => { status.textContent = "3D terrain could not load. Check your connection."; }));
         await build(mode);
+        if (groundAt && Number.isFinite(groundAt.lat) && Number.isFinite(groundAt.lon)) groundHook?.(groundAt.lat, groundAt.lon);
     }
     catch
     {
