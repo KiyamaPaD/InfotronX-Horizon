@@ -419,6 +419,9 @@ export function mountAnalyzeDashboard({ shell, store, getCloud, getDem })
                     <p class="ad-result-line">${turnText}</p>
                     <h4>Robots that could go along</h4>
                     <div class="ad-robots">${COMPANIONS.map(item => `<article class="ad-robot"><strong>${item.name}</strong><span class="ad-robot-kind">${item.kind === "real-analog" ? "Has a real example" : "Concept"}</span><p>${item.role}</p><small><b>Carries:</b> ${item.carries}</small><small><b>Helps with:</b> ${item.help}</small>${item.example ? `<small class="ad-robot-example">${item.example}</small>` : ""}</article>`).join("")}</div>
+                    <h4>Earth–Mars message delay</h4>
+                    <div class="ad-delay"><label>One-way delay <input type="range" min="3" max="22" step="1" value="12" data-ad-delay aria-label="One-way message delay in minutes"><b data-ad-delay-out>12 min</b></label>
+                    <p class="ad-note" data-ad-delay-text></p></div>
                     <h4>What to pack</h4>
                     <ul class="ad-kit">${kit.map(item => `<li><label><input type="checkbox"> <span><strong>${item.name}</strong> <em>${item.amount}</em><small>${item.why}</small></span></label></li>`).join("")}</ul>
                 </div>
@@ -503,6 +506,7 @@ export function mountAnalyzeDashboard({ shell, store, getCloud, getDem })
         }
 
         paintTrade();
+        dashboard.querySelector("[data-ad-delay]")?.dispatchEvent(new Event("input", { bubbles: true }));
         paintChat();
         const askBox = dashboard.querySelector(".ad-ask-form textarea");
         if (askBox) askBox.value = draft;
@@ -529,6 +533,13 @@ export function mountAnalyzeDashboard({ shell, store, getCloud, getDem })
     });
     dashboard.addEventListener("input", event =>
     {
+        if (event.target.matches("[data-ad-delay]"))
+        {
+            const minutes = Number(event.target.value);
+            dashboard.querySelector("[data-ad-delay-out]").textContent = minutes + " min";
+            dashboard.querySelector("[data-ad-delay-text]").textContent = `A command sent now reaches the rover in ${minutes} minutes. The earliest reply is back on Earth after ${minutes * 2} minutes, so the team on the ground cannot steer in real time: the rover or the walker must decide locally, and every plan needs backup steps. The delay is a value you choose (it is about 3 to 22 minutes in reality, depending on where the planets are).`;
+        }
+
         if (event.target.matches(".ad-ask-form textarea")) draft = event.target.value;
     });
     dashboard.addEventListener("input", event =>

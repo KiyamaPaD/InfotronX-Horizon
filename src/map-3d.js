@@ -1349,6 +1349,11 @@ export async function openMap3d({ host, points = [], groundAt, getPoints, getRou
                 }
             });
             const pointerReadout = get("pointer");
+            // What the numbers under the pointer rest on. The 20 m CTX model only covers a small clip near the Jezero delta.
+            const inClip = (lat, lon) => lat <= 18.47 && lat >= 18.4377 && lon >= 77.443 && lon <= 77.4783;
+            const dataQuality = (lat, lon) => inClip(lat, lon)
+                ? "heights: USGS CTX 20 m (calculated); picture: " + (surfaceSelect.value === "nasa" ? "NASA model" : "NASA Trek map")
+                : "heights: MOLA 8-bit, approximate; slopes unknown here";
             let hoverTimer = 0;
             canvas.addEventListener("pointermove", event =>
             {
@@ -1386,7 +1391,7 @@ export async function openMap3d({ host, points = [], groundAt, getPoints, getRou
                 }
 
                 const place = placeAt(event);
-                pointerReadout.textContent = place ? `Pointer ${Math.abs(place.lat).toFixed(3)}° ${place.lat >= 0 ? "N" : "S"} ${Math.abs(place.lon).toFixed(3)}° ${place.lon >= 0 ? "E" : "W"}` : "";
+                pointerReadout.textContent = place ? `Pointer ${Math.abs(place.lat).toFixed(3)}° ${place.lat >= 0 ? "N" : "S"} ${Math.abs(place.lon).toFixed(3)}° ${place.lon >= 0 ? "E" : "W"} · ${dataQuality(place.lat, place.lon)}` : "";
             });
             get("fit").addEventListener("click", fitRoute);
 

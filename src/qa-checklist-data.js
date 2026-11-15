@@ -37,6 +37,7 @@ export const PHASES = [
             { id: "2.12", built: "no", text: "Surface and zoom behaviour in 3D like the Astra team's project (martian-map-project-astra)." },
             { id: "2.13", built: "yes", test: "Click pins on the planet: there are now 29 real places (landers, rovers, volcanoes, canyons, basins, fractures), each with facts and NASA photos.", text: "More photos and more places, some of them random, from online sources." },
             { id: "2.14", built: "partly", text: "Animations on the 2D and 3D routes.", test: "3D has a travelling marker and pulsing rings; 2D has the Flowing line style. A travelling marker on 2D is still to do." },
+            { id: "2.16", built: "no", text: "Slope colours on the 3D surface and a ground view like the projects we reviewed (idea only)." },
             { id: "2.15", built: "yes", text: "A control panel to change the lines: thickness and more.", test: "Open Lines on the 2D map or in the 3D panel: thickness, opacity, style, colour, outline, marker size." }
         ]
     },
@@ -61,7 +62,7 @@ export const PHASES = [
             { id: "4.1", built: "partly", test: "legal.html now covers the new storage keys, the NASA image library, photos you add, the tool marks and the projects reviewed. A lawyer should still review the texts before public use.", text: "Everything legal on terms, cookies, privacy and credits. Very important.", test: "Open legal.html: terms, privacy, cookies and credits exist. A lawyer should still review them." },
             { id: "4.2", built: "yes", test: "Analyze → step 4 → Load the benchmark mission. Three routes with the same start and end appear; npm test re-plans them and checks the numbers did not drift (tests/benchmark.test.mjs).", text: "A repeatable mission benchmark: fixed start and destination in the height model, three variants, results, method and mission file." },
             { id: "4.3", built: "yes", test: "Analyze → step 4: move the penalty slider. The table re-ranks the routes and the text names the penalty (about 10.6 for the benchmark) where the choice changes.", text: "A slider that trades distance against relief and explains why the ranking of the routes changes." },
-            { id: "4.4", built: "no", text: "Data quality visible at the selected point: image source, height-model coverage, resolution, calculated or illustrative." },
+            { id: "4.4", built: "partly", test: "Move the pointer over the 3D planet: the readout says what the numbers rest on (CTX 20 m heights inside the Jezero clip, approximate MOLA elsewhere). The 2D map has no such readout yet.", text: "Data quality visible at the selected point: image source, height-model coverage, resolution, calculated or illustrative." },
             { id: "4.5", built: "yes", test: "The 3D panel, the profile note and the tour say the relief is approximate (8-bit, about 115 m per level). Nothing says 'real' or 'true scale'.", text: "Fix the 3D wording about MOLA heights ('real', 'true scale') so it matches what the data can support." },
             { id: "4.6", built: "partly", test: "docs/JURY_PACK.md section 6 gives the procedure and a table to fill in with a GIS tool. The comparison itself still has to be done and written down.", text: "An independent check of a few points and a profile with a GIS tool, written down." },
             { id: "4.7", built: "partly", test: "docs/JURY_PACK.md section 7 is the script to run in a private window. It still has to be run by a person.", text: "Test the public flow: guest, example, analysis, comparison, export; and separately a new account." },
@@ -85,7 +86,7 @@ export const PHASES = [
             { id: "5.3", built: "no", text: "A route that maximises geological diversity from a documented geological map." },
             { id: "5.4", built: "no", text: "'Why is there no route?': name the blocking constraint and test controlled changes." },
             { id: "5.5", built: "no", text: "Backup plans with triggers (if B is blocked go to C; if time is short drop the secondary goal)." },
-            { id: "5.6", built: "no", text: "Earth–Mars communication delay simulation with a queue of commands." },
+            { id: "5.6", built: "yes", test: "Analyze → step 8: choose a one-way delay between 3 and 22 minutes; the text says when a command arrives and when a reply can return.", text: "Earth–Mars communication delay simulation with a queue of commands." },
             { id: "5.7", built: "no", text: "Route robustness to terrain uncertainty: does the preferred variant stay the same?" },
             { id: "5.8", built: "no", text: "'What information would help most?': where one more observation could change the choice." },
             { id: "5.9", built: "no", text: "Navigation without GPS: a position uncertainty that grows and shrinks at landmarks." },
