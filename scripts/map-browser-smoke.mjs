@@ -162,6 +162,34 @@ try
     assert.ok(requestsAfter - requestsAt11 <= 8, "Repeated zoom downloads too many Viking images");
     assert.ok(viewReturn.backdropVisible > 0);
 
+    const mapBox = await page.locator("#map-root").boundingBox();
+    assert.ok(mapBox && mapBox.width > 400);
+    const originX = mapBox.x + mapBox.width * 0.45;
+    const originY = mapBox.y + mapBox.height * 0.48;
+
+    await page.mouse.move(originX, originY);
+    await page.mouse.down();
+    await page.mouse.move(originX + 320, originY + 45, { steps: 12 });
+    await page.mouse.up();
+
+    await page.waitForFunction(() =>
+    {
+        const root = document.querySelector("#map-root").getBoundingClientRect();
+        return [...document.querySelectorAll(".map-background-tile")].some(item =>
+        {
+            const rect = item.getBoundingClientRect();
+            return item.dataset.state === "loaded" && item.style.display !== "none"
+                && rect.right > root.left && rect.left < root.right
+                && rect.bottom > root.top && rect.top < root.bottom;
+        });
+    }, null, { timeout: 15000 });
+
+    const afterPan = await inspect("After 320px pan at zoom 11");
+    assert.ok(afterPan.backdropLoaded > 0);
+    assert.equal(afterPan.bannerHidden, true);
+    assert.ok(afterPan.detailWidths.every(width => width === 256));
+    await page.locator("#map-root").screenshot({ path: "browser-map-evidence/zoom11-panned.png" });
+
     const unique = new Set(network);
     console.log(JSON.stringify({
         browser: "Chromium", totalNasaRequests: network.length,
