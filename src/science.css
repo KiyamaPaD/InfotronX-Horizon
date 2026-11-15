@@ -911,3 +911,233 @@
         flex-wrap:wrap;
     }
 }
+
+/* Transparent, accessible explanation of A* scoring and route trade-offs. */
+.terrain-why
+{
+    padding:14px;
+    border:1px solid #577b86;
+    border-radius:12px;
+    background:#132836;
+    margin-top:15px;
+}
+.terrain-why-title
+{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:8px;
+    flex-wrap:wrap;
+}
+.terrain-why-title strong
+{
+    font:700 15px 'Space Grotesk',sans-serif;
+    color:#f3f5f4;
+}
+.terrain-why-title span
+{
+    font:700 9px 'DM Sans',sans-serif;
+    letter-spacing:.7px;
+    color:#8ed6c7;
+}
+.terrain-why .section-help
+{
+    margin:10px 0;
+}
+.terrain-why-report
+{
+    min-width:0;
+    line-height:1.6;
+    font-size:11px;
+}
+.why-empty,.why-warning,.why-explanation,.why-provenance
+{
+    color:#c1d4df;
+    line-height:1.6;
+}
+.why-warning
+{
+    border-left:2px solid #eab18e;
+    padding:9px;
+    background:#29333b;
+    color:#f0d8cb;
+}
+.why-verdict
+{
+    display:flex;
+    flex-direction:column;
+    gap:5px;
+    padding:12px;
+    background:#163e3b;
+    border:1px solid #5a9d90;
+    border-radius:8px;
+    margin:10px 0;
+}
+.why-verdict span
+{
+    font-size:9px;
+    letter-spacing:.8px;
+    color:#a6e2ce;
+}
+.why-verdict strong
+{
+    font:700 14px 'Space Grotesk',sans-serif;
+}
+.why-verdict small
+{
+    color:#d2e5dd;
+}
+.why-equation
+{
+    display:flex;
+    flex-direction:column;
+    gap:5px;
+    padding:10px 12px;
+    border:1px solid #465967;
+    border-radius:8px;
+    background:#12212e;
+}
+.why-equation strong
+{
+    color:#f5d7a4;
+    font-size:15px;
+    letter-spacing:.5px;
+}
+.why-equation span
+{
+    color:#afc4d0;
+}
+.why-legend
+{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin:14px 0 9px;
+}
+.why-legend span
+{
+    display:flex;
+    align-items:center;
+    gap:5px;
+    color:#b6cad2;
+    font-size:10px;
+}
+.why-legend i
+{
+    width:11px;
+    height:11px;
+    border-radius:3px;
+    background:#79d0c3;
+}
+.why-legend .why-legend-height
+{
+    background:#e2b17f;
+}
+.why-bars
+{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    margin:10px 0 16px;
+}
+.why-bar-label
+{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    margin-bottom:5px;
+    font-size:11px;
+}
+.why-bar-label strong
+{
+    overflow-wrap:anywhere;
+}
+.why-bar-label span
+{
+    color:#c5d8df;
+    white-space:nowrap;
+}
+.why-bar-track
+{
+    display:flex;
+    height:14px;
+    border:1px solid #455b67;
+    border-radius:5px;
+    overflow:hidden;
+    background:#0c1926;
+}
+.why-bar-track span
+{
+    display:block;
+    height:100%;
+    flex:none;
+}
+.why-bar-distance
+{
+    background:#79d0c3;
+}
+.why-bar-height
+{
+    background:#e2b17f;
+}
+.why-winner .why-bar-label strong
+{
+    color:#f1d3a7;
+}
+.why-table-scroll
+{
+    width:100%;
+    max-width:100%;
+    overflow-x:auto;
+}
+.why-data-table
+{
+    border-collapse:collapse;
+    min-width:630px;
+    width:100%;
+    font-size:10px;
+}
+.why-data-table th,.why-data-table td
+{
+    border-bottom:1px solid #3b5561;
+    padding:9px 7px;
+    text-align:left;
+    white-space:nowrap;
+}
+.why-data-table th
+{
+    color:#e1e7e8;
+}
+.why-data-table td
+{
+    color:#c4d2d9;
+}
+.why-data-table .why-selected
+{
+    background:#203e43;
+}
+.why-scatter
+{
+    margin-top:14px;
+}
+.why-scatter h4
+{
+    font-size:12px;
+}
+.why-scatter svg
+{
+    width:100%;
+    height:auto;
+    min-width:200px;
+    overflow:visible;
+}
+.why-scatter svg text
+{
+    font-size:10px;
+    fill:#a2b9c5;
+}
+.why-scatter-note
+{
+    font-size:10px;
+    color:#a9c0c8;
+}

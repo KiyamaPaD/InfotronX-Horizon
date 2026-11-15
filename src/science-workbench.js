@@ -1,7 +1,9 @@
 import { analyzeRoute, formatDistance } from "./geo.js";
 import { estimateMarswalk, DEFAULT_EVA_ASSUMPTIONS } from "./resources.js";
 import { planRouteOnDem, validateDem } from "./terrain.js";
-import { compareTerrainStrategies, estimateResourceEnvelope, measureRouteChange } from "./mission-scenarios.js";
+import { compareTerrainStrategies, estimateResourceEnvelope } from "./mission-scenarios.js";
+import { explainTerrainRouteChoice } from "./route-decision.js";
+import { renderRouteDecision } from "./route-explainer-ui.js";
 import { loadJezeroDem } from "./bundled-dem.js";
 import { mountTerrainIntelligence } from "./terrain-intelligence-ui.js";
 import { mountInteractiveTerrainProfile } from "./terrain-profile-v2-ui.js";
@@ -92,6 +94,18 @@ export function initScienceWorkbench({ store, map, notify, onTerrainChange = () 
         <button class="btn btn-accent wide" id="terrain-plan" disabled>Generate a single A* candidate</button>
         <button class="btn btn-outline wide" id="terrain-compare" disabled>Compare 3 route strategies</button>
         <div id="terrain-strategies" class="terrain-strategies" aria-live="polite"></div>
+        <section class="terrain-why" id="terrain-why" aria-label="Explainable route selection">
+            <div class="terrain-why-title"><strong>WHY THIS ROUTE?</strong><span>EXPLAINABLE A* · NO AI SCORING</span></div>
+            <p class="section-help">Understand exactly why a route is preferred under a chosen cost function. Change the preference to recompute scores without changing any saved waypoints.</p>
+            <label class="science-label">Evaluation preference
+                <select id="terrain-why-preference" class="science-select" disabled>
+                    <option value="distance">Shortest modeled (λ = 0)</option>
+                    <option value="balanced" selected>Balanced (λ = 6)</option>
+                    <option value="gentle">Slope-conscious (λ = 24)</option>
+                </select>
+            </label>
+            <div id="terrain-why-report" aria-live="polite" class="terrain-why-report"><p class="why-empty">Load a numeric DEM, add two waypoints and choose Compare 3 route strategies to see an evidence-based explanation.</p></div>
+        </section>
         <div id="terrain-report" class="terrain-report" aria-live="polite"></div>
         <div id="terrain-profile"></div>
         <p class="science-footnote">A* uses 8 neighboring grid cells; movement cost is distance × (1 + slope penalty × absolute grade). It prevents cutting diagonally through NoData corners. Imported DEM data must have documented provenance; user-provided grids are not automatically verified NASA data.</p>
@@ -110,6 +124,8 @@ export function initScienceWorkbench({ store, map, notify, onTerrainChange = () 
     const demButton = terrain.querySelector("#terrain-plan");
     const compareButton = terrain.querySelector("#terrain-compare");
     const strategiesPanel = terrain.querySelector("#terrain-strategies");
+    const whyPreference = terrain.querySelector("#terrain-why-preference");
+    const whyPanel = terrain.querySelector("#terrain-why-report");
     const exclusionSelect = terrain.querySelector("#exclusion-note");
     const exclusionRadius = terrain.querySelector("#exclusion-radius");
     const stressRun = stress.querySelector("#stress-run");
@@ -214,7 +230,26 @@ export function initScienceWorkbench({ store, map, notify, onTerrainChange = () 
         candidates = [];
         comparisonSource = null;
         strategiesPanel.replaceChildren();
+        whyPreference.disabled = true;
+        whyPanel.innerHTML = '<p class="why-empty">Comparison changed or no longer matches the mission. Run Compare 3 route strategies again.</p>';
     }
+
+    function renderWhyRoute()
+    {
+        if (!comparisonSource || !candidates.length)
+        {
+            return;
+        }
+
+        const decision = explainTerrainRouteChoice(candidates, whyPreference.value);
+        renderRouteDecision(whyPanel, decision, {
+            source: dem?.source,
+            maxSlopePercent: comparisonSource.maxSlopePercent,
+            exclusionCount: JSON.parse(comparisonSource.exclusions).length
+        });
+    }
+
+    whyPreference.addEventListener("change", renderWhyRoute);
 
     function render()
     {
@@ -527,19 +562,30 @@ export function initScienceWorkbench({ store, map, notify, onTerrainChange = () 
             const results = compareTerrainStrategies(dem, source.points, { maxSlopePercent, exclusionZones: zones, maxWaypoints: 80 });
             candidates = results;
             comparisonSource = { missionId: store.current.id, routeId: source.id, signature: JSON.stringify(source.points), exclusions: JSON.stringify(zones), maxSlopePercent };
-            const header = `<div class="scenario-head">Three independent optimization preferences. All use the imported DEM, slope limit and any selected exclusion.</div>`;
-            strategiesPanel.innerHTML = header + results.map((item, index) =>
-            {
-                if (!item.ok)
+            const header = '<div class="scenario-head">Three route cost preferences on the same numeric DEM and the same manual waypoint anchors. The ranking depends on the preference and is not a safety certification.</div>';
+            const manualDistance = analyzeRoute(source.points).totalDistance;
+            strategiesPanel.innerHTML = header + '<p class="science-footnote">Manual waypoint polyline: ' +
+                formatDistance(manualDistance) + '. A* figures below use cell-by-cell gridded paths, so do not interpret their different lengths as a measured safety advantage over the manual polyline.</p>' +
+                results.map((item, index) =>
                 {
-                    return `<div class="strategy-card"><strong>${escapeText(item.label)}</strong><p>${escapeText(item.reason)}</p></div>`;
-                }
+                    if (!item.ok)
+                    {
+                        return '<div class="strategy-card"><strong>' + escapeText(item.label) +
+                            '</strong><p>' + escapeText(item.reason) + '</p></div>';
+                    }
 
-                const change = measureRouteChange(source.points, item.points);
-                const delta = change.differencePercent === null ? "No baseline" : `${change.differencePercent >= 0 ? "+" : ""}${formatNumber(change.differencePercent)}% vs manual`;
-                return `<div class="strategy-card"><strong>${escapeText(item.label)}</strong><small>${formatDistance(item.stats.distanceMeters)} grid path · +${formatNumber(item.stats.ascentMeters)} m ascent · ${formatNumber(item.stats.maxGradePercent)}% max grade</small><small>${delta} (waypoint geometry) · ${item.stats.visited} nodes visited</small><button class="btn btn-outline wide" type="button" data-use-strategy="${index}">Add editable candidate</button></div>`;
-            }).join("");
-            terrainMessage = "Route strategies computed from user-imported, unverified DEM. They are not calibrated safe routes.";
+                    return '<div class="strategy-card"><strong>' + escapeText(item.label) +
+                        '</strong><small>' + formatDistance(item.stats.distanceMeters) +
+                        ' DEM-grid route · +' + formatNumber(item.stats.ascentMeters) +
+                        ' m ascent · ' + formatNumber(item.stats.descentMeters) +
+                        ' m descent · ' + formatNumber(item.stats.maxGradePercent) +
+                        '% maximum adjacent-cell grade · ' + item.stats.visited +
+                        ' explored grid nodes</small><button class="btn btn-outline wide" type="button" data-use-strategy="' +
+                        index + '">Add editable candidate</button></div>';
+                }).join("");
+            whyPreference.disabled = false;
+            renderWhyRoute();
+            terrainMessage = "Route strategies computed from the selected numeric DEM. The model is not certified for astronaut or rover safety.";
             render();
         }
         catch (error)
@@ -576,10 +622,10 @@ export function initScienceWorkbench({ store, map, notify, onTerrainChange = () 
 
         const sourceDetails = comparisonSource;
         const zones = scenarioZones();
-        const route = store.addRoute(`${candidate.label} · imported DEM`);
+        const route = store.addRoute(`${candidate.label} · numeric DEM candidate`);
         route.points = candidate.points.map(point => ({ id: crypto.randomUUID(), lat: point.lat, lon: point.lon }));
         route.terrainModel = { source: candidate.source, stats: candidate.stats, scenario: candidateProvenance(zones, sourceDetails.maxSlopePercent, candidate.slopePenalty), unverified: true };
-        terrainMessage = "Added a manually editable candidate. Numeric DEM and exclusion assumptions are user-supplied and unverified.";
+        terrainMessage = "Added a manually editable candidate. DEM coverage and user-selected cost/exclusion assumptions do not certify real-world traversability.";
         clearComparison();
         store.save();
         map.focusRoute();
@@ -621,6 +667,22 @@ export function initScienceWorkbench({ store, map, notify, onTerrainChange = () 
                 lines.push(`Energy 10th–90th percentile: ${formatNumber(sensitivityReport.batteryWh.p10)}–${formatNumber(sensitivityReport.batteryWh.p90)} Wh`);
                 lines.push(`Artificial trial frequency beyond any allowance: ${formatNumber(sensitivityReport.exceedanceFrequency.any * 100)}%`);
                 lines.push("Not calibrated NASA probabilities, measurements or safety certification.");
+            }
+
+            if (comparisonSource && candidates.length)
+            {
+                const decision = explainTerrainRouteChoice(candidates, whyPreference.value);
+                const selected = decision.alternatives.find(item => decision.winners.includes(item.id));
+                lines.push("", "## Why this route? (deterministic A* explanation)",
+                    `Cost definition: C = D + ${decision.slopePenalty} × (ascent + descent), all terms in meters.`,
+                    decision.explanation);
+
+                if (selected)
+                {
+                    lines.push(`Preferred candidate: ${selected.label}. Model cost: ${selected.costMeters.toFixed(2)} m; grid distance: ${selected.distanceMeters.toFixed(2)} m; ascent + descent: ${selected.verticalMeters.toFixed(2)} m.`);
+                }
+
+                lines.push("Rankings use only the loaded numeric DEM, user-selected constraints and the tested candidates; not an astronaut safety assessment.");
             }
 
             const researchBrief = advancedResearch.brief();
