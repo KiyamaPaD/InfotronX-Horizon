@@ -693,6 +693,51 @@ try
     await page.waitForFunction(() => document.querySelector(".map-overlays .route-node")?.getAttribute("fill") === "#75d1c8",
         null, { timeout: 7000 });
 
+    // Direct on-map editing and deletion of turquoise field observation markers.
+    await page.locator(".mode-btn[data-mode='observe']").click();
+    const observationMapBox = await page.locator("#map-root").boundingBox();
+    await page.locator("#map-root").click({ position: { x: observationMapBox.width * .77, y: observationMapBox.height * .58 } });
+    await page.locator("#observation-title").fill("Test removable observation");
+    await page.locator("#observation-note").fill("User-entered field note");
+    await page.locator("#observation-submit").click();
+    await page.waitForFunction(() => document.querySelectorAll(".map-overlays .observation-node").length === 1);
+    await page.locator(".map-overlays .observation-node").first().click();
+    assert.equal(await page.locator("#observation-modal h2").textContent(), "Edit field observation");
+    await page.locator("#observation-title").fill("Updated observation");
+    await page.locator("#observation-submit").click();
+    assert.match(await page.locator("#observation-list").textContent(), /Updated observation/);
+
+    await page.locator(".map-overlays .observation-node").first().click({ button: "right" });
+    assert.equal(await page.locator('#map-context-menu [data-context-action="delete-observation"]').isVisible(), true);
+    page.once("dialog", dialog => dialog.accept());
+    await page.locator('#map-context-menu [data-context-action="delete-observation"]').click();
+    await page.waitForFunction(() => document.querySelectorAll(".map-overlays .observation-node").length === 0);
+    await page.locator('[data-action="undo-edit"]').click();
+    await page.waitForFunction(() => document.querySelectorAll(".map-overlays .observation-node").length === 1);
+    await page.locator(".map-overlays .observation-node").first().click();
+    assert.equal(await page.locator("#observation-delete").isVisible(), true);
+    page.once("dialog", dialog => dialog.accept());
+    await page.locator("#observation-delete").click();
+    await page.waitForFunction(() => document.querySelectorAll(".map-overlays .observation-node").length === 0);
+
+    // Numeric DEM: waypoint segment, profile selection, map probe and provenance.
+    await page.locator('[data-action="add-coordinates"]').click();
+    await page.locator("#latitude-input").fill("18.446");
+    await page.locator("#longitude-input").fill("77.452");
+    await page.locator('#coordinate-form button[type="submit"]').click();
+    await page.locator('.analytics-categories [data-group="terrain"]').click();
+    await page.locator("#dem-load-official").click();
+    await page.waitForFunction(() => document.querySelector("#terrain-v2-slider")?.disabled === false,
+        null, { timeout: 20000 });
+    assert.equal(await page.locator("#terrain-v2-waypoints .terrain-v2-waypoint").count(), 2);
+    await page.locator("#terrain-v2-slider").focus();
+    await page.locator("#terrain-v2-slider").press("End");
+    await page.waitForFunction(() => document.querySelector(".map-overlays .terrain-probe-marker") !== null);
+    assert.match(await page.locator("#terrain-v2-readout").textContent(), /along route/);
+    await page.locator("#terrain-profile").screenshot({ path: "browser-map-evidence/terrain-profile-v2.png" });
+    await page.locator("#terrain-v2-clear").click();
+    assert.equal(await page.locator(".map-overlays .terrain-probe-marker").count(), 0);
+
     const unique = new Set(network);
     console.log(JSON.stringify({
         browser: "Chromium", totalNasaRequests: network.length,

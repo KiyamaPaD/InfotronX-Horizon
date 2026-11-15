@@ -65,8 +65,8 @@ export function summarizeTerrainProfile(dem, points, profile)
         complete: Boolean(samples.length && known.length === samples.length),
         totalDistanceMeters: samples.at(-1)?.distanceMeters ?? 0,
         observedDistanceMeters,
-        minimumElevationMeters: known.length ? Math.min(...known.map(x => x.elevationMeters)) : null,
-        maximumElevationMeters: known.length ? Math.max(...known.map(x => x.elevationMeters)) : null,
+        minimumElevationMeters: known.length ? known.reduce((value, sample) => Math.min(value, sample.elevationMeters), Infinity) : null,
+        maximumElevationMeters: known.length ? known.reduce((value, sample) => Math.max(value, sample.elevationMeters), -Infinity) : null,
         ascentMeters: known.length ? ascentMeters : null,
         descentMeters: known.length ? descentMeters : null,
         maxAbsoluteGradePercent,
@@ -122,8 +122,8 @@ export function profileSvgPaths(samples, maximumVertices = 420)
         return [];
     }
 
-    const minimum = Math.min(...known.map(sample => sample.elevationMeters));
-    const maximum = Math.max(...known.map(sample => sample.elevationMeters));
+    const minimum = known.reduce((value, sample) => Math.min(value, sample.elevationMeters), Infinity);
+    const maximum = known.reduce((value, sample) => Math.max(value, sample.elevationMeters), -Infinity);
     const heightSpan = Math.max(1, maximum - minimum);
     const distanceSpan = Math.max(1, samples.at(-1).distanceMeters);
     const lines = [];

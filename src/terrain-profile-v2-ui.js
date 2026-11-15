@@ -86,8 +86,8 @@ export function mountInteractiveTerrainProfile({ host, store, map, readDem })
         selectedIndex = next;
         const sample = currentSamples[next];
         const known = currentSamples.filter(item => Number.isFinite(item.elevationMeters));
-        const low = known.length ? Math.min(...known.map(item => item.elevationMeters)) : 0;
-        const high = known.length ? Math.max(...known.map(item => item.elevationMeters)) : 1;
+        const low = known.length ? known.reduce((value, item) => Math.min(value, item.elevationMeters), Infinity) : 0;
+        const high = known.length ? known.reduce((value, item) => Math.max(value, item.elevationMeters), -Infinity) : 1;
         const span = Math.max(1, high - low);
         const distanceSpan = Math.max(1, currentSamples.at(-1).distanceMeters);
         const x = 16 + sample.distanceMeters / distanceSpan * 288;
@@ -103,7 +103,9 @@ export function mountInteractiveTerrainProfile({ host, store, map, readDem })
         slider.value = String(next);
         focus.disabled = false;
         clear.disabled = false;
-        readout.textContent = `${formatDistance(sample.distanceMeters)} along route · ${elevationText(sample.elevationMeters)} · ${fmt(sample.lat, 5)}° N, ${fmt(sample.lon, 5)}° E`;
+        const latitude = `${fmt(Math.abs(sample.lat), 5)}° ${sample.lat >= 0 ? "N" : "S"}`;
+        const longitude = `${fmt(Math.abs(sample.lon), 5)}° ${sample.lon >= 0 ? "E" : "W"}`;
+        readout.textContent = `${formatDistance(sample.distanceMeters)} along route · ${elevationText(sample.elevationMeters)} · ${latitude}, ${longitude}`;
         map.setTerrainProbe?.(sample);
     }
 
