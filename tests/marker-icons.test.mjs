@@ -28,7 +28,7 @@ test("marker choices survive mission persistence, checkpoints and import validat
         setItem: (key, value) => memory.set(key, value)
     };
 
-    const store = new MissionStore();
+    const store = new MissionStore({ userId: "test-user" });
     store.addPoint({ lat: 18.44460, lon: 77.45090 });
     store.addObservation({ lat: 18.45160, lon: 77.45920 }, "User annotation", "Test point");
     const pointId = store.activeRoute.points[0].id;
@@ -38,7 +38,7 @@ test("marker choices survive mission persistence, checkpoints and import validat
     assert.equal(store.setObservationIcon(noteId, "triangle"), true);
     assert.equal(store.setPointIcon(pointId, "bad-value"), false);
 
-    const saved = new MissionStore();
+    const saved = new MissionStore({ userId: "test-user" });
     assert.equal(saved.activeRoute.points[0].icon, "star");
     assert.equal(saved.current.observations[0].icon, "triangle");
 

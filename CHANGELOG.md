@@ -12,6 +12,7 @@ All notable changes to Mars Atlas. Format based on [Keep a Changelog](https://ke
 - A seventh Analyze step to ask questions about the route: local answers from your own numbers, or an optional AI explanation (sign-in and consent required).
 - Low-power mode and an automatic watchdog that reduce effects when frames stay slow.
 - 3D terrain view with a space backdrop, a small globe, moons, dust and pulsing waypoints; the map is wrapped on a small planet with real Viking colour and MOLA relief.
+- Sign-in window at the start with guest mode. Guests are never saved and are warned before leaving; signed-in users are saved automatically to their account.
 - Legal pages: Terms of Use, Privacy Policy, Cookies and local storage, Credits.
 
 ### Changed

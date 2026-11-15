@@ -24,26 +24,26 @@ test("invalid imported route objects are ignored without crashing", () =>
 test("a legacy V1 mission array loads in V2", () =>
 {
     globalThis.localStorage = memoryStorage();
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([createMission("Legacy")]));
-    const store = new MissionStore();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ owner: "test-user", missions: [createMission("Legacy")] }));
+    const store = new MissionStore({ userId: "test-user" });
     assert.equal(store.current.title, "Legacy");
 });
 
 test("selected mission persists across reloads", () =>
 {
     globalThis.localStorage = memoryStorage();
-    const store = new MissionStore();
+    const store = new MissionStore({ userId: "test-user" });
     const originalId = store.current.id;
     store.addMission("Second");
     store.selectMission(originalId);
-    const reloaded = new MissionStore();
+    const reloaded = new MissionStore({ userId: "test-user" });
     assert.equal(reloaded.activeId, originalId);
 });
 
 test("coordinates can be edited exactly", () =>
 {
     globalThis.localStorage = memoryStorage();
-    const store = new MissionStore();
+    const store = new MissionStore({ userId: "test-user" });
     const route = store.activeRoute;
     store.addPoint({ lat: 18.44, lon: 77.45 });
     const point = route.points[0];
@@ -55,7 +55,7 @@ test("coordinates can be edited exactly", () =>
 test("route limit is enforced", () =>
 {
     globalThis.localStorage = memoryStorage();
-    const store = new MissionStore();
+    const store = new MissionStore({ userId: "test-user" });
     for (let i = 1; i < 15; i++)
     {
         assert.ok(store.addRoute(`Route ${i}`));
@@ -69,7 +69,7 @@ test("route limit is enforced", () =>
 test("deleting the last mission leaves a blank usable mission", () =>
 {
     globalThis.localStorage = memoryStorage();
-    const store = new MissionStore();
+    const store = new MissionStore({ userId: "test-user" });
     const id = store.current.id;
     assert.equal(store.deleteMission(id), true);
     assert.equal(store.missions.length, 1);
@@ -79,7 +79,7 @@ test("deleting the last mission leaves a blank usable mission", () =>
 test("failed browser storage is surfaced", () =>
 {
     globalThis.localStorage = { getItem: () => null, setItem: () => { throw new Error("quota exceeded"); } };
-    const store = new MissionStore();
+    const store = new MissionStore({ userId: "test-user" });
     const previous = console.warn;
     console.warn = () => {};
     try
@@ -96,7 +96,7 @@ test("failed browser storage is surfaced", () =>
 test("fresh missions start with no user-generated map markers", () =>
 {
     globalThis.localStorage = memoryStorage();
-    const store = new MissionStore();
+    const store = new MissionStore({ userId: "test-user" });
     assert.equal(store.activeRoute.points.length, 0);
     assert.equal(store.current.observations.length, 0);
 });
@@ -116,7 +116,7 @@ test("untouched sample markers are removed without touching customized routes", 
 test("clearing an active route is explicit and does not delete observations", () =>
 {
     globalThis.localStorage = memoryStorage();
-    const store = new MissionStore();
+    const store = new MissionStore({ userId: "test-user" });
     store.addPoint({ lat: 18.44, lon: 77.45 });
     store.addObservation({ lat: 18.45, lon: 77.46 }, "Manual observation", "");
     assert.equal(store.clearActiveRoute(), true);

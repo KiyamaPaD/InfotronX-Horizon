@@ -4,13 +4,14 @@
 
 ## Short version
 
-Mars Atlas **does not set cookies** and does not use advertising or analytics trackers. It keeps a few settings in your browser's **local storage**, which is needed for the site to remember your work. Because this is strictly necessary and does not track you, we do not show a cookie banner.
+Mars Atlas **does not set cookies** and does not use advertising or analytics trackers. It keeps a few choices in your browser's **local storage**, which is needed for the site to remember your layout and, for signed-in users, an offline copy of their missions. Because this is strictly necessary and does not track you, we do not show a cookie banner.
 
 ## What is stored
 
 | Key | What it keeps | Why |
 | --- | --- | --- |
-| `mars-atlas.missions.v1` | Your missions, routes, waypoints and notes | Autosave on this device |
+| `mars-atlas.missions.v1` | A copy of the signed-in user's missions, tagged with their account. Removed when they sign out. Guests never get this | Offline copy for a signed-in user |
+| `mars-guest-session` (session storage) | That you chose to continue as a guest | Do not ask again until you close the tab |
 | `mars-atlas.workflow-step` | The last step you used (Explore, Plan, Analyze, All tools) | Return to where you were |
 | `mars-panel-left`, `mars-panel-right` | Whether a side panel is hidden | Remember your layout |
 | `mars-tutorial-seen` | That you have seen the tour | Do not repeat it |

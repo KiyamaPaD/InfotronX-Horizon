@@ -15,7 +15,7 @@ browser.newContext = async options =>
         {
             if (!localStorage.getItem("mars-atlas.workflow-step")) localStorage.setItem("mars-atlas.workflow-step", "all");
             localStorage.setItem("mars-tutorial-seen", "1");
-            localStorage.setItem("mars-home-skip", "1");
+            localStorage.setItem("mars-home-skip", "1"); sessionStorage.setItem("mars-guest-session", "1");
         }
         catch
         {
@@ -1117,7 +1117,7 @@ async function touchScenario()
 async function workflowScenario()
 {
     const context = await plainContext({ viewport: { width: 1480, height: 960 }, deviceScaleFactor: 1 });
-    await context.addInitScript(() => { try { localStorage.setItem("mars-tutorial-seen", "1"); localStorage.setItem("mars-home-skip", "1"); } catch {} });
+    await context.addInitScript(() => { try { localStorage.setItem("mars-tutorial-seen", "1"); localStorage.setItem("mars-home-skip", "1"); sessionStorage.setItem("mars-guest-session", "1"); } catch {} });
     const target = await context.newPage();
     const log = trackPage(target);
     const steps = [];

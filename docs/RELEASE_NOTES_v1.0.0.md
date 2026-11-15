@@ -13,7 +13,7 @@ Mars Atlas is a manual-first Mars mission-planning workspace by InfotronX Horizo
 - **How to choose a route:** a short guide for comparing alternatives.
 - **3D terrain:** Jezero Crater with your route, on a small planet in space with real Viking colour and MOLA relief, a corner globe, moons and shooting stars. The curvature and scenery are illustrations.
 - **Science and math tools** remain in "All tools": terrain intelligence, advanced mathematics, resource and stress models, algorithms and data sources. The group is calmer, with the main tool of each section open.
-- **Your work stays yours:** local autosave, exports, an optional cloud library with sharing, and the team's Insights dialog.
+- **Simple accounts:** a sign-in window at the start, with guest mode one click away. Guests can use everything but nothing they draw is saved, and the page warns before they leave with unsaved work. Signing in saves automatically. Exports, a cloud library with sharing and the team's Insights dialog remain.
 - **Smoother on modest computers:** a low-power mode and an automatic watchdog turn decoration down if frames stay slow.
 - **Legal pages:** Terms of Use, Privacy Policy, Cookies and local storage, and Credits, also available inside the app at `legal.html`.
 

@@ -4,7 +4,8 @@
 
 ## Summary
 
-- You can use the planner **without an account**. Your missions then stay in your browser and are not sent to us.
+- You can use the planner **as a guest, without an account**. Nothing you draw is saved: it stays in the page and is gone when you reload or close it.
+- Sign in and your work is saved automatically to your account.
 - We do **not** use advertising, tracking or analytics.
 - If you create an account, we store the data you give us so the cloud library, sharing and chat can work.
 
@@ -14,7 +15,7 @@ InfotronX Horizon, an independent student team. Contact: mario2008toth@gmail.ro.
 
 ## What happens without an account
 
-Your missions, routes, notes and settings are saved in your browser's local storage. We never receive them. See the [Cookies and local storage](COOKIES.md) page.
+As a guest, your missions, routes and notes exist only in the open page and are not saved or sent to us. The page warns you before you close it with unsaved work. Small interface choices (for example that you have seen the tour) are kept in your browser. See the [Cookies and local storage](COOKIES.md) page.
 
 ## What the site loads from other services
 

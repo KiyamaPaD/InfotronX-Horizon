@@ -2318,3 +2318,33 @@ a:not(.source-link):hover
 .tutorial-count { color: #8da0b0; }
 .tutorial-progress { height: 4px; margin-bottom: 14px; border-radius: 2px; background: #2a3947; overflow: hidden; }
 .tutorial-progress i { display: block; height: 100%; width: 0; border-radius: 2px; background: linear-gradient(90deg, #f4a47c, #75d1c8); transition: width .4s ease; }
+
+/* Account: sign-in window and guest reminder */
+.guest-banner { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px 16px; padding: 7px 16px; background: #3a2a1d; border-bottom: 1px solid #e3916544; color: #f3d9c4; font-size: 13px; }
+.guest-banner[hidden] { display: none; }
+.guest-banner-actions { display: inline-flex; gap: 8px; }
+.guest-banner button { padding: 3px 12px; border-radius: 999px; border: 1px solid #e39165; background: transparent; color: #ffcaa8; font: inherit; font-weight: 700; cursor: pointer; }
+.guest-banner button:hover { background: #e3916533; }
+[data-account="guest"] .sidebar-foot .dot-green { background: #e39165; box-shadow: 0 0 8px #e39165; }
+
+.account-gate { width: min(420px, calc(100% - 32px)); padding: 28px 26px; border: 1px solid #3c4d5c; border-radius: 20px; background: #101a24; color: #eef3f8; box-shadow: 0 30px 80px #000a; }
+.account-gate::backdrop { background: #05070dcc; }
+.gate-brand { font-size: 12px; font-weight: 800; letter-spacing: 3px; color: #f3a480; }
+.account-gate h2 { margin: 8px 0 6px; font-family: 'Space Grotesk', sans-serif; font-size: 26px; }
+.gate-lede { margin: 0 0 18px; color: #aebdca; line-height: 1.55; }
+.gate-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 4px; margin-bottom: 16px; border-radius: 12px; background: #0b121b; }
+.gate-tabs button { padding: 9px; border: 0; border-radius: 9px; background: transparent; color: #aebdca; font: inherit; font-weight: 700; cursor: pointer; }
+.gate-tabs button[aria-selected="true"] { background: #243242; color: #fff; }
+.gate-form { display: grid; gap: 12px; }
+.gate-form label { display: grid; gap: 6px; font-size: 13px; font-weight: 700; color: #d2dce5; }
+.gate-form input { width: 100%; padding: 11px 13px; border-radius: 10px; border: 1px solid #3c4d5c; background: #0b121b; color: #eef3f8; font: inherit; }
+.gate-form input:focus-visible { outline: 2px solid #75d1c8; outline-offset: 1px; }
+.gate-password { position: relative; display: block; }
+.gate-password input { padding-right: 64px; }
+.gate-password button { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); padding: 5px 10px; border: 0; border-radius: 8px; background: #243242; color: #d2dce5; font: inherit; font-size: 12px; cursor: pointer; }
+.gate-hint { margin: -4px 0 0; color: #8da0b0; font-size: 12px; }
+.gate-status { min-height: 1.4em; margin: 0; font-size: 13px; color: #aebdca; }
+.gate-status.is-error { color: #ff9a8a; }
+.gate-status.is-ok { color: #8fe0d6; }
+.gate-divider { display: flex; align-items: center; gap: 12px; margin: 14px 0; color: #8da0b0; font-size: 12px; }
+.gate-divider::before, .gate-divider::after { content: ""; flex: 1; height: 1px; background: #2c3b49; }

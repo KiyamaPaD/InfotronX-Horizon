@@ -21,6 +21,7 @@ import { TUTORIAL_STEPS } from "./tutorial-steps.js";
 import { enableCardTilt } from "./tilt.js";
 import { mountHome } from "./home.js";
 import { mountAnalyzeDashboard } from "./analyze-dashboard.js";
+import { mountAccount } from "./account.js";
 
 const store = new MissionStore();
 const imported = readSharedMission();
@@ -53,7 +54,7 @@ app.innerHTML = `
                     <div class="panel-section"><div class="panel-title-row"><div class="section-label">MAP DATA</div><span class="tiny-pill">NASA TREK</span></div><div id="layer-buttons" class="layer-buttons"></div><div class="layer-description" id="layer-description"></div></div>
 
                 </div>
-                <div class="sidebar-foot"><span class="dot-green"></span> <span id="storage-status">SAVED ON THIS DEVICE</span> </div>
+                <div class="sidebar-foot"><span class="dot-green"></span> <span id="storage-status">NOT SAVED · SIGN IN TO KEEP YOUR WORK</span> </div>
             </aside>
             <main class="center-column">
                 <div class="map-titlebar"><div class="map-title-copy"><div class="titlebar-kicker"><span class="titlebar-live-dot"></span> EXPLORE · PLAN · ANALYZE <span>/</span> JEZERO REGION</div><div class="map-title">Explore Jezero <span class="map-title-small">/ Mars</span></div></div><div class="map-title-actions"><div class="map-data-badge"><span class="map-source-eyebrow">CURRENT IMAGERY</span><strong id="map-source-name">VIKING GLOBAL</strong></div><span class="map-zoom-text" id="zoom-text">ZOOM 7</span><button class="btn btn-outline map-focus-btn" data-action="focus-mode" aria-pressed="false" title="Expand map workspace"><span aria-hidden="true">⛶</span> <span>Focus map</span></button></div></div>
@@ -385,7 +386,7 @@ function render()
     drawRouteGraph(get("#route-connectivity-graph"), mission.routes, mission.activeRouteId);
     renderInspector();
     renderCheckpoints();
-    get("#storage-status").textContent = store.lastSaveSucceeded ? "SAVED ON THIS DEVICE" : "SAVE FAILED · EXPORT A BACKUP";
+    get("#storage-status").textContent = !store.persistLocal ? "NOT SAVED · SIGN IN TO KEEP YOUR WORK" : store.lastSaveSucceeded ? "SAVED ON THIS DEVICE" : "SAVE FAILED · EXPORT A BACKUP";
     get("#active-route-color").value = route.color;
     get("[data-action='undo-edit']").disabled = !store.canUndo;
     get("[data-action='redo-edit']").disabled = !store.canRedo;
@@ -1118,10 +1119,11 @@ render();
 
 get("#start-tutorial").onclick = () => tutorial.start();
 enableCardTilt();
+let tourRequested = false;
 mountHome({
     onStart: () => get('.workflow-step[data-step="plan"]')?.click(),
     onDemo: () => get('[data-action="load-review-demo"]')?.click(),
-    onTour: () => tutorial.start()
+    onTour: () => { tourRequested = true; }
 });
 
 function togglePanel(side)
@@ -1139,7 +1141,11 @@ function togglePanel(side)
 try
 {
     for (const side of ["left", "right"]) if (localStorage.getItem("mars-panel-" + side) === "hidden") togglePanel(side);
-    if (!localStorage.getItem("mars-tutorial-seen") && !document.querySelector(".home")) setTimeout(() => tutorial.start(), 2500);
+    // The tour starts once the welcome screen and the sign-in window are out of the way.
+    window.addEventListener("mars-gate-closed", () =>
+    {
+        if (tourRequested || !localStorage.getItem("mars-tutorial-seen")) setTimeout(() => tutorial.start(), 700);
+    }, { once: true });
 }
 catch {}
 
@@ -1160,3 +1166,5 @@ if (imported)
 }
 
 mountAnalyzeDashboard({ shell: get("#mars-shell"), store, getCloud: () => cloudWorkspace.cloud, getDem: () => scienceWorkbench.numericDem });
+
+mountAccount({ store, cloudWorkspace, notify, shell: get("#mars-shell") });

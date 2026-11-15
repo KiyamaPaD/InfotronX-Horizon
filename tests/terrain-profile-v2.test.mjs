@@ -113,7 +113,7 @@ test("terrain probe is temporary, immutable and separate from mission geometry",
 test("observation squares support direct edit, delete, undo and redo", () =>
 {
     globalThis.localStorage = memoryStorage();
-    const store = new MissionStore();
+    const store = new MissionStore({ userId: "test-user" });
     assert.equal(store.addObservation({ lat: 18.45, lon: 77.46 }, "First", "Initial note"), true);
     const id = store.current.observations[0].id;
     assert.equal(store.updateObservation(id, { title: "Site A", note: "Revised", source: "Manual observation" }), true);
@@ -127,7 +127,7 @@ test("observation squares support direct edit, delete, undo and redo", () =>
     assert.equal(store.current.observations[0].title, "First");
     assert.equal(store.redo(), true);
     assert.equal(store.current.observations[0].title, "Site A");
-    assert.equal(new MissionStore().current.observations[0].title, "Site A");
+    assert.equal(new MissionStore({ userId: "test-user" }).current.observations[0].title, "Site A");
 });
 
 test("UI connects real map observations to edit/delete actions and terrain sample selection", () =>
