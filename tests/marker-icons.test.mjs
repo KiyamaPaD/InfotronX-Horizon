@@ -43,6 +43,8 @@ test("marker choices survive mission persistence, checkpoints and import validat
     };
 
     const store = new MissionStore();
+    store.addPoint({ lat: 18.44460, lon: 77.45090 });
+    store.addObservation({ lat: 18.45160, lon: 77.45920 }, "User annotation", "Test point");
     const pointId = store.activeRoute.points[0].id;
     const noteId = store.current.observations[0].id;
 
