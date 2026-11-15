@@ -26,6 +26,9 @@ async function probe(label, url, inspectImage = false)
             {
                 const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
                 dimensions = [view.getUint32(16), view.getUint32(20)];
+                const type = bytes[25];
+                const hasTransparencyChunk = new TextDecoder().decode(bytes).includes("tRNS");
+                console.log(JSON.stringify({ label: label + ":png-metadata", bitDepth: bytes[24], colorType: type, hasTransparencyChunk }));
             }
             else if (bytes[0] === 255 && bytes[1] === 216)
             {
