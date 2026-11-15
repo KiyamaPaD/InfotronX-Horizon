@@ -11,7 +11,7 @@ Suggested sequence; assign speakers and rehearse with the **currently deployed**
 | Demo moment | Approx. time | On-screen action | What to say |
 | --- | ---: | --- | --- |
 | Problem & context | 0–15s | Jezero NASA imagery and map controls | "Planning on Mars requires transparency about source data and uncertainty." |
-| Manual-first | 15–35s | Create mission, place two waypoint coordinates inside DEM coverage | "These points are ours; AI is not required and cannot approve our route." |
+| Manual-first | 15–35s | Click **Open Jezero example mission**; show its two editable manual anchors and explain the demo-only field note | "This clearly labeled example is user-controlled: every point can be moved or deleted without AI." |
 | Real terrain | 35–55s | Open Terrain, load numeric USGS/NASA CTX clip, show elevation profile | "Photographs and measured numeric elevation are separate data sources." |
 | Candidate analysis | 55–85s | Compare 3 A* strategies; change lambda in **Why This Route?** | "The algorithm minimizes D + lambda*(ascent+descent), subject to selected slope and data constraints." |
 | User control & limits | 85–105s | Export **scientific comparison (.md)** from Why This Route?; optionally add an editable candidate | "The exported evidence records exact inputs, modeled results and limitations." |
@@ -23,7 +23,8 @@ If 3 minutes are available, add one numeric example of cost decomposition and di
 
 - Ensure the URL opens without login, NASA tiles visibly load, demo DEM loads, and current deployed SHA contains the latest features.
 - Test at a narrow desktop and normal widescreen. Avoid needing login for the scientific part.
-- Save a named **manual example mission** with two valid waypoints in the documented bundled CTX clip; import the file on a test browser before recording.
+- Start with the existing **Open Jezero example mission** button, which creates a separate and editable mission using coordinates within the bundled CTX clip; never imply its demo-only observation is a measured NASA hazard.
+- Verify `Science → Terrain → DEM ROUTE LAB → Compare 3 route strategies → Export scientific comparison (.md)`. Keep the original mission JSON and the generated Markdown report together.
 - Store a JSON backup, **scientific comparison Markdown export**, and screenshots in case the live internet fails. If fallback footage is needed, clearly say it is prerecorded.
 - Recalculate the three candidates after editing the demo route, maximum grade or hypothetical exclusion; evidence export intentionally disables on stale comparisons.
 - Choose a candidate where the preferred route **actually differs** across lambda values if possible; if all three match, show that the application honestly reports equivalent results. Never fabricate a difference.

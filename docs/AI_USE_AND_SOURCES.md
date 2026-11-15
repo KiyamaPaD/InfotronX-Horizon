@@ -9,7 +9,8 @@ This file is a transparent disclosure draft for the InfotronX Horizon team to re
 - **USGS Astrogeology / NASA MRO CTX:** processed Jezero CTX digital terrain model (numeric heights) and separate orthorectified imagery. See source links and resolution distinctions in `JUDGE_SCIENTIFIC_VALIDATION.md`.
 - **Supabase:** optional private account, mission sync and Crew Profile storage; the mapping and A* core remain usable manually.
 - **GitHub:** version control and automated tests.
-- **Vercel:** website hosting/deployment.
+- **Netlify:** the team-shared public `mars-atlas-map.netlify.app` demo deployment.
+- **Vercel:** earlier website hosting/deployment.
 
 ## AI-assisted development — confirmed in this workstream
 
