@@ -427,6 +427,15 @@ export class MarsMap
             && northwest.lat > bounds.south && southeast.lat < bounds.north;
     }
 
+    viewportIntersectsCoverage(bounds, width, height, center)
+    {
+        const northwest = unproject({ x: center.x - width / 2, y: center.y - height / 2 }, this.zoom);
+        const southeast = unproject({ x: center.x + width / 2, y: center.y + height / 2 }, this.zoom);
+
+        return northwest.lon < bounds.east && southeast.lon > bounds.west
+            && northwest.lat > bounds.south && southeast.lat < bounds.north;
+    }
+
     tileCandidates(x, y, zoom, layer = this.getImageryLayer(zoom))
     {
         const capabilities = this.tileTemplates.get(layer.id);
@@ -919,7 +928,7 @@ export class MarsMap
         const source = JEZERO_CTX_CONTEXT;
         this.contextTileContainer.style.display = "";
 
-        if (this.zoom >= 8)
+        if (this.zoom >= 8 && this.viewportIntersectsCoverage(source.coverage, width, height, center))
         {
             const minX = Math.floor((center.x - width / 2) / 256);
             const maxX = Math.floor((center.x + width / 2) / 256);
@@ -1000,7 +1009,7 @@ export class MarsMap
         this.renderContextTiles(width, height, center);
         const active = new Set();
 
-        if (this.zoom >= 9)
+        if (this.zoom >= 9 && this.viewportIntersectsCoverage(this.layer.coverage, width, height, center))
         {
             const minX = Math.floor((center.x - width / 2) / 256);
             const maxX = Math.floor((center.x + width / 2) / 256);
