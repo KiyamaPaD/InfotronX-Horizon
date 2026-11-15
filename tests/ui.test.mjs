@@ -28,7 +28,7 @@ test("the help guide and mobile navigation are accessible", () =>
 
 test("route editing remains manual with full waypoint control", () =>
 {
-    assert.match(template, /Create routes directly on the map; keep full control of every waypoint/);
+    assert.match(template, /Draw routes on the map and edit every waypoint/);
     assert.match(main, /case "add-coordinates":/);
     assert.match(main, /case "duplicate-route":/);
     assert.match(main, /case "save-checkpoint":/);

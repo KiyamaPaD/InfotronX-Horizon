@@ -14,6 +14,8 @@ browser.newContext = async options =>
         try
         {
             if (!localStorage.getItem("mars-atlas.workflow-step")) localStorage.setItem("mars-atlas.workflow-step", "all");
+            localStorage.setItem("mars-tutorial-seen", "1");
+            localStorage.setItem("mars-home-skip", "1");
         }
         catch
         {
@@ -1115,6 +1117,7 @@ async function touchScenario()
 async function workflowScenario()
 {
     const context = await plainContext({ viewport: { width: 1480, height: 960 }, deviceScaleFactor: 1 });
+    await context.addInitScript(() => { try { localStorage.setItem("mars-tutorial-seen", "1"); localStorage.setItem("mars-home-skip", "1"); } catch {} });
     const target = await context.newPage();
     const log = trackPage(target);
     const steps = [];
@@ -1132,13 +1135,12 @@ async function workflowScenario()
         await target.goto(APP_URL, { waitUntil: "domcontentloaded" });
         await target.waitForSelector(".workflow-steps");
         const explore = await state();
-        check("fresh visit starts in Explore with the map widened", explore.step === "explore" && explore.right === "none", JSON.stringify(explore));
+        check("fresh visit starts in Explore with every panel visible", explore.step === "explore" && explore.right !== "none", JSON.stringify(explore));
         await target.screenshot({ path: "browser-map-evidence/workflow-explore.png" });
 
         await target.locator(".workflow-cta").click();
         const plan = await state();
         check("Start a route opens Plan in Draw mode", plan.step === "plan" && plan.mode === "draw" && plan.right !== "none", JSON.stringify(plan));
-        check("Explore gives the map more room than Plan", explore.mapWidth > plan.mapWidth, explore.mapWidth + " vs " + plan.mapWidth + " px");
 
         const box = await target.locator("#map-root").boundingBox();
         await target.mouse.click(box.x + box.width * 0.45, box.y + box.height * 0.5);

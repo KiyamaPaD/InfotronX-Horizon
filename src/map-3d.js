@@ -2,7 +2,7 @@
 // - "crater": the whole Jezero crater on NASA MOLA heights (~1.3 km grid, interpolated) under Viking colour and HiRISE where it exists;
 // - "delta": the 2 km delta-front clip on USGS CTX heights (20 m grid) under HiRISE at ~1.2 m/pixel.
 import { loadJezeroDem } from "./bundled-dem.js";
-import { MAP_LAYERS } from "./constants.js";
+import { MAP_LAYERS, JEZERO_CTX_CONTEXT } from "./constants.js";
 
 const R = 3396190;
 const THREE_URL = "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
@@ -18,6 +18,8 @@ const CRATER_BOUNDS = { north: 18.9, south: 18.0, west: 77.0, east: 77.9 };
 const CRATER_GRID = 121;
 const VIKING_URL = MAP_LAYERS.find(layer => layer.id === "viking").url + "/default/default028mm/";
 const HIRISE_URL = MAP_LAYERS.find(layer => layer.id === "hirise").url + "/default/default028mm/";
+const CTX_URL = JEZERO_CTX_CONTEXT.url + "/default/default028mm/";
+const CTX_COVERAGE = JEZERO_CTX_CONTEXT.coverage;
 const HIRISE_COVERAGE = MAP_LAYERS.find(layer => layer.id === "hirise").coverage;
 
 let deltaPromise = null;
@@ -131,12 +133,12 @@ async function craterGrid()
     return { width: CRATER_GRID, height: CRATER_GRID, north: bounds.north, west: bounds.west, latStep, lonStep, elevations };
 }
 
-async function craterTexture(THREE, maxSize, onProgress)
+async function craterTexture(THREE, maxSize, anisotropy, onProgress)
 {
     const bounds = CRATER_BOUNDS;
     const canvas = document.createElement("canvas");
     const aspect = (bounds.north - bounds.south) / ((bounds.east - bounds.west) * Math.cos(18.45 * Math.PI / 180));
-    canvas.width = Math.min(maxSize, 2048);
+    canvas.width = Math.min(maxSize, 3072);
     canvas.height = Math.round(canvas.width * aspect);
     const context = canvas.getContext("2d");
     context.fillStyle = "#3a2b26";
@@ -144,22 +146,29 @@ async function craterTexture(THREE, maxSize, onProgress)
     let done = 0;
     const tick = () => onProgress(++done);
     await drawLayer(context, canvas, bounds, VIKING_URL, 7, "jpg", tick);
-    // HiRISE is greyscale with transparent gaps; drawn only over its own footprint, Viking colour stays elsewhere.
-    const hirise = { north: Math.min(bounds.north, HIRISE_COVERAGE.north), south: Math.max(bounds.south, HIRISE_COVERAGE.south), west: Math.max(bounds.west, HIRISE_COVERAGE.west), east: Math.min(bounds.east, HIRISE_COVERAGE.east) };
-    const sub = document.createElement("canvas");
-    sub.width = Math.round(canvas.width * (hirise.east - hirise.west) / (bounds.east - bounds.west));
-    sub.height = Math.round(canvas.height * (hirise.north - hirise.south) / (bounds.north - bounds.south));
-    await drawLayer(sub.getContext("2d"), sub, hirise, HIRISE_URL, 11, "png", tick);
-    // Luminosity blending keeps the Viking colour and takes only the HiRISE detail, so the footprint does not read as a grey patch.
-    context.globalCompositeOperation = "luminosity";
-    context.drawImage(sub, canvas.width * (hirise.west - bounds.west) / (bounds.east - bounds.west), canvas.height * (bounds.north - hirise.north) / (bounds.north - bounds.south));
-    context.globalCompositeOperation = "source-over";
+    // CTX (wider, ~6 m) then HiRISE (narrower, sharper) are greyscale with transparent gaps, drawn only over their own footprint; Viking colour stays elsewhere.
+    // Luminosity blending keeps the Viking colour and takes only the detail, so a footprint does not read as a grey patch.
+    const zoom = canvas.width > 2048 ? 12 : 11;
+
+    for (const [coverage, url] of [[CTX_COVERAGE, CTX_URL], [HIRISE_COVERAGE, HIRISE_URL]])
+    {
+        const part = { north: Math.min(bounds.north, coverage.north), south: Math.max(bounds.south, coverage.south), west: Math.max(bounds.west, coverage.west), east: Math.min(bounds.east, coverage.east) };
+        const sub = document.createElement("canvas");
+        sub.width = Math.round(canvas.width * (part.east - part.west) / (bounds.east - bounds.west));
+        sub.height = Math.round(canvas.height * (part.north - part.south) / (bounds.north - bounds.south));
+        await drawLayer(sub.getContext("2d"), sub, part, url, zoom, "png", tick);
+        context.globalCompositeOperation = "luminosity";
+        context.drawImage(sub, canvas.width * (part.west - bounds.west) / (bounds.east - bounds.west), canvas.height * (bounds.north - part.north) / (bounds.north - bounds.south));
+        context.globalCompositeOperation = "source-over";
+    }
+
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
+    texture.anisotropy = anisotropy;
     return texture;
 }
 
-async function deltaTexture(THREE, bounds, maxSize, onProgress)
+async function deltaTexture(THREE, bounds, maxSize, anisotropy, onProgress)
 {
     const pixel = tilePixel(15);
     const width = Math.min(maxSize, 2048, Math.round(pixel.x(bounds.east) - pixel.x(bounds.west)));
@@ -171,7 +180,20 @@ async function deltaTexture(THREE, bounds, maxSize, onProgress)
     await drawLayer(canvas.getContext("2d"), canvas, bounds, HIRISE_URL, 15, "png", () => onProgress(++done));
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
+    texture.anisotropy = anisotropy;
     return texture;
+}
+
+function glowTexture(THREE, stops)
+{
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 256;
+    const context = canvas.getContext("2d");
+    const gradient = context.createRadialGradient(128, 128, 0, 128, 128, 128);
+    stops.forEach(([at, colour]) => gradient.addColorStop(at, colour));
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, 256, 256);
+    return new THREE.CanvasTexture(canvas);
 }
 
 function sampleGrid(grid, point)
@@ -198,8 +220,8 @@ function sampleGrid(grid, point)
 }
 
 const COPY = {
-    crater: { eyebrow: "JEZERO CRATER · 3D", text: "Whole crater on NASA MOLA heights (~1.3 km grid, smoothed; about 115 m height steps) with Viking colour and HiRISE where it exists. Approximate relief, not exact elevations.", switchLabel: "Delta detail · 20 m" },
-    delta: { eyebrow: "DELTA FRONT · 3D DETAIL", text: "USGS CTX heights (20 m grid) with NASA HiRISE imagery (~1.2 m/pixel). Height is exaggerated for readability.", switchLabel: "Whole crater" }
+    crater: { eyebrow: "JEZERO CRATER · 3D", text: "Whole crater on NASA MOLA heights (~1.3 km grid, smoothed; about 115 m height steps) with Viking colour and HiRISE where it exists. Approximate relief, not exact elevations. Curvature is exaggerated.", switchLabel: "Delta detail · 20 m" },
+    delta: { eyebrow: "DELTA FRONT · 3D DETAIL", text: "USGS CTX heights (20 m grid) with NASA HiRISE imagery (~1.2 m/pixel). Height and curvature are exaggerated for readability.", switchLabel: "Whole crater" }
 };
 
 export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mode = "crater", onFocusArea, onClose })
@@ -228,6 +250,7 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
     const status = get("status");
     let disposed = false;
     let renderer = null;
+    let hud = null;
     let scene = null;
     let session = 0;
 
@@ -236,7 +259,28 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
         if (disposed) return;
         disposed = true;
         renderer?.setAnimationLoop(null);
+        scene?.traverse(object =>
+        {
+            object.geometry?.dispose();
+
+            for (const material of [].concat(object.material || []))
+            {
+                material.map?.dispose();
+                material.dispose();
+            }
+        });
+        hud?.scene.traverse(object =>
+        {
+            object.geometry?.dispose();
+
+            for (const material of [].concat(object.material || []))
+            {
+                material.map?.dispose();
+                material.dispose();
+            }
+        });
         renderer?.dispose();
+        renderer?.forceContextLoss();
         layer.classList.remove("is-open");
         setTimeout(() => layer.remove(), reducedMotion() ? 0 : 260);
         onClose?.();
@@ -253,7 +297,8 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
 
         const canvasHost = layer.querySelector(".map-3d-canvas");
         renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+        renderer.autoClear = false;
+        renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
         renderer.outputColorSpace = THREE.SRGBColorSpace;
         canvasHost.appendChild(renderer.domElement);
         const camera = new THREE.PerspectiveCamera(45, 1, 1, 1e7);
@@ -277,10 +322,83 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
 
         new ResizeObserver(resize).observe(canvasHost);
         resize();
-        renderer.setAnimationLoop(() =>
+        // A small 3D Mars in the corner, drawn by the same renderer: Jezero pulses on it and two moons circle it.
+        const buildHud = () =>
+        {
+            const hudScene = new THREE.Scene();
+            const hudCamera = new THREE.PerspectiveCamera(34, 1, 0.1, 50);
+            hudCamera.position.set(0, 0, 6.4);
+            const globeMaterial = new THREE.MeshStandardMaterial({ color: 0x8a4a2c, roughness: 1 });
+            const globe = new THREE.Mesh(new THREE.SphereGeometry(1.5, 48, 32), globeMaterial);
+            const tilt = new THREE.Group();
+            tilt.rotation.z = THREE.MathUtils.degToRad(25);
+            tilt.add(globe);
+            hudScene.add(tilt);
+            hudScene.add(new THREE.Mesh(new THREE.SphereGeometry(1.66, 48, 32), new THREE.ShaderMaterial({
+                transparent: true, side: THREE.BackSide, blending: THREE.AdditiveBlending, depthWrite: false,
+                vertexShader: "varying vec3 n; void main(){ n = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+                fragmentShader: "varying vec3 n; void main(){ float i = pow(0.74 - dot(n, vec3(0.0, 0.0, 1.0)), 3.2); gl_FragColor = vec4(1.0, 0.52, 0.32, 1.0) * i * 1.6; }"
+            })));
+            const light = new THREE.DirectionalLight(0xffe2c4, 3);
+            light.position.set(-4, 2, 5);
+            hudScene.add(light, new THREE.HemisphereLight(0x8fa8d0, 0x2a1810, 0.4));
+            const phi = (77.45 + 180) / 360 * Math.PI * 2, theta = (90 - 18.44) / 180 * Math.PI;
+            const normal = new THREE.Vector3(-Math.cos(phi) * Math.sin(theta), Math.cos(theta), Math.sin(phi) * Math.sin(theta));
+            const pin = new THREE.Mesh(new THREE.SphereGeometry(0.045, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffd3a8 }));
+            pin.position.copy(normal).multiplyScalar(1.51);
+            const ringMaterial = new THREE.MeshBasicMaterial({ color: 0xffa070, transparent: true, side: THREE.DoubleSide, depthWrite: false });
+            const ring = new THREE.Mesh(new THREE.RingGeometry(0.08, 0.1, 32), ringMaterial);
+            ring.position.copy(normal).multiplyScalar(1.51);
+            ring.lookAt(normal.clone().multiplyScalar(4));
+            globe.add(pin, ring);
+            const moons = [0.07, 0.05].map(radius => { const moon = new THREE.Mesh(new THREE.IcosahedronGeometry(radius, 1), new THREE.MeshStandardMaterial({ color: 0x8a7a6c, roughness: 1, flatShading: true })); hudScene.add(moon); return moon; });
+            const canvas = document.createElement("canvas");
+            canvas.width = 1024;
+            canvas.height = 512;
+            drawLayer(canvas.getContext("2d"), canvas, { north: 89.999, south: -89.999, west: -179.999, east: 179.999 }, VIKING_URL, 1, "jpg").then(() =>
+            {
+                if (disposed) return;
+                const texture = new THREE.CanvasTexture(canvas);
+                texture.colorSpace = THREE.SRGBColorSpace;
+                globeMaterial.map = texture;
+                globeMaterial.color.set(0xffffff);
+                globeMaterial.needsUpdate = true;
+            }).catch(() => {});
+            hud = { scene: hudScene, camera: hudCamera, globe, ring, ringMaterial, moons, base: -Math.atan2(normal.x, normal.z) };
+        };
+
+        const renderHud = now =>
+        {
+            const time = now / 1000, still = reducedMotion();
+            const width = canvasHost.clientWidth, height = canvasHost.clientHeight;
+            const size = Math.round(Math.min(190, Math.max(110, width * 0.24)));
+            hud.globe.rotation.y = hud.base + (still ? 0 : Math.sin(time * 0.35) * 0.9);
+            const pulse = (time * 0.8) % 1;
+            hud.ring.scale.setScalar(1 + pulse * 2.4);
+            hud.ringMaterial.opacity = (1 - pulse) * 0.9;
+            hud.moons.forEach((moon, index) =>
+            {
+                const angle = still ? index * 2 : time * (1.1 - index * 0.5) + index * 2;
+                moon.position.set(Math.cos(angle) * (2.3 + index * 0.6), Math.sin(angle) * 0.45 * (index ? -1 : 1), Math.sin(angle) * (2.3 + index * 0.6));
+            });
+            renderer.setScissorTest(true);
+            renderer.setViewport(width - size - 14, 64, size, size);
+            renderer.setScissor(width - size - 14, 64, size, size);
+            renderer.clearDepth();
+            renderer.render(hud.scene, hud.camera);
+            renderer.setScissorTest(false);
+            renderer.setViewport(0, 0, width, height);
+        };
+
+        buildHud();
+        const tickers = new Set();
+        renderer.setAnimationLoop(now =>
         {
             controls.update();
+            for (const tick of tickers) tick(now);
+            renderer.clear();
             if (scene) renderer.render(scene, camera);
+            if (hud && scene) renderHud(now);
         });
 
         const build = async which =>
@@ -307,15 +425,40 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
             const known = elevations.filter(value => value !== null);
             const minZ = Math.min(...known);
             const maxZ = Math.max(...known);
-            const toScene = (point, elevation) => new THREE.Vector3(
+            // The map is wrapped onto a small sphere so the route sits on a planet. The curvature is exaggerated for effect.
+            const radius = spanX;
+            const bend = (x, y, z, target = new THREE.Vector3()) =>
+            {
+                const d = Math.hypot(x, z);
+
+                if (d < 1e-6) return target.set(x, y, z);
+
+                const angle = d / radius, ring = radius + y;
+                return target.set(x / d * ring * Math.sin(angle), ring * Math.cos(angle) - radius, z / d * ring * Math.sin(angle));
+            };
+            const toScene = (point, elevation) => bend(
                 ((point.lon - bounds.west) / (bounds.east - bounds.west) - 0.5) * spanX,
                 (elevation - minZ) * factor,
                 ((bounds.north - point.lat) / (bounds.north - bounds.south) - 0.5) * spanY);
 
             scene = new THREE.Scene();
+            tickers.clear();
             scene.background = new THREE.Color(0x0b1118);
-            scene.fog = new THREE.Fog(0x0b1118, spanX * 2.2, spanX * 5);
+            scene.fog = new THREE.Fog(0x452a1f, spanX * 2.2, spanX * 5);
             scene.add(new THREE.HemisphereLight(0xffe2cf, 0x1b2430, 0.9));
+            // Distant stars; decoration only, drifting slowly.
+            const starCount = 900;
+            const starPositions = new Float32Array(starCount * 3);
+            for (let i = 0; i < starCount; i++)
+            {
+                const theta = Math.random() * Math.PI * 2, phi = Math.acos(Math.random() * 0.9 + 0.1), radius = spanX * 9;
+                starPositions.set([radius * Math.sin(phi) * Math.cos(theta), radius * Math.cos(phi), radius * Math.sin(phi) * Math.sin(theta)], i * 3);
+            }
+            const starGeometry = new THREE.BufferGeometry();
+            starGeometry.setAttribute("position", new THREE.BufferAttribute(starPositions, 3));
+            const stars = new THREE.Points(starGeometry, new THREE.PointsMaterial({ color: 0xcfe0ff, size: spanX * 0.03, sizeAttenuation: true, fog: false, transparent: true, opacity: 0.8 }));
+            scene.add(stars);
+            if (!reducedMotion()) tickers.add(now => { stars.rotation.y = now * 0.000004; });
             const sun = new THREE.DirectionalLight(0xfff1e0, 1.6);
             sun.position.set(-spanX, spanX * 0.8, spanY * 0.6);
             scene.add(sun);
@@ -325,8 +468,72 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
             controls.minDistance = spanX * 0.15;
             controls.maxDistance = spanX * 3;
 
+            // Butterscotch Martian sky that darkens toward space, with the Sun, two moons crossing and dust on the wind.
+            const sky = new THREE.Mesh(new THREE.SphereGeometry(spanX * 12, 32, 16), new THREE.ShaderMaterial({
+                side: THREE.BackSide, depthWrite: false, fog: false,
+                vertexShader: "varying vec3 p; void main(){ p = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+                fragmentShader: "varying vec3 p; void main(){ float h = clamp(p.y, 0.0, 1.0); vec3 c = mix(vec3(0.78, 0.47, 0.34), vec3(0.25, 0.15, 0.17), smoothstep(0.0, 0.18, h)); c = mix(c, vec3(0.03, 0.05, 0.09), smoothstep(0.12, 0.7, h)); if (p.y < 0.0) c = vec3(0.27, 0.16, 0.12); gl_FragColor = vec4(c, 1.0); }"
+            }));
+            sky.renderOrder = -10;
+            scene.add(sky);
+            const sunDirection = sun.position.clone().normalize();
+            const skySun = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(THREE, [[0, "rgba(255,255,255,1)"], [0.1, "rgba(255,236,190,.95)"], [0.3, "rgba(255,170,90,.35)"], [1, "rgba(255,110,50,0)"]]), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, fog: false }));
+            skySun.position.copy(sunDirection).multiplyScalar(spanX * 9);
+            skySun.scale.setScalar(spanX * 2.2);
+            scene.add(skySun);
+            const moons = [[0.045, 0.034, 0.0, 0x8a7a6c], [0.03, 0.012, 0.5, 0x7d6a5c]].map(([size, speed, phase, colour]) =>
+            {
+                const mesh = new THREE.Mesh(new THREE.IcosahedronGeometry(spanX * size, 2), new THREE.MeshStandardMaterial({ color: colour, roughness: 1, flatShading: true, fog: false }));
+                scene.add(mesh);
+                return { mesh, speed, phase };
+            });
+            if (!reducedMotion())
+            {
+                tickers.add(now =>
+                {
+                    const time = now / 1000;
+                    skySun.material.opacity = 0.85 + Math.sin(time * 0.8) * 0.12;
+
+                    for (const moon of moons)
+                    {
+                        const u = (time * moon.speed + moon.phase) % 1, angle = Math.PI * u;
+                        moon.mesh.position.set(-Math.cos(angle) * spanX * 7, Math.sin(angle) * spanX * 4.2 + spanX * 0.4, -spanY * 5);
+                        moon.mesh.rotation.y = time * 0.3;
+                    }
+
+                    sky.rotation.y = 0;
+                });
+            }
+
+            const dustCount = 260;
+            const dustPositions = new Float32Array(dustCount * 3);
+            for (let i = 0; i < dustCount; i++) dustPositions.set([(Math.random() - 0.5) * spanX * 1.4, spanX * (0.01 + Math.random() * 0.22), (Math.random() - 0.5) * spanY * 1.4], i * 3);
+            const dustGeometry = new THREE.BufferGeometry();
+            dustGeometry.setAttribute("position", new THREE.BufferAttribute(dustPositions, 3));
+            scene.add(new THREE.Points(dustGeometry, new THREE.PointsMaterial({ color: 0xe0a47c, size: spanX * 0.006, transparent: true, opacity: 0.4, depthWrite: false })));
+            if (!reducedMotion())
+            {
+                let previous = 0;
+                tickers.add(now =>
+                {
+                    const delta = Math.min(0.05, (now - previous) / 1000);
+                    previous = now;
+
+                    for (let i = 0; i < dustCount; i++)
+                    {
+                        dustPositions[i * 3] += spanX * (0.012 + (i % 5) * 0.004) * delta;
+                        dustPositions[i * 3 + 1] += Math.sin(now / 900 + i) * spanX * 0.002 * delta;
+                        if (dustPositions[i * 3] > spanX * 0.7) dustPositions[i * 3] = -spanX * 0.7;
+                    }
+
+                    dustGeometry.attributes.position.needsUpdate = true;
+                });
+            }
+
             const geometry = new THREE.PlaneGeometry(spanX, spanY, width - 1, height - 1);
             geometry.rotateX(-Math.PI / 2);
+            const flat = Float32Array.from(geometry.attributes.position.array);
+            const scratch = new THREE.Vector3();
             const colors = new Float32Array(width * height * 3);
 
             for (let i = 0; i < width * height; i++)
@@ -339,16 +546,48 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
             geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
             const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 });
             scene.add(new THREE.Mesh(geometry, material));
+            const body = new THREE.Mesh(new THREE.SphereGeometry(radius - spanX * 0.003, 96, 64), new THREE.MeshStandardMaterial({ color: 0x5a3020, roughness: 1 }));
+            body.position.y = -radius;
+            const halo = new THREE.Mesh(new THREE.SphereGeometry(radius * 1.05, 96, 64), new THREE.ShaderMaterial({
+                transparent: true, side: THREE.BackSide, blending: THREE.AdditiveBlending, depthWrite: false, fog: false,
+                vertexShader: "varying vec3 n; void main(){ n = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+                fragmentShader: "varying vec3 n; void main(){ float i = pow(max(0.0, 0.72 - dot(n, vec3(0.0, 0.0, 1.0))), 3.0); gl_FragColor = vec4(1.0, 0.55, 0.34, 1.0) * i * 1.5; }"
+            }));
+            halo.position.y = -radius;
+            scene.add(body, halo);
             const overlay = new THREE.Group();
             scene.add(overlay);
             const inside = pointsInside(bounds, points);
             const sample = point => sampleGrid(grid, point);
+            const lift = spanX * 0.003;
+
+            // Every segment is sampled; parts outside the height grid return null and are skipped. Rebuilt on each redraw because heights follow the vertical exaggeration.
+            const routeSamples = () =>
+            {
+                const list = [];
+
+                for (let i = 1; i < points.length; i++)
+                {
+                    for (let step = 0; step <= 24; step++)
+                    {
+                        const t = step / 24;
+                        const point = { lat: points[i - 1].lat + (points[i].lat - points[i - 1].lat) * t, lon: points[i - 1].lon + (points[i].lon - points[i - 1].lon) * t };
+                        const elevation = sample(point);
+                        if (elevation !== null) list.push(toScene(point, elevation));
+                    }
+                }
+
+                return list;
+            };
+
+            let roverTick = null;
+            let ringTick = null;
 
             const drawOverlay = () =>
             {
                 overlay.clear();
-                const lift = spanX * 0.003;
-
+                if (roverTick) { tickers.delete(roverTick); roverTick = null; }
+                if (ringTick) { tickers.delete(ringTick); ringTick = null; }
                 if (which === "crater" && deltaPromise)
                 {
                     deltaPromise.then(delta =>
@@ -361,34 +600,61 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
                     });
                 }
 
-                if (inside.length < 2) return;
-                const dense = [];
-
-                for (let i = 1; i < inside.length; i++)
-                {
-                    for (let step = 0; step <= 24; step++)
-                    {
-                        const t = step / 24;
-                        const point = { lat: inside[i - 1].lat + (inside[i].lat - inside[i - 1].lat) * t, lon: inside[i - 1].lon + (inside[i].lon - inside[i - 1].lon) * t };
-                        const elevation = sample(point);
-                        if (elevation !== null) dense.push(toScene(point, elevation).add(new THREE.Vector3(0, lift * 2, 0)));
-                    }
-                }
-
+                const dense = routeSamples();
                 if (dense.length < 2) return;
-                const tube = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(dense), dense.length * 2, spanX * 0.0025, 8, false);
-                overlay.add(new THREE.Mesh(tube, new THREE.MeshBasicMaterial({ color: routeColor })));
+                let routeLength = 0;
+                for (let i = 1; i < dense.length; i++) routeLength += dense[i].distanceTo(dense[i - 1]);
+                // Thick enough to see on a short route, thin enough not to swallow a long one.
+                const tubeRadius = Math.max(spanX * 0.0007, Math.min(spanX * 0.0025, routeLength * 0.004));
+                const lifted = dense.map(point => point.clone().add(new THREE.Vector3(0, lift * 2, 0)));
+                const curve = new THREE.CatmullRomCurve3(lifted);
+                const tube = new THREE.TubeGeometry(curve, lifted.length * 2, tubeRadius, 8, false);
+                const tubeMesh = new THREE.Mesh(tube, new THREE.MeshBasicMaterial({ color: routeColor, depthTest: false }));
+                tubeMesh.renderOrder = 10;
+                overlay.add(tubeMesh);
+
+                const pulseRings = [];
 
                 for (const point of inside)
                 {
                     const elevation = sample(point);
                     if (elevation === null) continue;
-                    const marker = new THREE.Mesh(new THREE.SphereGeometry(spanX * 0.006, 16, 12), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+                    const marker = new THREE.Mesh(new THREE.SphereGeometry(tubeRadius * 2.2, 16, 12), new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false }));
+                    marker.renderOrder = 11;
                     marker.position.copy(toScene(point, elevation).add(new THREE.Vector3(0, lift * 3, 0)));
                     overlay.add(marker);
+                    const pulseRing = new THREE.Mesh(new THREE.RingGeometry(tubeRadius * 2.9, tubeRadius * 3.5, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: routeColor, transparent: true, side: THREE.DoubleSide, depthTest: false, depthWrite: false }));
+                    pulseRing.renderOrder = 9;
+                    pulseRing.position.copy(marker.position);
+                    overlay.add(pulseRing);
+                    pulseRings.push(pulseRing);
                 }
 
                 if (reducedMotion()) return;
+                ringTick = now =>
+                {
+                    pulseRings.forEach((item, index) =>
+                    {
+                        const phase = (now / 1000 * 0.8 + index * 0.23) % 1;
+                        item.scale.setScalar(1 + phase * 3);
+                        item.material.opacity = (1 - phase) * 0.8;
+                    });
+                };
+                tickers.add(ringTick);
+                // A marker travels along the route so its direction and length read at a glance.
+                const rover = new THREE.Mesh(new THREE.SphereGeometry(tubeRadius * 3, 20, 14), new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false }));
+                const halo = new THREE.Mesh(new THREE.SphereGeometry(tubeRadius * 5, 20, 14), new THREE.MeshBasicMaterial({ color: routeColor, transparent: true, opacity: 0.35, depthTest: false }));
+                rover.renderOrder = 12; halo.renderOrder = 12;
+                overlay.add(rover, halo);
+                const seconds = Math.max(6, Math.min(20, routeLength / (spanX * 0.04)));
+                roverTick = now =>
+                {
+                    const t = (now / 1000 / seconds) % 1;
+                    rover.position.copy(curve.getPointAt(t));
+                    halo.position.copy(rover.position);
+                    halo.scale.setScalar(1 + 0.25 * Math.sin(now / 250));
+                };
+                tickers.add(roverTick);
                 // Draw the route progressively along the tube.
                 const totalIndices = tube.index.count;
                 const start = performance.now();
@@ -408,7 +674,8 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
 
                 for (let i = 0; i < position.count; i++)
                 {
-                    position.setY(i, ((elevations[i] ?? minZ) - minZ) * factor);
+                    bend(flat[i * 3], ((elevations[i] ?? minZ) - minZ) * factor, flat[i * 3 + 2], scratch);
+                    position.setXYZ(i, scratch.x, scratch.y, scratch.z);
                 }
 
                 position.needsUpdate = true;
@@ -416,8 +683,8 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
                 drawOverlay();
             };
 
-            const routeText = inside.length >= 2
-                ? `Your route: ${inside.length} waypoints shown on the terrain.`
+            const routeText = routeSamples().length >= 2
+                ? (inside.length === points.length ? `Your route: ${inside.length} waypoints shown on the terrain.` : "Your route: the part inside this 3D area is shown on the terrain.")
                 : points.length >= 2 ? "Your route is outside this 3D area." : "Draw two or more waypoints to see your route on the terrain.";
             get("route").innerHTML = routeText + (which === "delta" && inside.length < 2 ? ' <button type="button" class="map-3d-link" data-3d="go">Show the detailed area on the map</button>' : "");
             get("go")?.addEventListener("click", () => { onFocusArea?.({ lat: midLat, lon: (bounds.west + bounds.east) / 2 }); close(); });
@@ -451,8 +718,8 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
             flyIn();
             const sizeLabel = which === "crater" ? `${(spanX / 1000).toFixed(0)} × ${(spanY / 1000).toFixed(0)} km · ~${Math.round((maxZ - minZ) / 10) * 10} m relief (MOLA)` : `${Math.round(spanX)} × ${Math.round(spanY)} m · ${Math.round(maxZ - minZ)} m relief (CTX)`;
             status.textContent = sizeLabel + " · loading imagery…";
-            const loader = which === "crater" ? craterTexture(THREE, renderer.capabilities.maxTextureSize, done => { if (id === session && !disposed) status.textContent = `${sizeLabel} · imagery ${done} tiles`; })
-                : deltaTexture(THREE, bounds, renderer.capabilities.maxTextureSize, done => { if (id === session && !disposed) status.textContent = `${sizeLabel} · HiRISE ${done} tiles`; });
+            const loader = which === "crater" ? craterTexture(THREE, renderer.capabilities.maxTextureSize, renderer.capabilities.getMaxAnisotropy(), done => { if (id === session && !disposed) status.textContent = `${sizeLabel} · imagery ${done} tiles`; })
+                : deltaTexture(THREE, bounds, renderer.capabilities.maxTextureSize, renderer.capabilities.getMaxAnisotropy(), done => { if (id === session && !disposed) status.textContent = `${sizeLabel} · HiRISE ${done} tiles`; });
 
             loader.then(texture =>
             {
@@ -460,7 +727,7 @@ export async function openMap3d({ host, points = [], routeColor = "#ff9a6b", mod
                 material.map = texture;
                 material.vertexColors = false;
                 material.needsUpdate = true;
-                status.textContent = sizeLabel + (which === "crater" ? " · Viking + HiRISE" : " · HiRISE z15");
+                status.textContent = sizeLabel + (which === "crater" ? " · Viking + CTX + HiRISE" : " · HiRISE z15");
             }).catch(() =>
             {
                 if (!disposed && id === session) status.textContent = sizeLabel + " · imagery unavailable, relief colours";

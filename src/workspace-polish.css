@@ -2220,17 +2220,6 @@
 }
 @media(min-width:1201px)
 {
-    .workflow-ready[data-step="explore"] .workspace
-    {
-        grid-template-columns:clamp(300px,23vw,340px) minmax(0,1fr);
-    }
-    .workflow-ready[data-step="explore"] .sidebar-right,
-    .workflow-ready[data-step="explore"] .bottom-area,
-    .workflow-ready[data-step="explore"] .sidebar-left .panel-section:has(#route-list),
-    .workflow-ready[data-step="explore"] .sidebar-left .last-section
-    {
-        display:none;
-    }
     .workflow-ready .sidebar-right,
     .workflow-ready .bottom-area
     {

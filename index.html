@@ -12,10 +12,28 @@
     <link rel="stylesheet" href="./src/design.css" />
     <link rel="stylesheet" href="./src/science.css" />
     <link rel="stylesheet" href="./src/workspace-polish.css" />
+    <link rel="stylesheet" href="./src/home.css" />
 </head>
 <body>
-    <div id="app"></div>
+
+
+        <div id="app"></div>
+    <div id="tutorial-overlay" class="tutorial-overlay" hidden>
+        <div id="tutorial-box" class="tutorial-box">
+            <div class="tutorial-content">
+                <h3 id="tutorial-title"></h3>
+                <p id="tutorial-text"></p>
+                <div class="tutorial-footer">
+                    <button id="tutorial-prev" class="btn btn-muted small">Înapoi</button>
+                    <button id="tutorial-next" class="btn btn-accent small">Înainte</button>
+                    <button id="tutorial-skip" class="btn btn-quiet small">Închide</button>
+                </div>
+            </div>
+            <div id="tutorial-pointer" class="tutorial-pointer"></div>
+        </div>
+    </div>
     <script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }</script>
+
     <script type="module" src="./src/main.js"></script>
 </body>
 </html>
