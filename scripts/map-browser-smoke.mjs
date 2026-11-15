@@ -818,6 +818,10 @@ try
     assert.equal(await page.locator(".map-overlays .terrain-probe-marker").count(), 0);
 
     // Judge-facing A* explanation: same DEM and anchors, three preferences, no AI scoring.
+    await page.locator("#terrain-grade").evaluate(input =>
+    {
+        input.closest("details").open = true;
+    });
     await page.locator("#terrain-grade").fill("100");
     await page.locator("#terrain-grade").dispatchEvent("change");
     await page.locator("#terrain-compare").click();
