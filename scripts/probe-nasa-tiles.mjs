@@ -92,7 +92,7 @@ for (const layer of MAP_LAYERS)
 {
     requests.push(probe(layer.id + ":capabilities", layer.url + "/WMTSCapabilities.xml"));
 
-    const levels = layer.id === "hirise" ? [9, 10] : layer.id === "mola" ? [5, 7] : [5, 8];
+    const levels = layer.id === "hirise" ? [9, 10, 11, 12] : layer.id === "mola" ? [5, 7, 11] : [5, 8, 11];
 
     for (const zoom of levels)
     {
