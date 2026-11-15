@@ -240,8 +240,8 @@ test("Mars imagery does not stretch 1-pixel placeholders into huge map blocks", 
 test("native useful zoom limits avoid enlarging regional relief imagery", () =>
 {
     const map = Object.create(MarsMap.prototype);
-    map.layer = { id: "mola", maxUsefulZoom: 7 };
-    map.zoom = 11;
+    map.layer = { id: "ctx", maxUsefulZoom: 10 };
+    map.zoom = 10;
     map.tileTemplates = new Map();
     map.tiles = new Map();
     map.activeTiles = new Set();
