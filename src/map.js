@@ -1,6 +1,7 @@
 import { JEZERO, JEZERO_CTX_CONTEXT, MAP_LAYERS } from "./constants.js";
 import { clamp, formatCoordinate, project, unproject } from "./geo.js";
 import { markerRadiusForZoom, normalizeMarkerIcon } from "./marker-icons.js";
+import { waypointLabel } from "./waypoint-editor.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -90,6 +91,7 @@ export class MarsMap
         this.notice = this.container.querySelector(".map-load-notice");
 
         this.container.addEventListener("pointerdown", event => this.onPointerDown(event));
+        this.container.addEventListener("contextmenu", event => this.onContextMenu(event));
         window.addEventListener("pointermove", event => this.onPointerMove(event));
         window.addEventListener("pointerup", event => this.onPointerUp(event));
         window.addEventListener("pointercancel", event => this.onPointerUp(event));
@@ -334,6 +336,18 @@ export class MarsMap
         return { x: rect.width / 2 + pixel.x - center.x, y: rect.height / 2 + pixel.y - center.y };
     }
 
+    onContextMenu(event)
+    {
+        event.preventDefault();
+        const pointId = event.target.closest?.("[data-point]")?.dataset.point || null;
+        this.options.onContextMenu?.({
+            pointId,
+            coordinate: this.screenToGeo(event.clientX, event.clientY),
+            clientX: event.clientX,
+            clientY: event.clientY
+        });
+    }
+
     onPointerDown(event)
     {
         if (event.button !== 0)
@@ -415,7 +429,7 @@ export class MarsMap
             return;
         }
 
-        if (drag.selectedPointId && this.mode === "pan")
+        if (drag.selectedPointId && (this.mode === "pan" || this.mode === "edit"))
         {
             this.options.onWaypointSelect?.(drag.selectedPointId);
             return;
@@ -1426,14 +1440,13 @@ export class MarsMap
                 displayed.forEach((position, index) =>
                 {
                     const point = route.points[index];
-                    const actual = coordinates[index];
-
                     const radius = markerRadiusForZoom(this.zoom);
-                    const halo = svgElement("circle", { cx: position.x, cy: position.y, r: radius + 3, fill: route.color, opacity: 0.16 });
-                    const marker = markerShape(position, point.icon, route.color, { class: "route-node", "data-point": point.id });
+                    const markerColor = point.color || route.color;
+                    const halo = svgElement("circle", { cx: position.x, cy: position.y, r: radius + 3, fill: markerColor, opacity: 0.2 });
+                    const marker = markerShape(position, point.icon, markerColor, { class: "route-node", "data-point": point.id });
                     marker.setAttribute("transform", `translate(${position.x} ${position.y}) scale(${radius / 7}) translate(${-position.x} ${-position.y})`);
                     const title = svgElement("title", {});
-                    title.textContent = `Waypoint ${index + 1} · ${formatCoordinate(point.lat, "lat")}, ${formatCoordinate(point.lon, "lon")}`;
+                    title.textContent = `${waypointLabel(point, index)} · ${formatCoordinate(point.lat, "lat")}, ${formatCoordinate(point.lon, "lon")}`;
                     marker.appendChild(title);
                     this.overlay.append(halo, marker);
                 });
