@@ -552,3 +552,25 @@ test("partially overlapping HiRISE coverage is tested by tile extent", () =>
     assert.equal(map.getImageryLayer(zoom, x, y).id, "hirise");
     assert.equal(map.getImageryLayer(zoom, x - 2, y).id, "viking");
 });
+
+
+test("verified NASA HiRISE and MOLA layers begin loading without waiting for metadata timeout", () =>
+{
+    for (const id of ["hirise", "mola"])
+    {
+        const map = Object.create(MarsMap.prototype);
+        map.layer = MAP_LAYERS.find(item => item.id === id);
+        map.tileTemplates = new Map();
+        map.capabilitiesTimer = null;
+        let renders = 0;
+        let capabilitiesRequests = 0;
+        map.render = () => renders++;
+        map.loadCapabilities = () => capabilitiesRequests++;
+        map.scheduleCapabilities();
+
+        assert.equal(map.capabilitiesReady, true);
+        assert.equal(renders, 1);
+        assert.equal(capabilitiesRequests, 1);
+        assert.equal(map.capabilitiesTimer, null);
+    }
+});

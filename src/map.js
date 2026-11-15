@@ -63,11 +63,18 @@ export class MarsMap
     scheduleCapabilities()
     {
         clearTimeout(this.capabilitiesTimer);
-        this.capabilitiesReady = this.tileTemplates.has(this.layer.id);
+        const verifiedLayer = this.layer.id === "hirise" || this.layer.id === "mola";
+        this.capabilitiesReady = verifiedLayer || this.tileTemplates.has(this.layer.id);
 
         if (this.capabilitiesReady)
         {
             this.render();
+
+            if (!this.tileTemplates.has(this.layer.id))
+            {
+                this.loadCapabilities();
+            }
+
             return;
         }
 
