@@ -1,6 +1,7 @@
 const ALLOWED_ORIGINS = new Set([
     "https://mars-atlas-map.netlify.app",
-    "https://mars-atlas-mu.vercel.app"
+    "https://mars-atlas-mu.vercel.app",
+    "https://mars-atlasv2.netlify.app"
 ]);
 const USER_LIMIT = 240;
 const SOURCES_LIMIT = 160;

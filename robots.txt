@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://mars-atlas-mu.vercel.app/sitemap.xml
+Sitemap: https://mars-atlasv2.netlify.app/sitemap.xml

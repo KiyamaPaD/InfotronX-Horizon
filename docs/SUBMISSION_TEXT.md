@@ -55,7 +55,7 @@ The software was built with AI assistance (Claude by Anthropic) for code and doc
 
 ## Links
 
-- Live project: https://mars-atlas-mu.vercel.app/
+- Live project: https://mars-atlasv2.netlify.app/
 - Source code: https://github.com/mari0-th/InfotronX-Horizon
 - Demo (video or slides): [paste the link here]
 - Terms, privacy, cookies and credits: the Legal link in the site header
