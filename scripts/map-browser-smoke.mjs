@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
-import { mkdir } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { chromium } from "playwright";
+import { unproject } from "../src/geo.js";
 
 const browser = await chromium.launch({ headless: true, args: ["--no-sandbox"] });
 const page = await browser.newPage({ viewport: { width: 1480, height: 960 }, deviceScaleFactor: 1 });
@@ -97,6 +98,423 @@ async function zoomUntil(target)
     }
 
     throw new Error("Could not reach zoom " + target);
+}
+
+const APP_URL = "http://127.0.0.1:4173/";
+const VIEWPORTS = [
+    { name: "mobile-375", width: 375, height: 812 },
+    { name: "tablet-768", width: 768, height: 1024 },
+    { name: "desktop-1480", width: 1480, height: 960 }
+];
+// The map retries a failed tile after 16 s; anything re-requested sooner, or without a prior failure, is a real duplicate.
+const RETRY_GAP_MS = 15000;
+
+function isTileUrl(url)
+{
+    return url.includes("/tiles/Mars/EQ/") && !url.endsWith("WMTSCapabilities.xml");
+}
+
+function tileLevel(url)
+{
+    const match = url.match(/\/(\d+)\/(\d+)\/(\d+)\.(png|jpg)/);
+    return match ? Number(match[1]) : null;
+}
+
+const HIRISE_ENVELOPE = { south: 18.3068, north: 18.6693, west: 77.2229, east: 77.5840 };
+const JEZERO_CENTER = { lat: 18.4446, lon: 77.4509 };
+
+// Tile grid is 2^(z+1) x 2^z tiles of 256 px, the same equirectangular convention as project/unproject in src/geo.js.
+function tileBounds(url)
+{
+    const match = url.match(/\/(\d+)\/(\d+)\/(\d+)\.(png|jpg)/);
+
+    if (!match)
+    {
+        return null;
+    }
+
+    const [zoom, row, col] = match.slice(1, 4).map(Number);
+    const northwest = unproject({ x: col * 256, y: row * 256 }, zoom);
+    const southeast = unproject({ x: (col + 1) * 256, y: (row + 1) * 256 }, zoom);
+    return { url, north: northwest.lat, west: northwest.lon, south: southeast.lat, east: southeast.lon };
+}
+
+function intersects(tile, envelope)
+{
+    return tile.west < envelope.east && tile.east > envelope.west && tile.south < envelope.north && tile.north > envelope.south;
+}
+
+function trackPage(target)
+{
+    const log = { requests: [], responses: [], failures: [], jsErrors: [], networkConsole: [], pending: 0, lastActivity: Date.now() };
+    const touch = () => { log.lastActivity = Date.now(); };
+
+    target.on("request", request =>
+    {
+        if (isTileUrl(request.url()))
+        {
+            log.requests.push({ url: request.url(), at: Date.now() });
+            log.pending++;
+            touch();
+        }
+    });
+    target.on("response", response =>
+    {
+        if (isTileUrl(response.url()))
+        {
+            log.responses.push({ url: response.url(), status: response.status(), at: Date.now() });
+            touch();
+        }
+    });
+    target.on("requestfinished", request =>
+    {
+        if (isTileUrl(request.url()))
+        {
+            log.pending = Math.max(0, log.pending - 1);
+            touch();
+        }
+    });
+    target.on("requestfailed", request =>
+    {
+        if (isTileUrl(request.url()))
+        {
+            log.failures.push({ url: request.url(), error: request.failure()?.errorText || "failed", at: Date.now() });
+            log.pending = Math.max(0, log.pending - 1);
+            touch();
+        }
+    });
+    target.on("pageerror", error => log.jsErrors.push(error.message));
+    target.on("console", message =>
+    {
+        if (message.type() !== "error")
+        {
+            return;
+        }
+
+        const text = message.text();
+
+        if (/Failed to load resource/i.test(text))
+        {
+            log.networkConsole.push({ text, url: message.location()?.url || "" });
+        }
+        else
+        {
+            log.jsErrors.push(text);
+        }
+    });
+    return log;
+}
+
+async function settle(target, log, timeout = 25000)
+{
+    const start = Date.now();
+
+    while (Date.now() - start < timeout)
+    {
+        await target.waitForTimeout(250);
+
+        if (log.pending === 0 && Date.now() - log.lastActivity >= 900)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function findDuplicates(log)
+{
+    const byUrl = new Map();
+
+    for (const item of log.requests)
+    {
+        byUrl.set(item.url, [...(byUrl.get(item.url) || []), item.at]);
+    }
+
+    const duplicates = [];
+
+    for (const [url, times] of byUrl)
+    {
+        if (times.length < 2)
+        {
+            continue;
+        }
+
+        const errorTimes = [
+            ...log.responses.filter(item => item.url === url && item.status >= 400).map(item => item.at),
+            ...log.failures.filter(item => item.url === url).map(item => item.at)
+        ];
+        let retries = 0;
+
+        for (let index = 1; index < times.length; index++)
+        {
+            const failedBetween = errorTimes.some(at => at >= times[index - 1] && at <= times[index]);
+            if (failedBetween && times[index] - times[index - 1] >= RETRY_GAP_MS) retries++;
+        }
+
+        duplicates.push({ url, level: tileLevel(url), count: times.length, retries, kind: retries === times.length - 1 ? "retry-after-error" : "real-duplicate" });
+    }
+
+    return duplicates;
+}
+
+function summarize(log)
+{
+    const statusCodes = {};
+
+    for (const item of log.responses)
+    {
+        statusCodes[item.status] = (statusCodes[item.status] || 0) + 1;
+    }
+
+    const levels = [...new Set(log.requests.map(item => tileLevel(item.url)).filter(level => level !== null))].sort((a, b) => a - b);
+
+    return {
+        requests: log.requests.length,
+        uniqueUrls: new Set(log.requests.map(item => item.url)).size,
+        levelsRequested: levels,
+        statusCodes,
+        httpErrors: log.responses.filter(item => item.status >= 400).map(item => ({ url: item.url, level: tileLevel(item.url), status: item.status })),
+        failedRequests: log.failures.map(item => ({ url: item.url, level: tileLevel(item.url), error: item.error })),
+        duplicates: findDuplicates(log),
+        jsErrors: log.jsErrors,
+        networkConsoleErrors: log.networkConsole
+    };
+}
+
+async function readView(target)
+{
+    return target.evaluate(() => (
+    {
+        zoom: Number(document.querySelector("#zoom-text").textContent.match(/\d+/)?.[0]),
+        layer: document.querySelector(".layer-btn.active")?.dataset.layer || null,
+        coordinates: document.querySelector("#live-coordinates")?.textContent || ""
+    }));
+}
+
+async function clickZoom(target, direction)
+{
+    await target.evaluate(action => document.querySelector('[data-action="' + action + '"]').click(), direction > 0 ? "zoom-in" : "zoom-out");
+}
+
+async function wheelZoom(target, direction)
+{
+    const box = await target.locator("#map-root").boundingBox();
+    await target.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await target.mouse.wheel(0, direction > 0 ? -100 : 100);
+}
+
+async function stepZoom(target, zoom, method, pause)
+{
+    const before = (await readView(target)).zoom;
+
+    if (before === zoom)
+    {
+        return;
+    }
+
+    await (method === "wheel" ? wheelZoom(target, Math.sign(zoom - before)) : clickZoom(target, Math.sign(zoom - before)));
+    await target.waitForFunction(expected => document.querySelector("#zoom-text").textContent.trim() === "ZOOM " + expected, zoom, { timeout: 4000 });
+
+    if (pause)
+    {
+        await target.waitForTimeout(pause);
+    }
+}
+
+async function zoomTo(target, zoom)
+{
+    for (let attempts = 0; attempts < 10 && (await readView(target)).zoom !== zoom; attempts++)
+    {
+        const current = (await readView(target)).zoom;
+        await stepZoom(target, current + Math.sign(zoom - current), "buttons", 0);
+    }
+
+    assert.equal((await readView(target)).zoom, zoom, "Could not reach zoom " + zoom);
+}
+
+async function selectLayer(target, id)
+{
+    await target.evaluate(layer => document.querySelector('[data-layer="' + layer + '"]').click(), id);
+    await target.waitForFunction(layer => document.querySelector(".layer-btn.active")?.dataset.layer === layer, id, { timeout: 5000 });
+}
+
+async function openScenario(viewport)
+{
+    const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, deviceScaleFactor: 1 });
+    const target = await context.newPage();
+    const log = trackPage(target);
+    await target.goto(APP_URL, { waitUntil: "domcontentloaded" });
+    await target.waitForSelector("#map-root");
+    return { context, target, log };
+}
+
+async function capture(target, log, steps, name)
+{
+    const settled = await settle(target, log);
+    const file = "browser-map-evidence/" + name + ".png";
+    await target.screenshot({ path: file });
+    steps.push({ step: name, settled, view: await readView(target), requestsSoFar: log.requests.length, screenshot: file });
+}
+
+async function coldLoadScenario(viewport)
+{
+    const { context, target, log } = await openScenario(viewport);
+    const steps = [];
+
+    try
+    {
+        const first = await readView(target);
+        assert.equal(first.zoom, 7, "Default view must start at zoom 7");
+        assert.equal(first.layer, "viking", "Default view must start on Viking");
+        await capture(target, log, steps, "cold-" + viewport.name + "-viking-z7");
+        await selectLayer(target, "hirise");
+
+        for (const zoom of [8, 9, 10, 11])
+        {
+            await zoomTo(target, zoom);
+            await capture(target, log, steps, "cold-" + viewport.name + "-hirise-z" + zoom);
+        }
+    }
+    finally
+    {
+        await context.close();
+    }
+
+    return { scenario: "cold-load-" + viewport.name, viewport, steps, ...summarize(log) };
+}
+
+async function rapidZoomScenario(method)
+{
+    const { context, target, log } = await openScenario(VIEWPORTS[2]);
+    const steps = [];
+
+    try
+    {
+        await selectLayer(target, "hirise");
+        await zoomTo(target, 7);
+        await capture(target, log, steps, "rapid-" + method + "-start-z7");
+
+        for (const zoom of [8, 9, 10, 11, 10, 8, 7])
+        {
+            const current = (await readView(target)).zoom;
+
+            for (let next = current + Math.sign(zoom - current); next !== zoom + Math.sign(zoom - current); next += Math.sign(zoom - current))
+            {
+                await stepZoom(target, next, method, method === "wheel" ? 0 : 60);
+            }
+        }
+
+        await capture(target, log, steps, "rapid-" + method + "-end-z7");
+    }
+    finally
+    {
+        await context.close();
+    }
+
+    return { scenario: "rapid-zoom-" + method, viewport: VIEWPORTS[2], sequence: [7, 8, 9, 10, 11, 10, 8, 7], steps, ...summarize(log) };
+}
+
+async function largePanScenario()
+{
+    const { context, target, log } = await openScenario(VIEWPORTS[2]);
+    const steps = [];
+
+    try
+    {
+        await selectLayer(target, "hirise");
+        await zoomTo(target, 11);
+        await capture(target, log, steps, "pan-z11-start");
+        const box = await target.locator("#map-root").boundingBox();
+        const startX = box.x + box.width * 0.75;
+        const startY = box.y + box.height * 0.5;
+        let travelled = 0;
+
+        // The map element is narrower than 1000 px, so the large pan is done as repeated right-to-left drags.
+        while (travelled < 1100)
+        {
+            const distance = Math.min(box.width * 0.6, 1100 - travelled);
+            await target.mouse.move(startX, startY);
+            await target.mouse.down();
+            await target.mouse.move(startX - distance, startY - distance * 0.1, { steps: 14 });
+            await target.mouse.up();
+            travelled += distance;
+            await target.waitForTimeout(120);
+        }
+
+        await capture(target, log, steps, "pan-z11-after-" + Math.round(travelled) + "px");
+        await target.evaluate(() => document.querySelector('[data-action="reset-map"]').click());
+        await capture(target, log, steps, "pan-z11-recentered");
+        const view = await readView(target);
+        assert.equal(view.zoom, 11, "Recenter must return to zoom 11");
+
+        const sources = await target.evaluate(() =>
+        {
+            const root = document.querySelector("#map-root").getBoundingClientRect();
+            return [...document.querySelectorAll(".map-hires-tile")].filter(tile =>
+            {
+                const rect = tile.getBoundingClientRect();
+                return tile.style.display !== "none" && tile.dataset.state === "loaded"
+                    && rect.right > root.left && rect.left < root.right && rect.bottom > root.top && rect.top < root.bottom;
+            }).map(tile => tile.src);
+        });
+        const tiles = sources.map(tileBounds).filter(Boolean);
+        const outside = tiles.filter(tile => !intersects(tile, HIRISE_ENVELOPE));
+        const centerTile = tiles.some(tile => tile.south <= JEZERO_CENTER.lat && tile.north >= JEZERO_CENTER.lat
+            && tile.west <= JEZERO_CENTER.lon && tile.east >= JEZERO_CENTER.lon);
+        steps.push({ step: "recenter-envelope-check", visibleHiriseTiles: tiles.length, outsideEnvelope: outside.map(tile => tile.url), containsJezeroCenter: centerTile });
+        assert.ok(tiles.length > 0, "Recenter must show loaded HiRISE tiles");
+        assert.deepEqual(outside.map(tile => tile.url), [], "HiRISE tiles after recenter must intersect the Jezero envelope");
+        assert.ok(centerTile, "Recenter must show the HiRISE tile that contains Jezero");
+    }
+    finally
+    {
+        await context.close();
+    }
+
+    return { scenario: "large-pan-z11-recenter", viewport: VIEWPORTS[2], steps, ...summarize(log) };
+}
+
+async function runStabilityScenarios()
+{
+    const report = {
+        browser: "Chromium",
+        notes: [
+            "Cold load opens a fresh browser context on the default view (Viking zoom 7, set in src/map.js). It is not a URL deep link: no ?z=&layer= parameter exists yet.",
+            "Duplicates are tile URLs requested more than once in one scenario. retry-after-error means every repeat followed an HTTP error or failed request by at least 15 s (the map retries after 16 s)."
+        ],
+        scenarios: []
+    };
+
+    try
+    {
+        for (const viewport of VIEWPORTS)
+        {
+            report.scenarios.push(await coldLoadScenario(viewport));
+        }
+
+        report.scenarios.push(await rapidZoomScenario("buttons"));
+        report.scenarios.push(await rapidZoomScenario("wheel"));
+        report.scenarios.push(await largePanScenario());
+    }
+    finally
+    {
+        await writeFile("browser-map-evidence/report.json", JSON.stringify(report, null, 2));
+        console.log("STABILITY_REPORT " + JSON.stringify(report.scenarios.map(item => (
+        {
+            scenario: item.scenario, requests: item.requests, statusCodes: item.statusCodes,
+            httpErrors: item.httpErrors.length, realDuplicates: item.duplicates.filter(entry => entry.kind === "real-duplicate").length,
+            retries: item.duplicates.filter(entry => entry.kind === "retry-after-error").length,
+            jsErrors: item.jsErrors.length, networkConsoleErrors: item.networkConsoleErrors.length
+        }))));
+    }
+
+    const notFound = report.scenarios.flatMap(item => item.httpErrors.filter(entry => entry.status === 404).map(entry => item.scenario + " " + entry.url));
+    const duplicates = report.scenarios.flatMap(item => item.duplicates.filter(entry => entry.kind === "real-duplicate").map(entry => item.scenario + " " + entry.count + "x " + entry.url));
+    const jsErrors = report.scenarios.flatMap(item => item.jsErrors.map(text => item.scenario + " " + text));
+    assert.deepEqual(notFound, [], "Tile 404s on used levels");
+    assert.deepEqual(duplicates, [], "Duplicate tile requests");
+    assert.deepEqual(jsErrors, [], "JavaScript console errors");
 }
 
 try
@@ -286,6 +704,8 @@ try
 
     assert.ok(!errors.some(item => /map\.js|Cannot read properties|Uncaught SyntaxError/.test(item)),
         "Map browser JS errors: " + errors.join("; "));
+
+    await runStabilityScenarios();
 }
 finally
 {
