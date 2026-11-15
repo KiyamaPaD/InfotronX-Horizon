@@ -1444,6 +1444,22 @@ try
     await page.locator("#terrain-v2-clear").click();
     assert.equal(await page.locator(".map-overlays .terrain-probe-marker").count(), 0);
 
+    // Native WebGL DEM mesh uses actual numeric samples, with a clear 2D fallback.
+    await page.locator("#terrain-3d-open").evaluate(details => { details.open = true; });
+    await page.waitForFunction(() => /valid samples|WebGL unavailable/.test(
+        document.querySelector("#terrain-3d-info")?.textContent || ""));
+    const terrain3dStatus = await page.locator("#terrain-3d-info").textContent();
+    assert.match(terrain3dStatus, /valid samples|WebGL unavailable/);
+
+    if (/valid samples/.test(terrain3dStatus))
+    {
+        assert.ok(await page.locator("#terrain-3d-canvas").evaluate(canvas => canvas.width > 100));
+        await page.locator("#terrain-3d-relief").fill("12");
+        assert.equal(await page.locator("#terrain-3d-relief-readout").textContent(), "12×");
+        await page.locator(".terrain-3d-view").screenshot({path:"browser-map-evidence/terrain-3d-jezero.png"});
+    }
+    console.log(JSON.stringify({label:"3D DEM browser test",status:terrain3dStatus}));
+
     // Judge-facing A* explanation: same DEM and anchors, three preferences, no AI scoring.
     await page.locator("#terrain-grade").evaluate(input =>
     {
@@ -1534,12 +1550,28 @@ try
     assert.ok(await page.locator("#route-connectivity-graph svg line").count() > 0,
         "Waypoint graph must show real segment edges");
 
-    // Crew Profile requires authentication; private profile data are never exposed signed-out.
+    // Local Copilot is operational without AI keys or login; AI requests require consent.
+    await page.locator('.analytics-categories [data-group="models"]').click();
+    await page.locator("#copilot-local").click();
+    const localCopilot = await page.locator("#copilot-output").textContent();
+    assert.match(localCopilot, /DETERMINISTIC MISSION ANALYSIS/);
+    assert.match(localCopilot, /Manual spherical route distance:/);
+    await page.locator("#copilot-question").fill("Explain mission uncertainty.");
+    await page.locator("#copilot-ai-form button[type=submit]").click();
+    assert.match(await page.locator("#copilot-output").textContent(), /Consent is required/);
+
+    // Crew Profile and mission chat are private while signed out.
     await page.locator("#mission-hub-open").click();
     await page.locator('[data-hub-tab="crew"]').click();
     assert.equal(await page.locator("#hub-crew").isVisible(), true);
     assert.equal(await page.locator("#crew-profile-login").isVisible(), true);
     assert.equal(await page.locator("#crew-profile-content").isVisible(), false);
+    await page.locator('[data-hub-tab="chat"]').click();
+    assert.equal(await page.locator("#hub-chat").isVisible(), true);
+    assert.equal(await page.locator("#team-chat-login").isVisible(), true);
+    assert.equal(await page.locator("#team-chat-signed").isVisible(), false);
+    assert.match(await page.locator("#hub-chat").textContent(), /Global chat is not enabled/);
+    await page.locator('[data-hub-tab="crew"]').click();
     await page.locator("#crew-go-login").click();
     assert.equal(await page.locator("#hub-cloud").isVisible(), true);
     await page.locator("#cloud-close").click();
