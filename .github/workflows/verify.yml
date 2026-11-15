@@ -39,7 +39,7 @@ jobs:
           node-version: '22'
       - name: Install Chromium for real map smoke test
         run: |
-          npm install --no-save playwright@1.56.1
+          npm install --no-save playwright@1.64.1
           npx playwright install --with-deps chromium
       - name: Test live NASA image loading in browser
         run: |
