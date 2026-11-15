@@ -31,7 +31,7 @@ export const PHASES = [
             { id: "2.6", built: "yes", text: "Not too bright when you are at the surface.", test: "Fly down with the figure or the wheel: the light and the glow soften as you get close." },
             { id: "2.7", built: "no", text: "Surface detail in 3D as fine as the 2D map (rendering at the ground)." },
             { id: "2.8", built: "no", text: "2D at very high zoom: sharp, not blurred or pixelated." },
-            { id: "2.9", built: "no", text: "3D at very high zoom: sharp, not blurred." },
+            { id: "2.9", built: "partly", text: "3D at very high zoom: sharp, not blurred (flat surfaces now use zoom 4 on capable GPUs; the Viking source stops at zoom 7, so some softness stays)." },
             { id: "2.10", built: "yes", test: "In the 3D panel choose Surface: NASA 3D model, Viking colour, MOLA shaded relief or MOLA colour relief. The relief and your route stay in place.", text: "Change the map layer in 3D like in 2D (Map data affects 3D)." },
             { id: "2.11", built: "partly", test: "One new NASA layer was added to both maps (MOLA colour relief). Other products named in the NASA catalogue could not be reached by name from here; send me names you want and I will add them.", text: "More NASA maps (layers) from NASA resources." },
             { id: "2.12", built: "no", text: "Surface and zoom behaviour in 3D like the Astra team's project (martian-map-project-astra)." },

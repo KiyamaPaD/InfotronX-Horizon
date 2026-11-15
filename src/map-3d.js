@@ -705,7 +705,7 @@ export async function openMap3d({ host, points = [], groundAt, getPoints, getRou
 
                     try
                     {
-                        const picture = await globalMosaic(SURFACES[name], light ? 2 : 3);
+                        const picture = await globalMosaic(SURFACES[name], light ? 2 : renderer.capabilities.maxTextureSize >= 8192 ? 4 : 3);
 
                         if (disposed || token !== surfaceToken) return;
 
