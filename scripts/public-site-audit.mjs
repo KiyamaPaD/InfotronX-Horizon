@@ -4,6 +4,8 @@ import { readFile, writeFile } from "node:fs/promises";
 const ROOT = process.env.MARS_PUBLIC_URL || "https://mars-atlas-map.netlify.app/";
 const paths = [
     "index.html",
+    "src/atlas-minimal.css",
+    "src/workspace-disclosures.js",
     "src/main.js",
     "src/cloud-ui.js",
     "src/cloud-sync.js",

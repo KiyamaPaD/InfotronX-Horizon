@@ -135,6 +135,7 @@ export function setupAnalyticsNavigation(panel, options = {})
     function showGroup(group)
     {
         activeGroup = group;
+        readiness.hidden = group !== "overview";
         select.replaceChildren();
         select.add(new Option("Choose a tool…", ""));
 
@@ -188,7 +189,13 @@ export function setupAnalyticsNavigation(panel, options = {})
         const id = "analytics-section-" + index;
         section.id = id;
         section.dataset.analyticsGroup = group;
-        section.dataset.analyticsTitle = title.toLowerCase().replace(/\b\w/g, letter => letter.toUpperCase());
+        const labels = {
+            "MISSION TELEMETRY":"Mission overview", "DEM ROUTE LAB":"Terrain routes",
+            "MARSWALK RESOURCE MODEL":"Resource estimates", "MISSION STRESS LAB":"Scenario sensitivity",
+            "MISSION COPILOT":"Route insights", "ADVANCED ALGORITHMS":"Routing algorithms",
+            "ADVANCED MATHEMATICS LAB":"Advanced mathematics"
+        };
+        section.dataset.analyticsTitle = labels[title] || title.toLowerCase().replace(/\b\w/g, letter => letter.toUpperCase());
         section.classList.add("analytics-collapsible");
         section.classList.toggle("analytics-collapsed", !expanded);
         groups.set(id, section);
@@ -250,7 +257,11 @@ export function setupAnalyticsNavigation(panel, options = {})
             showGroup(section.dataset.analyticsGroup);
             setExpanded(section, true);
             updateToggleAll();
-            requestAnimationFrame(() => section.scrollIntoView({ block:"start", behavior:"smooth" }));
+            requestAnimationFrame(() =>
+            {
+                section.style.scrollMarginTop = (quickbar.getBoundingClientRect().height + 12) + 'px';
+                section.scrollIntoView({ block:"start", behavior:"smooth" });
+            });
         }
     };
 }

@@ -2,118 +2,66 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createJezeroReviewMission } from "../src/review-demo.js";
-import { buildMissionFacts, localMissionExplanation, localMissionAnswer, normalizeCopilotQuestion } from "../src/mission-copilot.js";
+import { buildMissionFacts, buildAssistantView } from "../src/mission-copilot.js";
 import { decodeBundledDem } from "../src/bundled-dem.js";
-
 const mission = createJezeroReviewMission();
-const raw = JSON.parse(readFileSync(new URL("../assets/jezero_ctx_trn_dem_20m_clip.json",import.meta.url),"utf8"));
-const dem = decodeBundledDem(raw);
+const dem = decodeBundledDem(JSON.parse(readFileSync(new URL("../assets/jezero_ctx_trn_dem_20m_clip.json",import.meta.url),"utf8")));
 
-test("AI receives bounded aggregate metrics, not mission names, raw coordinates, note text or personal profiles", () =>
+test("aggregate facts exclude mission titles, raw coordinates and notes", () =>
 {
     const facts = buildMissionFacts(mission,dem);
-    const body = JSON.stringify(facts);
     assert.equal(facts.waypointCount,2);
-    assert.equal(facts.observationCount,1);
-    assert.ok(facts.horizontalDistanceMeters > 0);
-    assert.equal(facts.hasNumericDem,true);
     assert.equal(facts.demCoveredWaypoints,2);
-    assert.doesNotMatch(body,/18\.4446|77\.4509|Hypothetical survey|Jezero · CTX science traverse demo/);
-    assert.doesNotMatch(body,/password|email|avatar|access_token/);
+    assert.doesNotMatch(JSON.stringify(facts),/18\.4446|77\.4509|Hypothetical survey|Jezero · CTX science traverse demo|password|email|avatar/);
 });
 
-test("copilot local explanations are honestly deterministic and usable without AI", () =>
+test("overview presents calculated metrics rather than fabricated text", () =>
 {
-    const facts = buildMissionFacts(mission,null);
-    const response = localMissionExplanation(facts);
-    assert.match(response,/DETERMINISTIC MISSION ANALYSIS/);
-    assert.match(response,/Numeric DEM not loaded/);
-    assert.match(response,/not prove physical rover or astronaut safety/);
+    const view = buildAssistantView(buildMissionFacts(mission));
+    assert.equal(view.metrics.length,4);
+    assert.equal(view.metrics.find(item => item.label === 'Waypoints').value,'2');
+    assert.match(view.note,/spherical Mars/);
 });
 
-test("copilot refuses invalid or oversized prompts", () =>
+test("terrain distinguishes unloaded DEM from sampled data without invented grade", () =>
 {
-    assert.equal(normalizeCopilotQuestion("  Explain distance. "), "Explain distance.");
-    assert.throws(()=>normalizeCopilotQuestion(" "),/1 and 240/);
-    assert.throws(()=>normalizeCopilotQuestion("a".repeat(241)),/1 and 240/);
+    assert.equal(buildAssistantView(buildMissionFacts(mission),'terrain').metrics.length,0);
+    const view = buildAssistantView(buildMissionFacts(mission,dem),'terrain');
+    assert.equal(view.metrics[0].value,'2/2');
+    assert.equal(view.metrics[1].value,'—');
+    assert.equal(view.source,dem.source.slice(0,160));
+    assert.match(view.note,/gaps/);
 });
 
-test("copilot AI is a separate consent-based read-only flow", () =>
-{
-    const ui = readFileSync(new URL("../src/mission-copilot-ui.js",import.meta.url),"utf8");
-    assert.match(ui,/copilot-consent/);
-    assert.match(ui,/functions\.invoke\("mars-mission-copilot"/);
-    assert.match(ui,/No mission data are being changed/);
-    assert.doesNotMatch(ui,/store\.save|store\.addPoint|store\.deleteRoute/);
-});
-
-test("Copilot shows diagnostic codes and keeps explicit deterministic analysis available", () =>
-{
-    const ui = readFileSync(new URL("../src/mission-copilot-ui.js",import.meta.url),"utf8");
-    assert.match(ui,/copilot-health/);
-    assert.match(ui,/AI_NOT_CONFIGURED/);
-    assert.match(ui,/AI_PROVIDER_REJECTED/);
-    assert.match(ui,/localMissionExplanation\(buildMissionFacts\(store.current,getDem\(\)\)\)/);
-    assert.match(ui,/action:"status"/);
-});
-
-test("Copilot compares anonymized alternatives and uses the saved resource assumptions", () =>
+test("comparison excludes empty routes, sorts distances and keeps source ordering intact", () =>
 {
     const copy = structuredClone(mission);
-    copy.routes.push({ id:"alternative", name:"Private route title", points:[] });
-    copy.evaScenario = { speedKmh:1.5, retraceReturn:false };
-    const facts = buildMissionFacts(copy,dem);
-    assert.equal(facts.alternatives.length,2);
-    assert.equal(facts.alternatives[1].distanceMeters,0);
-    assert.equal(facts.resourceScenario.speedKmh,1.5);
-    assert.equal(facts.resourceScenario.retraceReturn,false);
-    assert.equal(facts.resourceScenario.illustrative,true);
-    assert.doesNotMatch(JSON.stringify(facts),/Private route title|"id":"alternative"|77\.4509/);
-});
-
-test("an empty active route does not hide the existence of populated alternatives", () =>
-{
-    const copy = structuredClone(mission);
-    copy.routes.push({ id:"empty", name:"Empty alternative", points:[] });
-    copy.activeRouteId = "empty";
-    const facts = buildMissionFacts(copy,dem);
-    assert.equal(facts.waypointCount,0);
-    assert.equal(facts.horizontalDistanceMeters,0);
-    assert.match(localMissionExplanation(facts),/Another saved route has data/);
-    assert.equal(facts.alternatives[0].waypointCount,2);
-});
-
-
-test("free local questions use calculated route, terrain and resource evidence", () =>
-{
-    const facts = buildMissionFacts(mission,dem);
-    assert.match(localMissionAnswer(facts,"Explain terrain"),/2\/2 waypoint/);
-    assert.match(localMissionAnswer(facts,"Estimeaza timpul si oxigenul"),/kg O₂/);
-    assert.match(localMissionAnswer(facts,"Este ruta sigură?"),/cannot establish safe traversability/);
-    assert.match(localMissionAnswer(facts,"Explain route"),/DETERMINISTIC/);
-    assert.match(localMissionAnswer(facts,"Write a poem"),/supported|question categories|Try “Compare routes”/);
-});
-
-test("local comparisons exclude empty routes from shortest-distance ranking", () =>
-{
-    const copy = structuredClone(mission);
-    copy.routes.push({id:"empty",points:[]});
+    copy.routes.push({id:'empty',points:[]},{id:'longer',points:[{lat:18,lon:77},{lat:20,lon:79}]});
     const facts = buildMissionFacts(copy);
-    assert.match(localMissionAnswer(facts,"Compare routes"),/At least two routes/);
-    copy.routes.push({id:"other",points:[{lat:18.44,lon:77.44},{lat:18.45,lon:77.45}]});
-    const answer = localMissionAnswer(buildMissionFacts(copy),"Compare routes");
-    assert.match(answer,/Route 1:/);
-    assert.match(answer,/Route 3:/);
-    assert.doesNotMatch(answer,/Route 2:/);
+    const before = JSON.stringify(facts);
+    const view = buildAssistantView(facts,'compare');
+    assert.deepEqual(view.routes.map(item => item.index),[1,3]);
+    assert.equal(JSON.stringify(facts),before);
 });
 
-test("resource answers decline empty routes and apply saved return assumptions", () =>
+test("an empty active route has no invented travel resource estimate", () =>
+{
+    const copy = structuredClone(mission);
+    copy.routes.push({id:'empty',points:[]});
+    copy.activeRouteId='empty';
+    const view = buildAssistantView(buildMissionFacts(copy),'resources');
+    assert.equal(view.metrics.length,0);
+    assert.match(view.note,/two waypoints/);
+});
+
+test("resource cards respect saved speed, return setting and units", () =>
 {
     const copy = structuredClone(mission);
     copy.evaScenario={speedKmh:1.5,retraceReturn:false};
     const facts=buildMissionFacts(copy);
-    const answer=localMissionAnswer(facts,"Estimate resources");
-    assert.match(answer,/1.5 km\/h; one-way travel/);
-    copy.routes[0].points=[];
-    assert.match(localMissionAnswer(buildMissionFacts(copy),"Estimate resources"),/at least two waypoints/);
+    const view=buildAssistantView(facts,'resources');
+    assert.match(view.note,/1.5 km\/h, one way/);
+    assert.match(view.metrics[1].value,/kg$/);
+    assert.match(view.metrics[2].value,/Wh$/);
+    assert.equal(view.metrics[1].value,facts.resourceScenario.oxygenKg.toFixed(3)+' kg');
 });

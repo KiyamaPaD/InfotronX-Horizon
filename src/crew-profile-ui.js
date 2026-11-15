@@ -84,7 +84,7 @@ export function mountCrewProfile({ dialog, cloud, store, run, openCloudTab })
             }
         }
 
-        setMessage("Private profile loaded. Your identity and role are user-entered, not NASA credentials.");
+        setMessage("Profile loaded.");
     }
 
     photo.addEventListener("load", () =>

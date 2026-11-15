@@ -3,7 +3,7 @@ import { writeFile, mkdir } from "node:fs/promises";
 import { chromium } from "playwright";
 
 const origin = "https://mars-atlas-map.netlify.app/";
-const browser = await chromium.launch({headless:true,args:["--no-sandbox"]});
+const browser = await chromium.launch({headless:true,args:["--no-sandbox"], executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined});
 const context = await browser.newContext({viewport:{width:1480,height:960}});
 
 await context.addInitScript(() =>
@@ -60,6 +60,11 @@ await check("DEM_AND_WEBGL_3D",async () =>
         document.querySelector("#dem-status")?.textContent || ""),null,{timeout:25000});
     const demLabel = await page.locator("#dem-status").textContent();
     assert.match(demLabel,/USGS CTX DTM|GRID LOADED/, "The public DEM failed: " + demLabel);
+    const section = page.locator('.terrain-3d-panel');
+    if (await section.locator('.analytics-section-toggle').getAttribute('aria-expanded') === 'false')
+    {
+        await section.locator('.analytics-section-toggle').click();
+    }
     await page.locator("#terrain-3d-open").evaluate(element => { element.open=true; });
     await page.waitForFunction(() => /valid samples|WebGL unavailable/.test(
         document.querySelector("#terrain-3d-info")?.textContent || ""),null,{timeout:15000});
@@ -73,8 +78,8 @@ await check("DEM_AND_WEBGL_3D",async () =>
 await check("LOCAL_COPILOT",async () =>
 {
     await page.locator('.analytics-categories [data-group="models"]').click();
-    await page.locator("#copilot-local").click();
-    assert.match(await page.locator("#copilot-output").textContent(),/DETERMINISTIC MISSION ANALYSIS/);
+    await page.locator('[data-topic="overview"]').click();
+    assert.equal(await page.locator("#copilot-output .assistant-metrics strong").count(),4);
     return "Local math works without cloud or AI";
 });
 

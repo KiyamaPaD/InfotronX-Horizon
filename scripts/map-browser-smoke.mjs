@@ -1640,15 +1640,11 @@ try
     assert.ok(await page.locator("#route-connectivity-graph svg line").count() > 0,
         "Waypoint graph must show real segment edges");
 
-    // Local Copilot is operational without AI keys or login; AI requests require consent.
+    // Route insights use calculated cards without login, billing or a prompt form.
     await page.locator('.analytics-categories [data-group="models"]').click();
-    await page.locator("#copilot-local").click();
-    const localCopilot = await page.locator("#copilot-output").textContent();
-    assert.match(localCopilot, /DETERMINISTIC MISSION ANALYSIS/);
-    assert.match(localCopilot, /Manual spherical route distance:/);
-    await page.locator("#copilot-question").fill("Explain mission uncertainty.");
-    await page.locator("#copilot-ai-form button[type=submit]").click();
-    assert.match(await page.locator("#copilot-output").textContent(), /Consent is required/);
+    await page.locator('[data-topic="overview"]').click();
+    assert.equal(await page.locator('#copilot-output .assistant-metrics strong').count(),4);
+    assert.equal(await page.locator('#copilot-question').count(),0);
 
     // Crew Profile and mission chat are private while signed out.
     await page.locator("#mission-hub-open").click();

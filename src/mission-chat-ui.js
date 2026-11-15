@@ -17,7 +17,7 @@ export function mountMissionChat({ dialog, cloud, notify, run, openCloudTab })
     panel.hidden = true;
     panel.innerHTML = `
         <h3>Mission team chat</h3>
-        <p class="section-help">Private conversation for a cloud-saved mission. The mission owner and invited viewers/editors can read and send messages. Saving routes is a separate action.</p>
+        <p class="section-help">Discuss this mission with its invited teammates.</p>
         <div id="team-chat-login">
             <p>Sign in and save or open a cloud mission to use its team chat.</p>
             <button type="button" class="btn btn-outline" id="team-chat-signin">Open cloud library</button>
@@ -40,14 +40,14 @@ export function mountMissionChat({ dialog, cloud, notify, run, openCloudTab })
             <details id="team-chat-activity">
                 <summary>Mission save activity (last 12 revisions)</summary>
                 <div id="team-chat-activity-list" role="list"></div>
-                <p class="science-footnote">Shows cloud save history, not real-time simultaneous editing. Refresh the library to open another user's saved version.</p>
+                <p class="science-footnote">Recent saved versions of this mission.</p>
             </details>
             <details id="team-chat-blocks"><summary>Blocked members</summary>
                 <div id="team-chat-block-list"></div>
             </details>
-            <p class="science-footnote">Messages are stored in Supabase, not inside the mission JSON. The database enforces team membership, a 3-second cooldown and at most 10 messages per minute. Report and block controls are available on other people's messages.</p>
+            <p class="science-footnote">Messages stay in this team conversation and are not included in mission exports.</p>
         </div>
-        <p class="science-footnote">Global chat is not enabled: it requires staffed moderation and abuse handling before public launch.</p>`;
+        `;
     dialog.querySelector("#hub-crew").before(panel);
 
     const service = new MissionChatService(cloud);
