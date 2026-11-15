@@ -10,7 +10,7 @@
 
 ## Who is responsible
 
-InfotronX Horizon, an independent student team. Contact: [contact email].
+InfotronX Horizon, an independent student team. Contact: mario2008toth@gmail.ro.
 
 ## What happens without an account
 
@@ -50,7 +50,7 @@ Cloud data stays until you delete it or delete your account. Server logs are kep
 
 ## Your rights
 
-Depending on where you live (for example under the GDPR) you can ask to see, correct, export or delete your data, object to its use, and complain to your data protection authority. Write to [contact email]. You can delete local data any time by clearing your browser's site data.
+Depending on where you live (for example under the GDPR) you can ask to see, correct, export or delete your data, object to its use, and complain to your data protection authority (in Romania, ANSPDCP: https://www.dataprotection.ro). Write to mario2008toth@gmail.ro. You can delete local data any time by clearing your browser's site data.
 
 ## Children
 
