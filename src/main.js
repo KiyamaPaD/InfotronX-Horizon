@@ -1,4 +1,5 @@
 import { JEZERO, MAP_LAYERS, MAX_POINTS_PER_ROUTE } from "./constants.js";
+import { MARKER_ICONS, normalizeMarkerIcon } from "./marker-icons.js";
 import { analyzeRoute, formatCoordinate, formatDistance, generateDetour } from "./geo.js";
 import { MissionStore } from "./store.js";
 import { MarsMap } from "./map.js";
@@ -114,6 +115,26 @@ const map = new MarsMap(get("#map-root"), store, {
         zoomIn.title = zoomIn.disabled ? "Maximum available map detail" : "Zoom in";
         get("[data-action='zoom-out']").disabled = zoom <= 3;
     },
+    onWaypointSelect: id =>
+    {
+        if (get("#analytics-panel").hidden)
+        {
+            get("[data-tab='analytics']").click();
+        }
+
+        const picker = [...document.querySelectorAll("[data-point-icon]")].find(input => input.dataset.pointIcon === id);
+
+        if (picker)
+        {
+            if (window.matchMedia("(max-width: 1200px)").matches)
+            {
+                setMobilePanel("analytics");
+            }
+
+            picker.scrollIntoView({ block: "nearest", behavior: "smooth" });
+            picker.focus({ preventScroll: true });
+        }
+    },
     onMapClick: (point, mode) =>
 {
         if (mode === "draw")
@@ -156,12 +177,12 @@ function renderLayers()
 function renderWaypoints()
 {
     get("#point-summary").textContent = `${store.activeRoute.points.length} PLACED`;
-    get("#waypoint-list").innerHTML = store.activeRoute.points.length ? store.activeRoute.points.map((point, index) => `<div class="waypoint-row"><span class="waypoint-index">${String(index + 1).padStart(2, "0")}</span><div class="waypoint-coordinates"><strong>${formatCoordinate(point.lat, "lat")}</strong><small>${formatCoordinate(point.lon, "lon")}</small></div><button class="edit-point-btn point-order-btn" title="Move waypoint earlier" aria-label="Move waypoint earlier" data-move-point="${safe(point.id)}" data-point-direction="-1" ${index === 0 ? "disabled" : ""}>↑</button><button class="edit-point-btn point-order-btn" title="Move waypoint later" aria-label="Move waypoint later" data-move-point="${safe(point.id)}" data-point-direction="1" ${index === store.activeRoute.points.length - 1 ? "disabled" : ""}>↓</button><button class="edit-point-btn" title="Edit exact coordinates" aria-label="Edit exact coordinates" data-edit-point="${safe(point.id)}">Edit</button><button class="remove-btn" title="Delete waypoint" aria-label="Delete waypoint" data-delete-point="${safe(point.id)}">×</button></div>`).join("") : `<div class="empty-inline">Draw your first waypoint on the map.</div>`;
+    get("#waypoint-list").innerHTML = store.activeRoute.points.length ? store.activeRoute.points.map((point, index) => `<div class="waypoint-row"><span class="waypoint-index">${String(index + 1).padStart(2, "0")}</span><div class="waypoint-coordinates"><strong>${formatCoordinate(point.lat, "lat")}</strong><small>${formatCoordinate(point.lon, "lon")}</small></div><button class="edit-point-btn point-order-btn" title="Move waypoint earlier" aria-label="Move waypoint earlier" data-move-point="${safe(point.id)}" data-point-direction="-1" ${index === 0 ? "disabled" : ""}>↑</button><button class="edit-point-btn point-order-btn" title="Move waypoint later" aria-label="Move waypoint later" data-move-point="${safe(point.id)}" data-point-direction="1" ${index === store.activeRoute.points.length - 1 ? "disabled" : ""}>↓</button><select class="marker-icon-select" data-point-icon="${safe(point.id)}" title="Change marker icon" aria-label="Change waypoint ${index + 1} marker icon">${MARKER_ICONS.map(icon => `<option value="${icon.id}" ${normalizeMarkerIcon(point.icon) === icon.id ? "selected" : ""}>${icon.symbol} ${icon.label}</option>`).join("")}</select><button class="edit-point-btn" title="Edit exact coordinates" aria-label="Edit exact coordinates" data-edit-point="${safe(point.id)}">Edit</button><button class="remove-btn" title="Delete waypoint" aria-label="Delete waypoint" data-delete-point="${safe(point.id)}">×</button></div>`).join("") : `<div class="empty-inline">Draw your first waypoint on the map.</div>`;
 }
 
 function renderObservations()
 {
-    get("#observation-list").innerHTML = store.current.observations.length ? store.current.observations.map(observation => `<div class="note-card"><div class="note-head"><strong>${safe(observation.title)}</strong><button class="remove-btn" title="Delete note" aria-label="Delete note" data-delete-observation="${safe(observation.id)}">×</button></div><p>${safe(observation.note || "No details provided.")}</p><small>${formatCoordinate(observation.lat, "lat")} · ${formatCoordinate(observation.lon, "lon")}</small><div class="note-origin">${safe(observation.source)} · USER-REPORTED / UNVERIFIED</div><button class="btn btn-outline note-waypoint" data-observation-waypoint="${safe(observation.id)}" title="Append this observation to the active route">＋ Use as waypoint</button></div>`).join("") : `<div class="empty-inline">No observations yet. Mark something worth investigating.</div>`;
+    get("#observation-list").innerHTML = store.current.observations.length ? store.current.observations.map(observation => `<div class="note-card"><div class="note-head"><strong>${safe(observation.title)}</strong><select class="marker-icon-select" data-observation-icon="${safe(observation.id)}" title="Change observation icon" aria-label="Change observation marker icon">${MARKER_ICONS.map(icon => `<option value="${icon.id}" ${normalizeMarkerIcon(observation.icon || "diamond") === icon.id ? "selected" : ""}>${icon.symbol} ${icon.label}</option>`).join("")}</select><button class="remove-btn" title="Delete note" aria-label="Delete note" data-delete-observation="${safe(observation.id)}">×</button></div><p>${safe(observation.note || "No details provided.")}</p><small>${formatCoordinate(observation.lat, "lat")} · ${formatCoordinate(observation.lon, "lon")}</small><div class="note-origin">${safe(observation.source)} · USER-REPORTED / UNVERIFIED</div><button class="btn btn-outline note-waypoint" data-observation-waypoint="${safe(observation.id)}" title="Append this observation to the active route">＋ Use as waypoint</button></div>`).join("") : `<div class="empty-inline">No observations yet. Mark something worth investigating.</div>`;
 }
 
 function renderInspector()
@@ -627,6 +648,21 @@ get("#mission-form").addEventListener("submit", event =>
     get("#mission-modal").close();
     map.focusRoute();
     notify("Mission saved locally.");
+});
+
+document.addEventListener("change", event =>
+{
+    const waypointPicker = event.target.closest("[data-point-icon]");
+    const observationPicker = event.target.closest("[data-observation-icon]");
+
+    if (waypointPicker)
+    {
+        store.setPointIcon(waypointPicker.dataset.pointIcon, waypointPicker.value);
+    }
+    else if (observationPicker)
+    {
+        store.setObservationIcon(observationPicker.dataset.observationIcon, observationPicker.value);
+    }
 });
 
 get("#coordinate-form").addEventListener("submit", event =>

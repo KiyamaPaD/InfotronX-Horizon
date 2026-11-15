@@ -1,5 +1,6 @@
 import { JEZERO, JEZERO_CTX_CONTEXT, MAP_LAYERS } from "./constants.js";
 import { clamp, formatCoordinate, project, unproject } from "./geo.js";
+import { edgeFadeMask, normalizeMarkerIcon, spreadNearbyMarkers } from "./marker-icons.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -13,6 +14,37 @@ function svgElement(name, attributes)
     }
 
     return element;
+}
+
+function markerShape(position, icon, color, attributes = {})
+{
+    const base = { fill: color, stroke: "#09111b", "stroke-width": 2, ...attributes };
+
+    switch (normalizeMarkerIcon(icon))
+    {
+        case "diamond":
+            return svgElement("rect", { x: position.x - 6, y: position.y - 6, width: 12, height: 12, rx: 1,
+                transform: `rotate(45 ${position.x} ${position.y})`, ...base });
+        case "square":
+            return svgElement("rect", { x: position.x - 7, y: position.y - 7, width: 14, height: 14, rx: 2, ...base });
+        case "triangle":
+            return svgElement("polygon", { points: `${position.x},${position.y - 9} ${position.x - 9},${position.y + 7} ${position.x + 9},${position.y + 7}`, ...base });
+        case "star":
+        {
+            const points = [];
+
+            for (let i = 0; i < 10; i++)
+            {
+                const angle = -Math.PI / 2 + Math.PI * i / 5;
+                const radius = i % 2 === 0 ? 10 : 4.5;
+                points.push(`${position.x + radius * Math.cos(angle)},${position.y + radius * Math.sin(angle)}`);
+            }
+
+            return svgElement("polygon", { points: points.join(" "), ...base });
+        }
+        default:
+            return svgElement("circle", { cx: position.x, cy: position.y, r: 7, ...base });
+    }
 }
 
 export class MarsMap
@@ -311,10 +343,13 @@ export class MarsMap
 
         const target = event.target.closest?.("[data-point]");
         const pointId = target?.dataset.point;
+        const selectedPoint = this.store.activeRoute.points.find(item => item.id === pointId);
         this.drag = {
             pointerId: event.pointerId, startX: event.clientX, startY: event.clientY,
             startCenter: project(this.center, this.zoom), moved: false,
             pointId: this.mode === "edit" ? pointId : null,
+            selectedPointId: pointId,
+            startPoint: selectedPoint ? { lat: selectedPoint.lat, lon: selectedPoint.lon } : null,
             targetRoute: event.target.closest?.("[data-route]")?.dataset.route
         };
         this.container.classList.add("is-dragging");
@@ -343,7 +378,9 @@ export class MarsMap
 
         if (this.drag.pointId)
         {
-            this.store.movePoint(this.drag.pointId, this.screenToGeo(event.clientX, event.clientY), false);
+            const origin = project(this.drag.startPoint, this.zoom);
+            const moved = unproject({ x: origin.x + deltaX, y: origin.y + deltaY }, this.zoom);
+            this.store.movePoint(this.drag.pointId, moved, false);
             this.render();
             return;
         }
@@ -375,6 +412,12 @@ export class MarsMap
 
         if (drag.moved || !this.container.contains(event.target))
         {
+            return;
+        }
+
+        if (drag.selectedPointId && this.mode === "pan")
+        {
+            this.options.onWaypointSelect?.(drag.selectedPointId);
             return;
         }
 
@@ -853,6 +896,9 @@ export class MarsMap
     {
         const tile = document.createElement("img");
         tile.className = source.id === "ctx-jezero" ? "map-context-tile" : "map-hires-tile";
+        tile.dataset.tileX = String(x);
+        tile.dataset.tileY = String(y);
+        tile.dataset.tileZoom = String(zoom);
         tile.alt = "";
         tile.draggable = false;
         tile.decoding = "async";
@@ -905,7 +951,13 @@ export class MarsMap
             }
 
             tile.dataset.state = "loaded";
-            tile.style.opacity = "1";
+            tile.style.opacity = source.id === "ctx-jezero" ? "0.91" : "1";
+
+            if (source.id === "ctx-jezero")
+            {
+                this.updateContextTileMasks();
+            }
+
             report();
         };
 
@@ -920,6 +972,33 @@ export class MarsMap
         };
 
         return tile;
+    }
+
+    updateContextTileMasks()
+    {
+        const zoom = this.zoom;
+        const loaded = (x, y) =>
+        {
+            const key = `ctx-jezero-${zoom}-${x}-${y}`;
+            const neighbor = this.contextTiles.get(key);
+            return this.activeContextTiles.has(key) && neighbor?.dataset.state === "loaded";
+        };
+
+        for (const [key, tile] of this.contextTiles)
+        {
+            if (!this.activeContextTiles.has(key) || tile.dataset.state !== "loaded")
+            {
+                continue;
+            }
+
+            const x = Number(tile.dataset.tileX);
+            const y = Number(tile.dataset.tileY);
+            const fade = zoom === 8 ? 56 : 36;
+            tile.style.maskImage = edgeFadeMask(!loaded(x - 1, y), !loaded(x + 1, y),
+                !loaded(x, y - 1), !loaded(x, y + 1), fade);
+            tile.style.maskComposite = "intersect";
+            tile.style.webkitMaskComposite = "source-in";
+        }
     }
 
     renderContextTiles(width, height, center)
@@ -974,6 +1053,7 @@ export class MarsMap
         }
 
         this.activeContextTiles = active;
+        this.updateContextTileMasks();
 
         for (const [key, tile] of this.contextTiles)
         {
@@ -1157,6 +1237,7 @@ export class MarsMap
         }
 
         const center = project(this.center, this.zoom);
+        this.container.dataset.mapZoom = String(this.zoom);
 
         if (this.layer.id === "hirise")
         {
@@ -1315,6 +1396,7 @@ export class MarsMap
         {
             const active = route.id === this.store.current.activeRouteId;
             const coordinates = route.points.map(point => this.geoToScreen(point));
+            const displayed = active ? spreadNearbyMarkers(coordinates) : coordinates;
 
             if (coordinates.length > 1)
             {
@@ -1326,15 +1408,25 @@ export class MarsMap
 
             if (active)
             {
-                coordinates.forEach((position, index) =>
-{
+                displayed.forEach((position, index) =>
+                {
                     const point = route.points[index];
-                    const halo = svgElement("circle", { cx: position.x, cy: position.y, r: 11, fill: route.color, opacity: 0.22 });
-                    const circle = svgElement("circle", { cx: position.x, cy: position.y, r: 6, fill: route.color, stroke: "#09111b", "stroke-width": 2, class: "route-node", "data-point": point.id });
+                    const actual = coordinates[index];
+
+                    if (position.shifted)
+                    {
+                        const tether = svgElement("line", { x1: actual.x, y1: actual.y, x2: position.x, y2: position.y,
+                            stroke: route.color, "stroke-opacity": 0.7, "stroke-width": 1.3,
+                            "stroke-dasharray": "3 4", "pointer-events": "none" });
+                        this.overlay.appendChild(tether);
+                    }
+
+                    const halo = svgElement("circle", { cx: position.x, cy: position.y, r: 12, fill: route.color, opacity: 0.2 });
+                    const marker = markerShape(position, point.icon, route.color, { class: "route-node", "data-point": point.id });
                     const title = svgElement("title", {});
                     title.textContent = `Waypoint ${index + 1} · ${formatCoordinate(point.lat, "lat")}, ${formatCoordinate(point.lon, "lon")}`;
-                    circle.appendChild(title);
-                    this.overlay.append(halo, circle);
+                    marker.appendChild(title);
+                    this.overlay.append(halo, marker);
                 });
             }
         }
@@ -1343,7 +1435,7 @@ export class MarsMap
         {
             const position = this.geoToScreen(observation);
             const halo = svgElement("circle", { cx: position.x, cy: position.y, r: 12, fill: "#7ed4c5", opacity: 0.15 });
-            const marker = svgElement("rect", { x: position.x - 5, y: position.y - 5, width: 10, height: 10, rx: 2, transform: `rotate(45 ${position.x} ${position.y})`, fill: "#8fe5d8", stroke: "#10252b", "stroke-width": 1.5 });
+            const marker = markerShape(position, observation.icon || "diamond", "#8fe5d8");
             const title = svgElement("title", {});
             title.textContent = observation.title;
             marker.appendChild(title);

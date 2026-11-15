@@ -896,3 +896,46 @@
     pointer-events:none;
     image-rendering:auto;
 }
+
+/* Real CTX tile boundaries soften into actual lower-detail Viking context. */
+.map-root[data-map-zoom="8"] .map-context-tile
+{
+    filter:grayscale(1) brightness(.82) contrast(.9);
+}
+.map-root[data-map-zoom="9"] .map-context-tile,
+.map-root[data-map-zoom="10"] .map-context-tile,
+.map-root[data-map-zoom="11"] .map-context-tile
+{
+    filter:grayscale(1) brightness(.94) contrast(.96);
+}
+.marker-icon-select
+{
+    min-height:35px;
+    max-width:106px;
+    min-width:80px;
+    border:1px solid #536b7b;
+    border-radius:7px;
+    padding:5px 7px;
+    background:#172734;
+    color:#e8edf4;
+    font:600 11px "DM Sans",sans-serif;
+    cursor:pointer;
+}
+.marker-icon-select:focus-visible
+{
+    outline:2px solid #8fe5d8;
+    outline-offset:2px;
+}
+.waypoint-row
+{
+    flex-wrap:wrap;
+}
+.waypoint-row .marker-icon-select
+{
+    margin-left:auto;
+}
+.note-head
+{
+    flex-wrap:wrap;
+    gap:8px;
+}

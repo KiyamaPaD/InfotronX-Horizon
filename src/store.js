@@ -1,5 +1,6 @@
 import { JEZERO, STORAGE_KEY, ROUTE_COLORS, MAX_OBSERVATIONS, MAX_POINTS_PER_ROUTE } from "./constants.js";
 import { isValidCoordinate } from "./geo.js";
+import { MARKER_ICONS, normalizeMarkerIcon } from "./marker-icons.js";
 import { DEFAULT_EVA_ASSUMPTIONS, validateEvaAssumptions } from "./resources.js";
 
 const createId = () => crypto.randomUUID();
@@ -67,7 +68,7 @@ export function validateMission(candidate)
         id: String(route.id || createId()).slice(0, 80),
         name: String(route.name || `Route ${index + 1}`).slice(0, 70),
         color: ROUTE_COLORS[index % ROUTE_COLORS.length],
-        points: Array.isArray(route.points) ? route.points.filter(isValidCoordinate).slice(0, MAX_POINTS_PER_ROUTE).map(point => ({ id: String(point.id || createId()).slice(0, 80), lat: Number(point.lat), lon: Number(point.lon) })) : [],
+        points: Array.isArray(route.points) ? route.points.filter(isValidCoordinate).slice(0, MAX_POINTS_PER_ROUTE).map(point => ({ id: String(point.id || createId()).slice(0, 80), lat: Number(point.lat), lon: Number(point.lon), ...(typeof point.icon === "string" ? { icon: normalizeMarkerIcon(point.icon) } : {}) })) : [],
         terrainModel: readTerrainMetadata(route.terrainModel)
     }));
     mission.observations = Array.isArray(candidate.observations) ? candidate.observations.filter(observation => observation && typeof observation === "object" && isValidCoordinate(observation)).slice(0, MAX_OBSERVATIONS).map(observation => ({
@@ -76,7 +77,8 @@ export function validateMission(candidate)
         title: String(observation.title || "Observation").slice(0, 80),
         note: String(observation.note || "").slice(0, 500),
         source: String(observation.source || "User annotation").slice(0, 160),
-        createdAt: String(observation.createdAt || new Date().toISOString())
+        createdAt: String(observation.createdAt || new Date().toISOString()),
+        ...(typeof observation.icon === "string" ? { icon: normalizeMarkerIcon(observation.icon) } : {})
     })) : [];
     mission.checkpoints = Array.isArray(candidate.checkpoints) ? candidate.checkpoints.slice(0, MAX_CHECKPOINTS).filter(item => item && typeof item === "object" && Array.isArray(item.routes) && item.routes.length > 0 && item.routes.length <= MAX_ROUTES).map(item =>
     {
@@ -84,13 +86,14 @@ export function validateMission(candidate)
             id: String(route.id || createId()).slice(0, 80),
             name: String(route.name || `Route ${index + 1}`).slice(0, 70),
             color: ROUTE_COLORS[index % ROUTE_COLORS.length],
-            points: route.points.filter(isValidCoordinate).slice(0, MAX_POINTS_PER_ROUTE).map(point => ({ id: String(point.id || createId()).slice(0, 80), lat: Number(point.lat), lon: Number(point.lon) })),
+            points: route.points.filter(isValidCoordinate).slice(0, MAX_POINTS_PER_ROUTE).map(point => ({ id: String(point.id || createId()).slice(0, 80), lat: Number(point.lat), lon: Number(point.lon), ...(typeof point.icon === "string" ? { icon: normalizeMarkerIcon(point.icon) } : {}) })),
             terrainModel: readTerrainMetadata(route.terrainModel)
         }));
         const observations = Array.isArray(item.observations) ? item.observations.filter(observation => observation && isValidCoordinate(observation)).slice(0, MAX_OBSERVATIONS).map(observation => ({
             id: String(observation.id || createId()).slice(0, 80), lat: Number(observation.lat), lon: Number(observation.lon),
             title: String(observation.title || "Observation").slice(0, 80), note: String(observation.note || "").slice(0, 500),
-            source: String(observation.source || "User annotation").slice(0, 160), createdAt: String(observation.createdAt || "")
+            source: String(observation.source || "User annotation").slice(0, 160), createdAt: String(observation.createdAt || ""),
+            ...(typeof observation.icon === "string" ? { icon: normalizeMarkerIcon(observation.icon) } : {})
         })) : [];
         return {
             id: String(item.id || createId()).slice(0, 80),
@@ -528,6 +531,20 @@ export class MissionStore
         return true;
     }
 
+    setPointIcon(id, icon)
+    {
+        const point = this.activeRoute.points.find(item => item.id === id);
+
+        if (!point || !MARKER_ICONS.some(option => option.id === icon))
+        {
+            return false;
+        }
+
+        point.icon = icon;
+        this.save();
+        return true;
+    }
+
     removePoint(id)
     {
         this.activeRoute.points = this.activeRoute.points.filter(point => point.id !== id);
@@ -553,6 +570,20 @@ export class MissionStore
         }
 
         this.current.observations.push({ id: createId(), lat: coordinate.lat, lon: coordinate.lon, title: String(title).slice(0, 80), note: String(note).slice(0, 500), source: String(source || "User annotation").slice(0, 160), createdAt: new Date().toISOString() });
+        this.save();
+        return true;
+    }
+
+    setObservationIcon(id, icon)
+    {
+        const observation = this.current.observations.find(item => item.id === id);
+
+        if (!observation || !MARKER_ICONS.some(option => option.id === icon))
+        {
+            return false;
+        }
+
+        observation.icon = icon;
         this.save();
         return true;
     }
