@@ -150,11 +150,7 @@ try
     const view8 = await inspect("HiRISE selector at zoom 8");
     assert.ok(view8.backdropLoaded > 0);
     assert.equal(view8.detailVisible, 0);
-    assert.ok(view8.contextVisible > 0);
-    await page.waitForFunction(() =>
-        [...document.querySelectorAll(".map-context-tile")].some(item => item.dataset.state === "loaded" && item.style.display !== "none"),
-        null, { timeout: 20000 });
-    assert.ok((await inspect("CTX at zoom 8")).contextLoaded > 0);
+    assert.equal(view8.contextVisible, 0, "Zoom 8 must not show a sharp isolated CTX rectangle");
     assert.ok(view8.bannerHidden);
     await page.locator("#map-root").screenshot({ path: "browser-map-evidence/zoom8.png" });
 
