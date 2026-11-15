@@ -13,6 +13,7 @@ import { createJezeroReviewMission } from "./review-demo.js";
 import { setupAnalyticsNavigation } from "./workspace-ux.js";
 import { mountCloudWorkspace } from "./cloud-ui.js";
 import { mountMissionCopilot } from "./mission-copilot-ui.js";
+import { mountWorkflowSteps } from "./workflow-steps.js";
 
 const store = new MissionStore();
 const imported = readSharedMission();
@@ -1094,6 +1095,13 @@ window.addEventListener("keydown", event =>
 store.subscribe(render);
 setMode("pan");
 render();
+mountWorkflowSteps({
+    shell: get("#mars-shell"),
+    store,
+    setMode,
+    loadTerrain: () => scienceWorkbench.loadBundledDem().then(() => analyticsNavigation.refresh()).catch(() => {}),
+    isTerrainReady: () => scienceWorkbench.isDemReady
+});
 map.focusRoute();
 
 if (imported)

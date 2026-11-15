@@ -4,7 +4,25 @@ import { chromium } from "playwright";
 import { project, unproject } from "../src/geo.js";
 
 const browser = await chromium.launch({ headless: true, args: ["--no-sandbox"] });
-const page = await browser.newPage({ viewport: { width: 1480, height: 960 }, deviceScaleFactor: 1 });
+// Existing scenarios drive panels directly, so they start in "All tools"; workflowScenario covers the guided steps.
+const plainContext = browser.newContext.bind(browser);
+browser.newContext = async options =>
+{
+    const context = await plainContext(options);
+    await context.addInitScript(() =>
+    {
+        try
+        {
+            if (!localStorage.getItem("mars-atlas.workflow-step")) localStorage.setItem("mars-atlas.workflow-step", "all");
+        }
+        catch
+        {
+            // Storage can be unavailable; the app then falls back to the guided view.
+        }
+    });
+    return context;
+};
+const page = await (await browser.newContext({ viewport: { width: 1480, height: 960 }, deviceScaleFactor: 1 })).newPage();
 const network = [];
 const errors = [];
 const responses = [];
@@ -1093,6 +1111,72 @@ async function touchScenario()
     return { scenario: "touch-375", viewport, steps, checks, ...summarize(log) };
 }
 
+async function workflowScenario()
+{
+    const context = await plainContext({ viewport: { width: 1480, height: 960 }, deviceScaleFactor: 1 });
+    const target = await context.newPage();
+    const log = trackPage(target);
+    const steps = [];
+    const checks = [];
+    const state = () => target.evaluate(() => ({
+        step: document.querySelector("#mars-shell").dataset.step,
+        mode: document.querySelector("#map-root").dataset.mode,
+        right: getComputedStyle(document.querySelector(".sidebar-right")).display,
+        mapWidth: Math.round(document.querySelector("#map-root").getBoundingClientRect().width)
+    }));
+    const check = (name, ok, detail) => checks.push({ name, ok, detail, hard: true });
+
+    try
+    {
+        await target.goto(APP_URL, { waitUntil: "domcontentloaded" });
+        await target.waitForSelector(".workflow-steps");
+        const explore = await state();
+        check("fresh visit starts in Explore with the map widened", explore.step === "explore" && explore.right === "none", JSON.stringify(explore));
+        await target.screenshot({ path: "browser-map-evidence/workflow-explore.png" });
+
+        await target.locator(".workflow-cta").click();
+        const plan = await state();
+        check("Start a route opens Plan in Draw mode", plan.step === "plan" && plan.mode === "draw" && plan.right !== "none", JSON.stringify(plan));
+        check("Explore gives the map more room than Plan", explore.mapWidth > plan.mapWidth, explore.mapWidth + " vs " + plan.mapWidth + " px");
+
+        const box = await target.locator("#map-root").boundingBox();
+        await target.mouse.click(box.x + box.width * 0.45, box.y + box.height * 0.5);
+        await target.mouse.click(box.x + box.width * 0.58, box.y + box.height * 0.42);
+        const terrainReady = await target.waitForFunction(() => /Numeric DEM loaded/i.test(document.querySelector('[data-ready-text="dem"]')?.textContent || ""), null, { timeout: 20000 }).then(() => true, () => false);
+        check("two waypoints load the elevation model automatically", terrainReady, terrainReady ? "DEM ready without a click" : "DEM still not loaded");
+        const analyzeReady = await target.locator('.workflow-step[data-step="analyze"]').evaluate(element => element.classList.contains("ready"));
+        check("Analyze is highlighted once the route exists", analyzeReady, String(analyzeReady));
+
+        await target.locator('.workflow-step[data-step="analyze"]').click();
+        const terrainTab = await target.locator('.analytics-categories [data-group="terrain"]').evaluate(element => element.classList.contains("active") || element.getAttribute("aria-pressed") === "true");
+        check("Analyze opens the Terrain tools", terrainTab, String(terrainTab));
+        await target.screenshot({ path: "browser-map-evidence/workflow-analyze.png" });
+
+        await target.locator(".workflow-all").click();
+        await target.reload({ waitUntil: "domcontentloaded" });
+        await target.waitForSelector(".workflow-steps");
+        const all = await state();
+        check("All tools is remembered after reload", all.step === "all" && all.right !== "none", JSON.stringify(all));
+
+        await target.locator('[data-action="open-3d"]').click();
+        await target.waitForSelector(".map-3d-layer.is-open", { timeout: 5000 });
+        await target.waitForFunction(() => /relief|could not|unavailable/i.test(document.querySelector('[data-3d="status"]')?.textContent || ""), null, { timeout: 30000 }).catch(() => {});
+        const status3d = await target.locator('[data-3d="status"]').textContent();
+        steps.push({ step: "3d-status", status3d });
+        await target.screenshot({ path: "browser-map-evidence/workflow-3d.png" });
+        await target.locator('[data-3d="close"]').click();
+        await target.waitForFunction(() => !document.querySelector(".map-3d-layer"), null, { timeout: 3000 });
+        check("3D view opens over the map and closes back to 2D", true, status3d.trim());
+    }
+    finally
+    {
+        await context.close();
+    }
+
+    // The scenario reloads the page on purpose to check the remembered step, so repeated tile URLs are reported, not gated.
+    return { scenario: "workflow-steps", viewport: VIEWPORTS[2], steps, checks, gateDuplicates: false, ...summarize(log) };
+}
+
 function countBy(items, key)
 {
     const counts = {};
@@ -1178,6 +1262,7 @@ async function runStabilityScenarios()
         report.scenarios.push(await hiriseEdgeScenario());
         report.scenarios.push(await sourceIndicatorScenario());
         report.scenarios.push(await touchScenario());
+        report.scenarios.push(await workflowScenario());
         report.scenarios.push(await slowNetworkScenario());
         report.scenarios.push(await offlineScenario());
         report.scenarios.push(await nasaOutageScenario());
@@ -1216,7 +1301,7 @@ async function runStabilityScenarios()
     const jsErrors = report.scenarios.flatMap(item => item.jsErrors.map(text => item.scenario + " " + text));
     assert.deepEqual(notFound, [], "Tile 404s on used levels");
     assert.deepEqual(duplicates, [], "Duplicate tile requests");
-    const vikingReissues = report.scenarios.flatMap(item => item.duplicates.filter(entry => entry.kind === "reissue-after-abort" && entry.url.includes("Mars_Viking_MDIM21")).map(entry => item.scenario + " " + entry.url));
+    const vikingReissues = report.scenarios.filter(item => item.gateDuplicates !== false).flatMap(item => item.duplicates.filter(entry => entry.kind === "reissue-after-abort" && entry.url.includes("Mars_Viking_MDIM21")).map(entry => item.scenario + " " + entry.url));
     assert.deepEqual(vikingReissues, [], "Viking backdrop tiles aborted and downloaded again (plan step 1.1b)");
     assert.deepEqual(jsErrors, [], "JavaScript console errors");
     const hardFailures = report.scenarios.flatMap(item => (item.checks || []).filter(check => check.hard && !check.ok).map(check => item.scenario + " " + check.name + ": " + check.detail));
