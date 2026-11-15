@@ -23,6 +23,7 @@ export class Tutorial {
         this.nextBtn = document.getElementById('tutorial-next');
         this.skipBtn = document.getElementById('tutorial-skip');
         this.pointer = document.getElementById('tutorial-pointer');
+        this.mascot = document.getElementById('tutorial-mascot');
 
         this.init();
     }
@@ -145,10 +146,51 @@ export class Tutorial {
             this.box.style.top = '50%';
             this.box.style.left = '50%';
             this.box.style.transform = 'translate(-50%, -50%)';
+            this.placeMascot();
             return;
         }
 
         this.positionBox(this.target.getBoundingClientRect(), step.position || 'bottom');
+        this.placeMascot();
+    }
+
+    // The guide stands in a free corner of the screen, never on the tutorial box or on what the box points at, and turns towards the box.
+    placeMascot() {
+        if (!this.mascot) {
+            return;
+        }
+
+        const width = 110, height = 150, margin = 16;
+        const box = this.box.getBoundingClientRect();
+        const target = this.target ? this.target.getBoundingClientRect() : null;
+        const overlaps = (a, b) => b && a.left < b.right + margin && a.right > b.left - margin && a.top < b.bottom + margin && a.bottom > b.top - margin;
+        const corners = [
+            { name: 'bottom-right', left: window.innerWidth - width - margin, top: window.innerHeight - height - margin },
+            { name: 'bottom-left', left: margin, top: window.innerHeight - height - margin },
+            { name: 'top-right', left: window.innerWidth - width - margin, top: margin + 60 },
+            { name: 'top-left', left: margin, top: margin + 60 }
+        ];
+        const boxCentre = box.left + box.width / 2;
+        // Prefer the corner on the side away from the box.
+        corners.sort((a, b) => Math.abs((b.left + width / 2) - boxCentre) - Math.abs((a.left + width / 2) - boxCentre));
+        const free = corners.find(corner => {
+            const rect = { left: corner.left, top: corner.top, right: corner.left + width, bottom: corner.top + height };
+            return !overlaps(rect, box) && !overlaps(rect, target);
+        });
+
+        if (!free) {
+            this.mascot.hidden = true;
+            return;
+        }
+
+        this.mascot.hidden = false;
+        this.mascot.style.left = free.left + 'px';
+        this.mascot.style.top = free.top + 'px';
+        const step = this.steps[this.currentStep];
+        const towardsBox = free.left + width / 2 < boxCentre ? 'point-right' : 'point-left';
+        const last = this.currentStep === this.steps.length - 1;
+        const pose = this.currentStep === 0 ? 'wave' : last ? 'cheer' : step.pose || towardsBox;
+        this.mascot.className = 'tutorial-mascot pose-' + pose;
     }
 
     positionBox(rect, position) {

@@ -302,7 +302,7 @@ function pageMarkup()
         </section>
         <section class="home-section">
             <h2 class="home-h2 reveal">Everything for a first plan</h2>
-            <div class="home-features">${FEATURES.map((item, index) => `<article class="home-card reveal" style="--i:${index}"><span class="home-card-icon" aria-hidden="true">${item.icon}</span><h3>${item.title}</h3><p>${item.text}</p></article>`).join("")}</div>
+            <div class="home-features">${FEATURES.map((item, index) => `<article class="home-card reveal glow-border" style="--i:${index}"><span class="home-card-icon" aria-hidden="true">${item.icon}</span><h3>${item.title}</h3><p>${item.text}</p></article>`).join("")}</div>
         </section>
         <section class="home-section home-tech reveal" aria-label="Tools used to build Mars Atlas">
             <h2 class="home-h2">Built with</h2>

@@ -2541,3 +2541,39 @@ a:not(.source-link):hover
 .settings-list { display: grid; gap: 8px; margin-bottom: 12px; }
 .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #d2dce5; font-size: 14px; margin-bottom: 8px; }
 .settings-row select { padding: 6px 10px; border-radius: 8px; border: 1px solid #3c4d5c; background: #0b121b; color: #e7eef4; font: inherit; }
+
+/* Tutorial guide */
+.tutorial-mascot { position: fixed; z-index: 10002; width: 110px; height: 150px; pointer-events: none; transition: left .5s cubic-bezier(.2, .8, .2, 1), top .5s cubic-bezier(.2, .8, .2, 1); filter: drop-shadow(0 10px 18px #0009); animation: mascot-bob 3s ease-in-out infinite; }
+.tutorial-mascot[hidden] { display: none; }
+.tutorial-mascot .mascot-svg { width: 100%; height: 100%; overflow: visible; }
+.m-arm { transform-box: fill-box; transform-origin: 50% 8%; transition: transform .5s ease; }
+.m-arm-left { transform-origin: 40px 84px; transform-box: view-box; }
+.m-arm-right { transform-origin: 80px 84px; transform-box: view-box; }
+.m-head { transform-origin: 60px 38px; transform-box: view-box; transition: transform .5s ease; }
+.pose-point-right .m-arm-right { transform: rotate(-80deg); }
+.pose-point-left .m-arm-left { transform: rotate(80deg); }
+.pose-wave .m-arm-right { animation: mascot-wave 0.7s ease-in-out infinite alternate; }
+.pose-cheer .m-arm-left { transform: rotate(150deg); }
+.pose-cheer .m-arm-right { transform: rotate(-150deg); }
+.pose-cheer { animation: mascot-jump .7s ease-in-out infinite; }
+.pose-think .m-arm-right { transform: rotate(-150deg) translate(0, 6px); }
+.pose-think .m-head { transform: rotate(-8deg); }
+@keyframes mascot-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes mascot-wave { from { transform: rotate(-140deg); } to { transform: rotate(-100deg); } }
+@keyframes mascot-jump { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-18px); } }
+@media (prefers-reduced-motion: reduce) { .tutorial-mascot, .pose-cheer, .pose-wave .m-arm-right { animation: none; } }
+
+/* Animated outlines on a few blocks */
+@property --spin { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+.glow-border { position: relative; }
+.glow-border::after { content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 1px; pointer-events: none; opacity: .75;
+    background: conic-gradient(from var(--spin), transparent 0 68%, #e39165 84%, #75d1c8 94%, transparent 100%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; animation: glow-spin 7s linear infinite; }
+@keyframes glow-spin { to { --spin: 360deg; } }
+@media (prefers-reduced-motion: reduce) { .glow-border::after { animation: none; } }
+
+/* Small robots drifting across the analysis background */
+.analyze-dashboard::before { content: ""; position: absolute; left: -90px; top: 34%; width: 64px; height: 80px; opacity: .07; pointer-events: none; z-index: 0;
+    background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 80'><rect x='14' y='20' width='36' height='34' rx='8' fill='white'/><rect x='24' y='4' width='16' height='14' rx='4' fill='white'/><rect x='6' y='56' width='14' height='20' rx='4' fill='white'/><rect x='44' y='56' width='14' height='20' rx='4' fill='white'/></svg>") center / contain no-repeat; animation: robot-drift 60s linear infinite; }
+@keyframes robot-drift { to { transform: translateX(calc(100vw + 180px)); } }
+@media (prefers-reduced-motion: reduce) { .analyze-dashboard::before { animation: none; display: none; } }

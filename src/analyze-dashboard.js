@@ -373,7 +373,7 @@ export function mountAnalyzeDashboard({ shell, store, getCloud, getDem })
                 </div>
             </header>
             <nav class="ad-chips" aria-label="Analysis steps">${chips}</nav>
-            <section class="ad-step" id="ad-step-1">
+            <section class="ad-step glow-border" id="ad-step-1">
                 ${stepHead(1, "How big is the route?", "Distance and number of legs tell you how long the trip is and how many stops it has.")}
                 <div class="ad-kpis">
                     ${kpi("DISTANCE", `<span data-count="${total}" data-kind="distance">0 m</span>`, "Along the surface of Mars", "Calculated")}
