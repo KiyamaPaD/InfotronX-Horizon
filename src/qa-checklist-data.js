@@ -32,10 +32,10 @@ export const PHASES = [
             { id: "2.7", built: "no", text: "Surface detail in 3D as fine as the 2D map (rendering at the ground)." },
             { id: "2.8", built: "no", text: "2D at very high zoom: sharp, not blurred or pixelated." },
             { id: "2.9", built: "no", text: "3D at very high zoom: sharp, not blurred." },
-            { id: "2.10", built: "no", text: "Change the map layer in 3D like in 2D (Map data affects 3D)." },
-            { id: "2.11", built: "no", text: "More NASA maps (layers) from NASA resources." },
+            { id: "2.10", built: "yes", test: "In the 3D panel choose Surface: NASA 3D model, Viking colour, MOLA shaded relief or MOLA colour relief. The relief and your route stay in place.", text: "Change the map layer in 3D like in 2D (Map data affects 3D)." },
+            { id: "2.11", built: "partly", test: "One new NASA layer was added to both maps (MOLA colour relief). Other products named in the NASA catalogue could not be reached by name from here; send me names you want and I will add them.", text: "More NASA maps (layers) from NASA resources." },
             { id: "2.12", built: "no", text: "Surface and zoom behaviour in 3D like the Astra team's project (martian-map-project-astra)." },
-            { id: "2.13", built: "no", text: "More photos and more places, some of them random, from online sources." },
+            { id: "2.13", built: "yes", test: "Click pins on the planet: there are now 29 real places (landers, rovers, volcanoes, canyons, basins, fractures), each with facts and NASA photos.", text: "More photos and more places, some of them random, from online sources." },
             { id: "2.14", built: "partly", text: "Animations on the 2D and 3D routes.", test: "3D has a travelling marker and pulsing rings; 2D has the Flowing line style. A travelling marker on 2D is still to do." },
             { id: "2.15", built: "yes", text: "A control panel to change the lines: thickness and more.", test: "Open Lines on the 2D map or in the 3D panel: thickness, opacity, style, colour, outline, marker size." }
         ]

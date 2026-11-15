@@ -9,7 +9,7 @@ import { analyzeRoute, formatDistance } from "./geo.js";
 import { MARS_SITES, SITE_TYPES } from "./mars-sites.js";
 import { getLineStyle, mountLineControls } from "./line-style.js";
 import { rememberDetails, getPref, setPref } from "./settings.js";
-import { directionOf, latLonOf, ellipseRadius, parseGlb, subdivide, positionGroups } from "./planet-mesh.js";
+import { directionOf, latLonOf, ellipseRadius, parseGlb, subdivide, positionGroups, equirectMesh } from "./planet-mesh.js";
 
 // NASA/JPL-Caltech 3D model of Mars: https://science.nasa.gov/resource/planet-mars-3d-model/
 const NASA_MODEL_URL = new URL("../assets/nasa/mars-3d-model.glb", import.meta.url);
@@ -66,6 +66,7 @@ const CRATER_BOUNDS = { north: 18.9, south: 18.0, west: 77.0, east: 77.9 };
 const CRATER_GRID = 121;
 const VIKING_URL = MAP_LAYERS.find(layer => layer.id === "viking").url + "/default/default028mm/";
 const MOLA_DEM_URL = MOLA_URL;
+const MOLA_COLOR_URL = MAP_LAYERS.find(layer => layer.id === "mola-color").url + "/default/default028mm/";
 const MOLA_SHADE_URL = MAP_LAYERS.find(layer => layer.id === "mola").url + "/default/default028mm/";
 const HIRISE_URL = MAP_LAYERS.find(layer => layer.id === "hirise").url + "/default/default028mm/";
 const CTX_URL = JEZERO_CTX_CONTEXT.url + "/default/default028mm/";
@@ -314,6 +315,7 @@ export async function openMap3d({ host, points = [], groundAt, getPoints, getRou
             <div class="map-3d-head"><div><div class="map-3d-eyebrow" data-3d="eyebrow"></div><h3 class="map-3d-title" data-3d="title"></h3></div><button type="button" class="map-3d-fold" data-3d="fold" aria-expanded="true" aria-label="Fold or unfold this panel">−</button></div>
             <p class="map-3d-copy" data-3d="copy"></p>
             <div class="map-3d-group"><span class="map-3d-label">VIEW</span>
+                <label class="map-3d-surface">Surface<select data-3d="surface" aria-label="Surface map"><option value="nasa">NASA 3D model (one texture)</option><option value="viking">Viking colour map</option><option value="mola">MOLA shaded relief</option><option value="mola-color">MOLA colour relief</option></select></label>
                 <label class="map-3d-range">Vertical ×<span data-3d="ex-value">3</span><input data-3d="ex" type="range" min="1" max="12" step="0.5" value="6" /></label>
                 <div class="map-3d-actions">
                     <button type="button" class="btn btn-accent compact" data-3d="fit" title="Frame the whole route">Fit route</button>
@@ -597,13 +599,13 @@ export async function openMap3d({ host, points = [], groundAt, getPoints, getRou
             }
 
             // NASA's own 3D model of Mars (NASA/JPL-Caltech), made denser so MOLA heights (8-bit, approximate) can lift it. One mesh, one texture.
-            const nasa = await loadNasaModel(light ? 2 : 3);
+            let nasa = await loadNasaModel(light ? 2 : 3);
 
             if (disposed || id !== session) return;
 
-            const vertexCount = nasa.directions.length / 3;
+            let vertexCount = nasa.directions.length / 3;
             const geometry = new THREE.BufferGeometry();
-            const positionArray = new Float32Array(nasa.directions.length);
+            let positionArray = new Float32Array(nasa.directions.length);
             geometry.setAttribute("position", new THREE.BufferAttribute(positionArray, 3));
             geometry.setAttribute("uv", new THREE.BufferAttribute(nasa.uvs, 2));
             geometry.setIndex(new THREE.BufferAttribute(nasa.indices, 1));
@@ -679,6 +681,63 @@ export async function openMap3d({ host, points = [], groundAt, getPoints, getRou
                 geometry.attributes.normal.needsUpdate = true;
                 geometry.computeBoundingSphere();
             };
+
+            // The surface: NASA's own model, or a flat NASA map wrapped on a latitude-longitude sphere (same relief, same route).
+            const SURFACES = { nasa: null, viking: VIKING_URL, mola: MOLA_SHADE_URL, "mola-color": MOLA_COLOR_URL };
+            let flatBody = null;
+            let surfaceToken = 0;
+            const setSurface = async name =>
+            {
+                const token = ++surfaceToken;
+                setPref("3d-surface", name);
+
+                if (name === "nasa" || !SURFACES[name])
+                {
+                    nasa = await loadNasaModel(light ? 2 : 3);
+                    material.map = diffuse;
+                    material.normalMap = normalMap;
+                }
+                else
+                {
+                    flatBody ??= equirectMesh(light ? 192 : 288, light ? 96 : 144);
+                    nasa = flatBody;
+                    status.textContent = "Loading the map…";
+
+                    try
+                    {
+                        const picture = await globalMosaic(SURFACES[name], light ? 2 : 3);
+
+                        if (disposed || token !== surfaceToken) return;
+
+                        const texture = new THREE.CanvasTexture(picture);
+                        texture.colorSpace = THREE.SRGBColorSpace;
+                        texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+                        flatTexture?.dispose();
+                        flatTexture = texture;
+                        material.map = texture;
+                        material.normalMap = null;
+                    }
+                    catch
+                    {
+                        status.textContent = "That map could not be loaded. Showing the NASA model instead.";
+                        return setSurface("nasa");
+                    }
+                }
+
+                vertexCount = nasa.directions.length / 3;
+                positionArray = new Float32Array(nasa.directions.length);
+                geometry.setAttribute("position", new THREE.BufferAttribute(positionArray, 3));
+                geometry.setAttribute("uv", new THREE.BufferAttribute(nasa.uvs, 2));
+                geometry.setIndex(new THREE.BufferAttribute(nasa.indices, 1));
+                geometry.deleteAttribute("normal");
+                material.needsUpdate = true;
+                applyRelief();
+                status.textContent = name === "nasa" ? "NASA 3D model of Mars · MOLA relief, exaggerated" : "Map: " + (name === "viking" ? "Viking colour" : name === "mola" ? "MOLA shaded relief" : "MOLA colour relief") + " · MOLA relief, exaggerated";
+            };
+            let flatTexture = null;
+            const surfaceSelect = get("surface");
+            surfaceSelect.value = getPref("3d-surface", "nasa");
+            surfaceSelect.addEventListener("change", () => setSurface(surfaceSelect.value));
 
             const toVector = (lat, lon) =>
             {
@@ -1744,6 +1803,7 @@ export async function openMap3d({ host, points = [], groundAt, getPoints, getRou
 
             applyFactor();
             flyIn();
+            if (surfaceSelect.value !== "nasa") setSurface(surfaceSelect.value);
             globalMosaic(MOLA_DEM_URL, light ? 1 : 2, "png", "#000000").then(heights =>
             {
                 if (disposed || id !== session) return;

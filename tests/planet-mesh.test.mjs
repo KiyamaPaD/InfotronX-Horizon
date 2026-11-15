@@ -84,3 +84,31 @@ test("known places land where the texture shows them", () =>
     const seam = near(0.0, 0.47);
     assert.ok(Math.abs(seam.lon - -133.8) < 8, "seam longitude " + seam.lon);
 });
+
+import { equirectMesh } from "../src/planet-mesh.js";
+
+test("the flat-map sphere faces outward and covers every place once", () =>
+{
+    const mesh = equirectMesh(32, 16);
+    assert.equal(mesh.directions.length / 3, 33 * 17);
+    let outward = 0, inward = 0;
+
+    for (let t = 0; t < mesh.indices.length; t += 3 * 7)
+    {
+        const [a, b, c] = [mesh.indices[t], mesh.indices[t + 1], mesh.indices[t + 2]].map(i => [mesh.directions[i * 3], mesh.directions[i * 3 + 1], mesh.directions[i * 3 + 2]]);
+        const edge1 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], edge2 = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+        const normal = [edge1[1] * edge2[2] - edge1[2] * edge2[1], edge1[2] * edge2[0] - edge1[0] * edge2[2], edge1[0] * edge2[1] - edge1[1] * edge2[0]];
+        const length = Math.hypot(...normal);
+
+        if (length < 1e-9) continue;
+
+        const dot = (normal[0] * (a[0] + b[0] + c[0]) + normal[1] * (a[1] + b[1] + c[1]) + normal[2] * (a[2] + b[2] + c[2])) / length;
+        if (dot > 0) outward++; else inward++;
+    }
+
+    assert.ok(outward > 0 && inward === 0, `every face must look outward: ${outward} outward, ${inward} inward`);
+    assert.ok(mesh.groupCount < mesh.directions.length / 3, "seam and pole vertices share positions");
+    // the world's edge columns meet
+    const left = latLonOf(mesh.directions[0], mesh.directions[1], mesh.directions[2]);
+    assert.ok(Math.abs(left.lat - 90) < 1e-6);
+});

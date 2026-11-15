@@ -2589,3 +2589,6 @@ a:not(.source-link):hover
 .ad-table td { padding: 8px; border-top: 1px solid #2a3947; color: #d2dce5; font-variant-numeric: tabular-nums; }
 .ad-table tr.is-best td { background: #123030; color: #fff; font-weight: 700; }
 .ad-trade-text { margin: 0; color: #e6eef5; line-height: 1.55; }
+
+.map-3d-surface { display: grid; gap: 4px; margin-bottom: 8px; font-size: 12px; color: #d2dce5; }
+.map-3d-surface select { padding: 6px 8px; border-radius: 8px; border: 1px solid #3c4d5c; background: #0b121b; color: #e7eef4; font: inherit; }
