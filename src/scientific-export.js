@@ -10,7 +10,8 @@ function coordinate(value)
         throw new Error("Route evidence requires valid numeric Mars waypoint coordinates.");
     }
 
-    return decimal(value.lat) + "° N, " + decimal(value.lon) + "° E";
+    // Preserve the user's input coordinates; rounded UI labels are not sufficient evidence.
+    return String(value.lat) + "° N, " + String(value.lon) + "° E";
 }
 
 export function createScientificComparisonReport({
@@ -39,6 +40,8 @@ export function createScientificComparisonReport({
         "- Origin: " + (dem.bundledSource ? "Bundled CTX-derived numeric Jezero sample" :
             "User-imported numeric DEM; provenance must be independently checked"),
         "- Grid: " + dem.width + " columns × " + dem.height + " rows",
+        "- DEM north latitude / west longitude: " + String(dem.north) + " / " + String(dem.west),
+        "- DEM latitude / longitude posting (degrees): " + String(dem.latStep) + " / " + String(dem.lonStep),
         "- Geographic coordinates: planetocentric latitude, east-positive longitude (degrees)",
         "- Horizontal geometry: spherical Mars reference radius 3,396,190 m",
         "- Slope constraint: " + decimal(maxSlopePercent) + "% maximum modeled adjacent-cell grade",
