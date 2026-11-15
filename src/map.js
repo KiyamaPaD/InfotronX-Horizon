@@ -986,6 +986,11 @@ export class MarsMap
             `linear-gradient(to top, transparent ${px(height - bottom)}, black ${px(height - bottom + fade)})`
         ].join(", ");
 
+        if (!container?.style)
+        {
+            return;
+        }
+
         container.style.maskImage = mask;
         container.style.webkitMaskImage = mask;
         container.style.maskComposite = "intersect";
@@ -1251,8 +1256,11 @@ export class MarsMap
         }
 
         this.backgroundTileContainer.style.display = "none";
-        this.tileContainer.style.maskImage = "";
-        this.tileContainer.style.webkitMaskImage = "";
+        if (this.tileContainer?.style)
+        {
+            this.tileContainer.style.maskImage = "";
+            this.tileContainer.style.webkitMaskImage = "";
+        }
         if (this.contextTileContainer)
         {
             this.contextTileContainer.style.display = "none";
