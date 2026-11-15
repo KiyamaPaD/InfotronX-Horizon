@@ -1,4 +1,5 @@
 import { MissionCloud } from "./cloud-sync.js";
+import { mountCrewProfile } from "./crew-profile-ui.js";
 
 export function mountCloudWorkspace({ store, notify })
 {
@@ -20,6 +21,7 @@ export function mountCloudWorkspace({ store, notify })
         '<div class="mission-hub-tabs" role="tablist" aria-label="Mission Center sections">',
         '<button type="button" data-hub-tab="device" class="active" role="tab" aria-selected="true">On device</button>',
         '<button type="button" data-hub-tab="cloud" role="tab" aria-selected="false">Cloud library</button>',
+        '<button type="button" data-hub-tab="crew" role="tab" aria-selected="false">Crew profile</button>',
         '<button type="button" data-hub-tab="export" role="tab" aria-selected="false">Share &amp; export</button></div>',
         '<section class="mission-hub-panel" id="hub-device" data-hub-panel="device"><h3>Saved on this device</h3>',
         '<p>Your routes are saved automatically while you work. Create checkpoints to return to an earlier plan.</p>',
@@ -46,6 +48,21 @@ export function mountCloudWorkspace({ store, notify })
         '<button id="cloud-invite" type="button" class="btn btn-outline">Share by email</button>',
         '<div id="cloud-members" class="cloud-members" aria-live="polite"></div>',
         '<div id="cloud-pending" class="cloud-members" aria-live="polite"></div></div></div></section>',
+        '<section class="mission-hub-panel" id="hub-crew" data-hub-panel="crew" hidden>',
+        '<div id="crew-profile-login" class="crew-profile-login"><p>Create your private Mars Atlas crew profile after signing in to your cloud account. No NASA affiliation is implied.</p><button type="button" id="crew-go-login" class="btn btn-outline">Sign in to build your profile</button></div>',
+        '<div id="crew-profile-content" hidden>',
+        '<div class="crew-profile-hero"><div class="crew-avatar"><img id="crew-photo" alt="Your uploaded profile photo" hidden/><span id="crew-avatar-fallback">MA</span></div><div class="crew-preview"><span>PERSONAL MISSION PROFILE</span><strong id="crew-preview-name">Mars Explorer</strong><small id="crew-preview-role">Mission Planner</small></div></div>',
+        '<div class="crew-stats"><div><strong id="crew-stat-missions">0</strong><small>Local missions</small></div><div><strong id="crew-stat-points">0</strong><small>Saved waypoints</small></div><div><strong id="crew-stat-notes">0</strong><small>Observations</small></div></div>',
+        '<form id="crew-profile-form" class="crew-profile-form">',
+        '<div class="crew-profile-fields"><label>Display name<input name="display_name" maxlength="60" autocomplete="nickname" required placeholder="Explorer name"/></label>',
+        '<label>Callsign<input name="callsign" maxlength="32" required placeholder="e.g. Pathfinder"/></label>',
+        '<label>Mission role<input name="mission_role" maxlength="60" required placeholder="e.g. Terrain analyst"/></label>',
+        '<label>Specialty<input name="specialty" maxlength="80" required placeholder="e.g. Mars GIS and routing"/></label></div>',
+        '<label class="crew-bio">Crew biography<textarea name="biography" maxlength="600" rows="4" placeholder="Your skills, projects, science interests and objectives."></textarea></label>',
+        '<label class="crew-upload">Profile photo (PNG, JPEG, WebP; 2 MB max)<input id="crew-avatar-upload" type="file" accept="image/png,image/jpeg,image/webp"/></label>',
+        '<div class="crew-profile-actions"><button type="button" class="btn btn-outline" id="crew-avatar-remove" disabled>Remove photo</button><button class="btn btn-accent" type="submit">Save crew profile</button></div></form>',
+        '<p class="science-footnote">This is a self-described Mars Atlas team profile, not an astronaut certification, employment record or NASA affiliation. Your profile and image are private to your signed-in account.</p>',
+        '</div><p id="crew-message" role="status" aria-live="polite">Sign in to use your crew profile.</p></section>',
         '<section class="mission-hub-panel" id="hub-export" data-hub-panel="export" hidden>',
         '<h3>Share and export</h3><p>Share a copy by link, or download a backup and route data.</p>',
         '<div id="hub-export-actions" class="mission-hub-actions"></div></section>'
@@ -135,6 +152,11 @@ export function mountCloudWorkspace({ store, notify })
             {
                 run(() => updateLibrary(store.current.id));
             }
+
+            if (button.dataset.hubTab === "crew")
+            {
+                crewProfile.open();
+            }
         });
     });
 
@@ -166,12 +188,18 @@ export function mountCloudWorkspace({ store, notify })
         get("#cloud-email").textContent = user ? "Signed in as " + (user.email || "user") : "";
         get("#cloud-status").textContent = user ? "Your cloud library is available." : "Sign in to access your cloud missions.";
 
+        crewProfile.onUserChanged(user);
+
         if (!user)
         {
             cloudRows = [];
             get("#cloud-missions").replaceChildren();
             get("#cloud-share").hidden = true;
         }
+    });
+
+    const crewProfile = mountCrewProfile({
+        dialog, cloud, store, run, openCloudTab: () => showHubTab("cloud")
     });
 
     function message(value)
@@ -359,7 +387,7 @@ export function mountCloudWorkspace({ store, notify })
         return cloudRows;
     }
 
-    async function run(task)
+    async function run(task, onError = null)
     {
         const controls = [...dialog.querySelectorAll("button")];
         const original = controls.map(button => button.disabled);
@@ -371,7 +399,16 @@ export function mountCloudWorkspace({ store, notify })
         }
         catch (error)
         {
-            message(error?.message || "The request could not be completed.");
+            const value = error?.message || "The request could not be completed.";
+
+            if (onError)
+            {
+                onError(value);
+            }
+            else
+            {
+                message(value);
+            }
         }
         finally
         {
