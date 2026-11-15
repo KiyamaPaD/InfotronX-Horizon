@@ -2492,3 +2492,32 @@ a:not(.source-link):hover
 .map-3d-ground[hidden] { display: none; }
 .map-3d-ground strong { font-size: 10px; letter-spacing: .2em; color: #75d1c8; }
 .map-3d-ground small { color: #8da0b0; }
+
+/* Safety step */
+.ad-safety h4 { margin: 16px 0 8px; font-size: 13px; letter-spacing: .12em; color: #e99570; }
+.ad-safety h4:first-child { margin-top: 0; }
+.ad-result-line { margin: 0; color: #e6eef5; line-height: 1.55; }
+.ad-robots { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
+.ad-robot { padding: 12px 14px; border: 1px solid #364655; border-radius: 12px; background: #111d29; display: grid; gap: 4px; }
+.ad-robot p { margin: 0; color: #d2dce5; font-size: 14px; }
+.ad-robot small { color: #8da0b0; line-height: 1.45; }
+.ad-robot-kind { justify-self: start; padding: 1px 8px; border-radius: 999px; background: #1d3a37; color: #8fe0d6; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+.ad-robot-example { color: #8fe0d6 !important; }
+.ad-kit { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px 16px; }
+.ad-kit label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.ad-kit input { margin-top: 4px; }
+.ad-kit em { margin-left: 6px; color: #ffcaa8; font-style: normal; font-weight: 700; }
+.ad-kit small { display: block; color: #8da0b0; font-size: 12px; }
+
+/* Overlap fixes */
+.map-dock { position: absolute; right: 14px; bottom: 54px; z-index: 6; display: flex; flex-direction: column-reverse; align-items: flex-end; gap: 8px; }
+.map-dock .map-lines, .map-dock .map-legend { position: static; width: 230px; }
+.map-3d-status { left: auto; right: 16px; max-width: 42%; }
+.map-3d-ground { bottom: auto; top: 64px; }
+
+/* Focus map: nearly the whole screen, for the 2D map and the 3D planet alike */
+.shell.focus-map .map-wrap { position: fixed; inset: 6px; z-index: 60; border-radius: 14px; }
+.shell.focus-map .map-titlebar { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 61; }
+
+/* In 3D the 2D zoom buttons mean nothing, so they go */
+.map-wrap:has(.map-3d-layer) .map-controls { display: none; }

@@ -834,7 +834,8 @@ export async function openMap3d({ host, points = [], groundAt, getPoints, getRou
                 const base = Math.max(0.0035, Math.min(0.014, totalAngle * 0.012));
                 const tube = base * look.width;
                 const lift = tube * 1.4;
-                const dense = densify(vectors, lift);
+                // Points that sit on top of each other make a curve with undefined positions, so only distinct ones are kept.
+                const dense = densify(vectors, lift).filter((point, index, all) => index === 0 || point.distanceToSquared(all[index - 1]) > 1e-14);
                 const ringMaterials = [];
 
                 valid.forEach((point, index) =>
@@ -911,8 +912,8 @@ export async function openMap3d({ host, points = [], groundAt, getPoints, getRou
                 tickers.add(ringTick);
                 const rover = new THREE.Mesh(new THREE.SphereGeometry(Math.max(0.006, base * 3 * look.markerSize), 16, 12), new THREE.MeshBasicMaterial({ color: 0xffffff }));
                 route.add(rover);
-                const seconds = Math.max(6, Math.min(24, totalAngle * 8));
-                roverTick = now => rover.position.copy(curve.getPointAt((now / 1000 / seconds) % 1));
+                const seconds = Math.max(6, Math.min(24, totalAngle * 8)) || 12;
+                roverTick = now => { const u = (now / 1000 / seconds) % 1; if (Number.isFinite(u)) rover.position.copy(curve.getPointAt(Math.min(0.9999, Math.max(0, u)))); };
                 tickers.add(roverTick);
             };
 
@@ -1414,7 +1415,7 @@ export async function openMap3d({ host, points = [], groundAt, getPoints, getRou
                 }
 
                 const { curve, totalAngle } = lastRoute;
-                const seconds = Math.max(12, Math.min(70, totalAngle * 40));
+                const seconds = Math.max(12, Math.min(70, totalAngle * 40)) || 20;
                 const begin = performance.now();
                 const here = new THREE.Vector3(), ahead = new THREE.Vector3();
                 controls.enabled = false;
@@ -1423,6 +1424,9 @@ export async function openMap3d({ host, points = [], groundAt, getPoints, getRou
                 const tick = now =>
                 {
                     const t = Math.min(1, (now - begin) / 1000 * speed / seconds);
+
+                    if (!Number.isFinite(t)) { stopPreview(); return; }
+
                     curve.getPointAt(Math.min(0.9999, t), here);
                     curve.getPointAt(Math.min(0.9999, t + 0.02), ahead);
                     const up = here.clone().normalize();

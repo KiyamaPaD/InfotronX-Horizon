@@ -906,7 +906,7 @@ export function mountHome({ onStart, onDemo, onTour, force = false } = {})
                 if (delta2 < -Math.PI) delta2 += Math.PI * 2;
                 mars.rotation.y += delta2 * 0.08;
                 sun.material.opacity = 1 - e;
-                if (t >= 1) { state.dive = null; finish(); }
+                if (t >= 1) { state.dive = null; finish(); return; }
             }
             else
             {

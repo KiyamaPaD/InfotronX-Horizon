@@ -5,6 +5,8 @@ import { loadJezeroDem } from "./bundled-dem.js";
 import { profileRouteOnDem } from "./terrain.js";
 import { summarizeTerrainProfile } from "./terrain-profile-v2.js";
 import { animateNumber, prefersReducedMotion } from "./motion.js";
+import { estimateMarswalk } from "./resources.js";
+import { COMPANIONS, supplyKit, pointOfNoReturn } from "./companions.js";
 import { buildMissionFacts } from "./mission-copilot.js";
 import { askCopilot } from "./copilot-client.js";
 
@@ -282,7 +284,7 @@ export function mountAnalyzeDashboard({ shell, store, getCloud, getDem })
 
         if (points.length < 2)
         {
-            dashboard.innerHTML = `<div class="ad-empty"><div class="ad-empty-orb" aria-hidden="true"></div><h2>Your analysis starts with a route</h2><p>Add two or more waypoints and this page fills with distance, slope, elevation and a 3D view of your route.</p><div class="ad-actions"><button class="btn btn-accent" type="button" data-ad="plan">Draw a route</button><button class="btn btn-outline" type="button" data-ad="demo">Open the example mission</button></div></div>`;
+        dashboard.innerHTML = `<div class="ad-empty"><div class="ad-empty-orb" aria-hidden="true"></div><h2>Your analysis starts with a route</h2><p>Add two or more waypoints and this page fills with distance, slope, elevation and a 3D view of your route.</p><div class="ad-actions"><button class="btn btn-accent" type="button" data-ad="plan">Draw a route</button><button class="btn btn-outline" type="button" data-ad="demo">Open the example mission</button></div></div>`;
             return;
         }
 
@@ -325,7 +327,40 @@ export function mountAnalyzeDashboard({ shell, store, getCloud, getDem })
         const passed = checks.filter(item => item[0]).length;
         const stepHead = (number, title, help) => `<div class="ad-step-head"><span class="ad-step-no">${number}</span><div><h3>${title}</h3><p>${help}</p></div><button type="button" class="ad-fold" data-ad-fold aria-expanded="true" aria-label="Fold or unfold this step">−</button></div>`;
         const stepFoot = (number, sentence) => `<div class="ad-result"><span>IN YOUR CASE</span><p>${sentence}</p></div>${number < 7 ? `<button class="ad-next" type="button" data-ad-go="${number + 1}">Next step →</button>` : ""}`;
-        const chips = [["1", "Size"], ["2", "Height"], ["3", "Legs"], ["4", "Compare"], ["5", "3D"], ["6", "Decide"], ["7", "Ask"]].map(([n, label]) => `<button type="button" class="ad-chip" data-ad-go="${n}"><b>${n}</b> ${label}</button>`).join("");
+        const chips = [["1", "Size"], ["2", "Height"], ["3", "Legs"], ["4", "Compare"], ["5", "3D"], ["6", "Decide"], ["7", "Ask"], ["8", "Safety"]].map(([n, label]) => `<button type="button" class="ad-chip" data-ad-go="${n}"><b>${n}</b> ${label}</button>`).join("");
+
+        // Safety planning: robots that could go along, what to pack, and the point beyond which a return is no longer covered.
+        let safetyHtml = "";
+
+        try
+        {
+            const estimate = estimateMarswalk(total, store.current.evaScenario || {});
+            const cumulative = analysis.segments.reduce((list, segment) => { list.push(segment.cumulative); return list; }, [0]);
+            const turn = pointOfNoReturn(cumulative, estimate);
+            const turnText = turn.reachesEnd
+                ? `With the reserve, you could turn back from any point of this route and still get home (budget ${turn.budgetHours.toFixed(1)} h of the tightest allowance).`
+                : turn.lastSafeIndex < 0
+                    ? "The reserve-adjusted budget does not cover even the first waypoint and the way back. Shorten the route or carry more."
+                    : `Beyond waypoint ${turn.lastSafeIndex + 1} (${formatDistance(cumulative[turn.lastSafeIndex])} from the start) a full return is no longer covered by the reserve-adjusted budget. Plan a cache, a relay or a rescue rover for the rest.`;
+            const kit = supplyKit(estimate);
+            safetyHtml = `
+            <section class="ad-step" id="ad-step-8">
+                ${stepHead(8, "What if something goes wrong?", "Robots that could go along, what to pack, and how far you can go before turning back stops being covered. All of it is planning material from the resource scenario, not a safety approval.")}
+                <div class="ad-card ad-safety">
+                    <h4>Point of no return</h4>
+                    <p class="ad-result-line">${turnText}</p>
+                    <h4>Robots that could go along</h4>
+                    <div class="ad-robots">${COMPANIONS.map(item => `<article class="ad-robot"><strong>${item.name}</strong><span class="ad-robot-kind">${item.kind === "real-analog" ? "Has a real example" : "Concept"}</span><p>${item.role}</p><small><b>Carries:</b> ${item.carries}</small><small><b>Helps with:</b> ${item.help}</small>${item.example ? `<small class="ad-robot-example">${item.example}</small>` : ""}</article>`).join("")}</div>
+                    <h4>What to pack</h4>
+                    <ul class="ad-kit">${kit.map(item => `<li><label><input type="checkbox"> <span><strong>${item.name}</strong> <em>${item.amount}</em><small>${item.why}</small></span></label></li>`).join("")}</ul>
+                </div>
+                <div class="ad-result"><span>GOOD TO KNOW</span><p>Amounts come from the resource scenario (speed ${estimate.assumptions.speedKmh} km/h, ${estimate.assumptions.reservePercent}% reserve) and ignore terrain. Robots marked Concept are ideas, not existing hardware. Tick items as you pack them; ticks are not saved.</p></div>
+            </section>`;
+        }
+        catch
+        {
+            safetyHtml = "";
+        }
 
         dashboard.innerHTML = `
             <header class="ad-head">
@@ -387,7 +422,7 @@ export function mountAnalyzeDashboard({ shell, store, getCloud, getDem })
                     </form>
                 </div>
                 <div class="ad-result"><span>GOOD TO KNOW</span><p>AI answers are unverified explanations, not NASA measurements. The assistant cannot change, save or share your route. Limit: five AI questions every ten minutes.</p></div>
-            </section>`;
+            </section>${safetyHtml}`;
 
         paintChat();
         const askBox = dashboard.querySelector(".ad-ask-form textarea");
