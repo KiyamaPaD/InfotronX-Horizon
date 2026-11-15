@@ -1,9 +1,10 @@
 import { analyzeRoute, formatDistance } from "./geo.js";
 import { estimateMarswalk, DEFAULT_EVA_ASSUMPTIONS } from "./resources.js";
-import { planRouteOnDem, profileRouteOnDem, validateDem } from "./terrain.js";
+import { planRouteOnDem, validateDem } from "./terrain.js";
 import { compareTerrainStrategies, estimateResourceEnvelope, measureRouteChange } from "./mission-scenarios.js";
 import { loadJezeroDem } from "./bundled-dem.js";
 import { mountTerrainIntelligence } from "./terrain-intelligence-ui.js";
+import { mountInteractiveTerrainProfile } from "./terrain-profile-v2-ui.js";
 import { mountAdvancedMathematics } from "./advanced-math-ui.js";
 import { mountMissionResearch } from "./mission-research-ui.js";
 
@@ -18,50 +19,6 @@ function budgetMarkup(title, used, available, unit)
     const over = used > available;
 
     return `<div class="eva-budget ${over ? "eva-over" : ""}"><div class="eva-budget-heading"><span>${escapeText(title)}</span><strong>${formatNumber(used, 2)} / ${formatNumber(available, 2)} ${unit}</strong></div><div class="eva-track" role="meter" aria-label="${escapeText(title)} budget used" aria-valuemin="0" aria-valuemax="${available}" aria-valuenow="${Math.min(used, available)}"><span style="width:${percent}%"></span></div><small>${over ? "Above the illustrative reserve-adjusted budget" : "Within the numerical scenario budget, not a safety assessment"}</small></div>`;
-}
-
-function plotElevation(profile)
-{
-    const known = profile.samples.filter(sample => sample.elevationMeters !== null);
-
-    if (!known.length)
-    {
-        return `<p class="eva-empty">No altitude samples overlap the active route.</p>`;
-    }
-
-    const min = known.reduce((lowest, item) => Math.min(lowest, item.elevationMeters), Infinity);
-    const max = known.reduce((highest, item) => Math.max(highest, item.elevationMeters), -Infinity);
-    const span = Math.max(1, max - min);
-    const total = Math.max(1, profile.samples.at(-1).distanceMeters);
-    const paths = [];
-    let command = "";
-
-    for (const sample of profile.samples)
-    {
-        if (sample.elevationMeters === null)
-        {
-            if (command)
-            {
-                paths.push(command);
-            }
-
-            command = "";
-            continue;
-        }
-
-        const x = 12 + sample.distanceMeters / total * 296;
-        const y = 120 - (sample.elevationMeters - min) / span * 96;
-        command += `${command ? " L" : "M"}${x.toFixed(2)} ${y.toFixed(2)}`;
-    }
-
-    if (command)
-    {
-        paths.push(command);
-    }
-
-    const lines = paths.map(path => `<path d="${path}" stroke="#93dac9" stroke-width="2.5" fill="none" stroke-linecap="round"/>`).join("");
-
-    return `<div class="elevation-graph"><svg viewBox="0 0 320 148" role="img" aria-label="Elevation profile from imported DEM, minimum ${formatNumber(min)} meters and maximum ${formatNumber(max)} meters"><line x1="12" x2="308" y1="120" y2="120" stroke="#456071"/><line x1="12" x2="12" y1="22" y2="120" stroke="#456071"/>${lines}</svg><div class="eva-profile-legend"><span>${formatNumber(min)}–${formatNumber(max)} m elevation</span><span>${formatDistance(total)} route</span></div><small>${profile.complete ? "DEM samples cover the route." : "Partial coverage: data gaps intentionally break the profile."} Measured from the selected numeric grid. Source provenance is shown in DEM Route Lab; not an EVA safety certification.</small></div>`;
 }
 
 export function initScienceWorkbench({ store, map, notify })
@@ -167,6 +124,9 @@ export function initScienceWorkbench({ store, map, notify })
     let sensitivityReport = null;
     let observationsSignature = null;
     let terrainMessage = "";
+    const interactiveProfile = mountInteractiveTerrainProfile({
+        host: terrain.querySelector("#terrain-profile"), store, map, readDem: () => dem
+    });
     let lastMissionId = null;
     let lastScenarioSignature = null;
     const intelligence = mountTerrainIntelligence({
@@ -310,15 +270,7 @@ export function initScienceWorkbench({ store, map, notify })
             clearComparison();
         }
 
-        if (dem)
-        {
-            const profile = profileRouteOnDem(dem, route.points);
-            terrain.querySelector("#terrain-profile").innerHTML = plotElevation(profile);
-        }
-        else
-        {
-            terrain.querySelector("#terrain-profile").replaceChildren();
-        }
+        interactiveProfile.refresh();
 
         if (route.terrainModel)
         {
@@ -677,6 +629,13 @@ export function initScienceWorkbench({ store, map, notify })
             if (advancedBrief)
             {
                 lines.push(advancedBrief);
+            }
+
+            const profileBrief = interactiveProfile.brief();
+
+            if (profileBrief)
+            {
+                lines.push(profileBrief);
             }
 
             const spatialBrief = intelligence.brief();

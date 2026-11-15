@@ -733,3 +733,181 @@
         grid-template-columns:1fr;
     }
 }
+
+/* V2 elevation profile is sampled from numeric DEM only; no image-derived heights. */
+.terrain-profile-v2
+{
+    margin-top:17px;
+    padding:14px;
+    border:1px solid #354d5d;
+    border-radius:11px;
+    background:#132431;
+}
+.terrain-profile-head
+{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    align-items:center;
+    flex-wrap:wrap;
+    margin-bottom:10px;
+}
+.terrain-profile-head h3
+{
+    margin:0;
+    font:600 15px 'Space Grotesk',sans-serif;
+    color:#eef3f4;
+}
+.terrain-profile-head span
+{
+    font-size:9px;
+    letter-spacing:.8px;
+    color:#9ccaba;
+}
+.terrain-v2-metrics
+{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:7px;
+}
+.terrain-v2-metrics > div
+{
+    border:1px solid #2b4654;
+    background:#0f1d29;
+    border-radius:7px;
+    padding:10px;
+    min-width:0;
+}
+.terrain-v2-metrics span,
+.terrain-v2-metrics strong
+{
+    display:block;
+}
+.terrain-v2-metrics span
+{
+    font-size:9px;
+    letter-spacing:.6px;
+    color:#a3b9c6;
+    margin-bottom:7px;
+}
+.terrain-v2-metrics strong
+{
+    font:600 13px 'Space Grotesk',sans-serif;
+    overflow-wrap:anywhere;
+    color:#e7f4ed;
+}
+.terrain-v2-graph
+{
+    margin:12px 0;
+    padding:9px;
+    border:1px solid #31495c;
+    border-radius:9px;
+    background:#0c1b28;
+}
+#terrain-v2-svg
+{
+    width:100%;
+    height:auto;
+    display:block;
+    cursor:crosshair;
+    touch-action:pan-y;
+}
+#terrain-v2-svg [hidden]
+{
+    display:none;
+}
+#terrain-v2-slider
+{
+    display:block;
+    width:100%;
+    accent-color:#f2b789;
+    margin:5px 0 12px;
+}
+.terrain-v2-readout
+{
+    min-height:43px;
+    color:#d9e5ed;
+    font-size:11px;
+    line-height:1.55;
+}
+.terrain-v2-controls
+{
+    display:flex;
+    gap:7px;
+    flex-wrap:wrap;
+    margin:9px 0;
+}
+.terrain-v2-controls .btn
+{
+    flex:1 1 135px;
+}
+.terrain-v2-controls .btn:disabled
+{
+    opacity:.45;
+}
+.terrain-v2-waypoints h4
+{
+    font-size:12px;
+    color:#dcebe9;
+    margin:15px 0 8px;
+}
+.terrain-v2-waypoint-list
+{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+}
+.terrain-v2-waypoint
+{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:9px;
+    border:1px solid #304959;
+    background:#0d1c28;
+    color:#e1edf0;
+    border-radius:8px;
+    padding:10px 9px;
+    width:100%;
+    cursor:pointer;
+    text-align:left;
+    font-size:10px;
+}
+.terrain-v2-waypoint:hover,
+.terrain-v2-waypoint:focus-visible
+{
+    background:#1e3744;
+    outline:1px solid #89dac6;
+}
+.terrain-v2-waypoint > span
+{
+    min-width:0;
+    display:flex;
+    flex-direction:column;
+    gap:5px;
+}
+.terrain-v2-waypoint > span:last-child
+{
+    text-align:right;
+}
+.terrain-v2-waypoint strong
+{
+    font-size:11px;
+    overflow-wrap:anywhere;
+}
+.terrain-v2-waypoint small
+{
+    color:#9aafbf;
+    line-height:1.4;
+}
+@media(max-width:460px)
+{
+    .terrain-profile-v2
+    {
+        padding:10px;
+    }
+    .terrain-v2-waypoint
+    {
+        flex-wrap:wrap;
+    }
+}
