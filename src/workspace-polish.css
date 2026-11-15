@@ -933,3 +933,151 @@
     flex-wrap:wrap;
     gap:8px;
 }
+
+/* Manual mission editor V2: map-native actions and compact, accessible forms. */
+.route-actions
+{
+    flex-wrap:wrap;
+}
+.route-actions .btn
+{
+    flex:1 1 calc(33.33% - 8px);
+    min-width:85px;
+}
+.route-actions .btn:disabled
+{
+    opacity:.42;
+    cursor:not-allowed;
+}
+.route-color-setting
+{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    margin-top:13px;
+    color:#b9c8d4;
+    font-size:10px;
+    font-weight:700;
+    letter-spacing:.7px;
+}
+.route-color-setting input
+{
+    width:56px;
+    height:34px;
+    border:1px solid #52687a;
+    border-radius:8px;
+    background:#142333;
+    padding:3px;
+    cursor:pointer;
+}
+.waypoint-coordinates strong
+{
+    font-size:12px;
+    color:#f1f4f7;
+    overflow-wrap:anywhere;
+}
+.waypoint-coordinates small
+{
+    line-height:1.5;
+    overflow-wrap:anywhere;
+}
+.waypoint-editor-modal
+{
+    width:min(510px,calc(100vw - 24px));
+    max-height:calc(100dvh - 30px);
+    overflow-y:auto;
+}
+.waypoint-editor-grid
+{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+    gap:12px;
+}
+.waypoint-editor-grid > div
+{
+    min-width:0;
+}
+.waypoint-editor-modal .color-field
+{
+    height:42px;
+    padding:4px 8px;
+    cursor:pointer;
+}
+.waypoint-editor-modal .color-field:disabled
+{
+    opacity:.4;
+    cursor:not-allowed;
+}
+.editor-color-default
+{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    margin:11px 0 3px;
+    color:#c1d3df;
+    font-size:12px;
+    cursor:pointer;
+}
+.editor-color-default input
+{
+    accent-color:#e5a184;
+}
+.waypoint-editor-actions
+{
+    flex-wrap:wrap;
+}
+.waypoint-editor-actions .btn:first-child
+{
+    margin-right:auto;
+    color:#f0b0a6;
+}
+.map-context-menu
+{
+    position:fixed;
+    display:flex;
+    flex-direction:column;
+    min-width:218px;
+    max-width:calc(100vw - 16px);
+    padding:6px;
+    border:1px solid #637b8b;
+    border-radius:11px;
+    background:#12212feF;
+    box-shadow:0 18px 54px #02070ebd;
+    backdrop-filter:blur(14px);
+    z-index:90;
+}
+.map-context-menu[hidden],
+.map-context-menu button[hidden]
+{
+    display:none!important;
+}
+.map-context-menu button
+{
+    border:0;
+    border-radius:7px;
+    background:transparent;
+    color:#edf4fa;
+    text-align:left;
+    padding:12px 14px;
+    font:600 12px 'DM Sans',sans-serif;
+    cursor:pointer;
+}
+.map-context-menu button:hover,
+.map-context-menu button:focus-visible
+{
+    outline:none;
+    background:#2b4253;
+}
+@media(max-width:480px)
+{
+    .waypoint-editor-grid
+    {
+        grid-template-columns:1fr;
+        gap:0;
+    }
+    .waypoint-editor-actions .btn
+    {
+        flex:1 1 auto;
+    }
+}
