@@ -13,7 +13,7 @@ const navigation = load("../src/workspace-ux.js");
 test("workspace polish stylesheet and quick access are connected", () =>
 {
     assert.match(html, /workspace-polish\.css/);
-    assert.match(main, /setupAnalyticsNavigation\(get\("#analytics-panel"\)\)/);
+    assert.match(main, /setupAnalyticsNavigation\(get\("#analytics-panel"\),/);
     assert.match(navigation, /analytics-section-select/);
     assert.match(navigation, /scrollIntoView/);
     assert.match(navigation, /analytics-collapsed/);
