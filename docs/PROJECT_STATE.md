@@ -42,3 +42,7 @@ The dedicated Mars Atlas Supabase project (`yuvdrjptwumbfzjsimoe`) is active. Fo
 ## Map and Analytics performance
 
 Wheel zoom events are batched, canvas overlay updates are coalesced to animation frames, tile requests reuse verified formats and successful cached imagery, and failed tiles can be retried. Dragging a waypoint now persists its position and refreshes full analytics when the drag ends rather than for every pointer event. Analytics groups calculations into Overview, Terrain, Models and Mission, with data-source labels corrected. These are code-level fixes; measured browser performance and high-zoom coverage still require desktop/mobile testing.
+
+## NASA map loading and gap recovery — November 2026
+
+NASA WMTS GetCapabilities is consulted before initial tile requests, with a short timeout fallback to documented tile paths if metadata is unavailable. A failed or delayed tile can show a geographically aligned parent tile from up to two lower zoom levels until the detailed imagery becomes available. Tiles load only after attachment to the DOM, a working image format is preferred per zoom level without removing alternatives, and incomplete NASA coverage has a visible lower-resolution label. These are code and automated-test verified changes; real browser network traces and field visual QA remain necessary.

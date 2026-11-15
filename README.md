@@ -23,7 +23,7 @@ A manual-first Mars mission-planning workspace developed by **InfotronX Horizon*
 
 ## Explore and analyze
 
-The map loads NASA Mars Trek imagery with bounded tile caching, throttled wheel zoom and checks that prevent undersized placeholder tiles from being enlarged. CTX is currently capped at zoom 10 because the next level was unreliable during beta testing. Science tools are organized into **Overview**, **Terrain**, **Models** and **Mission**, with quick access to individual calculations. Route geometry remains fully editable without an AI assistant.
+The map reads NASA Mars Trek WMTS metadata before its first tile requests, caches image tiles and throttles wheel zoom. When a high-resolution tile is delayed or unavailable, it displays genuine lower-zoom NASA imagery as explicitly labelled context rather than leaving an empty square. CTX remains capped at zoom 10; a lower-resolution preview is not new surface detail. Science tools are organized into **Overview**, **Terrain**, **Models** and **Mission**, with quick access to individual calculations. Route geometry remains fully editable without an AI assistant.
 
 ## Current product status
 

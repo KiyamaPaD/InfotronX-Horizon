@@ -85,3 +85,11 @@ The live SQL SELECT policy was updated to permit owners to read a mission row du
 Email sharing matches the exact confirmed email of a **Mars Atlas account**. An invitation to an address without a confirmed account appears as pending, even if someone is signed into a different address. It does **not** send an actual email; the owner can use **Copy invite** and deliver the instructions to the intended teammate, or cancel an incorrect pending address.
 
 For the current public CTX basemap, the maximum supported zoom is **10**. Level 11 was removed after failed tile loading during beta testing. NASA basemap tile coverage varies by region and native resolution. Do not request zoom 11 or treat enlarged fallback imagery as fresh surface detail. MOLA and Viking retain their lower useful zoom limits.
+
+## Mars map loading stress test
+
+- [ ] Hard-refresh the site on a clean browser profile. At initial CTX zoom 10, no permanent solid-color squares should appear while images load.
+- [ ] Repeatedly zoom 10 → 9 → 10 and pan across Jezero. Images may temporarily use authentic lower-resolution NASA preview tiles. Check that the route overlays stay aligned and no blank gaps persist where parent tiles exist.
+- [ ] With network throttling (or intermittent connectivity), verify that a missing detail tile retains a correctly cropped lower-zoom preview and its resolution is clearly disclosed.
+- [ ] Switch to MOLA and Viking; inspect positions, attribution, mobile map controls and gaps.
+- [ ] Report any persistent tile holes with layer, zoom, latitude/longitude from the map, browser and screenshot. NASA data gaps cannot be filled with invented imagery.
