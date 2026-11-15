@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { MarsMap } from "../src/map.js";
 import { MissionStore } from "../src/store.js";
 import { JEZERO, MAP_LAYERS } from "../src/constants.js";
+import { project } from "../src/geo.js";
 
 test("rapid wheel events result in one bounded zoom change", async () =>
 {
@@ -67,6 +68,7 @@ test("map reuses tiles on revisit rather than creating duplicate image requests"
     map.tileCacheLimit = 72;
     map.container = { clientWidth: 600, clientHeight: 430 };
     map.tileContainer = { appendChild() {} };
+    map.backgroundTileContainer = { style: {} };
     map.updateImageryStatus = () => {};
     map.createTile = () =>
     {
@@ -306,6 +308,7 @@ test("native useful zoom limits avoid enlarging regional relief imagery", () =>
     map.tileTemplates = new Map();
     map.tiles = new Map();
     map.activeTiles = new Set();
+    map.backgroundActiveTiles = new Set();
     map.capabilityRequest = 0;
     map.tileContainer = { replaceChildren() {} };
     map.notice = { hidden: false, textContent: "" };
@@ -627,5 +630,108 @@ test("zoom 11 outside HiRISE coverage uses Viking context without 404 requests",
         assert.match(requests[0].url, /Mars_Viking_MDIM21_ClrMosaic_global_232m/);
         assert.match(requests[0].url, /\/8\/75\/250\.jpg$/);
         tile.dispose();
+    });
+});
+
+
+function activeHiRISEMap()
+{
+    const map = testMap();
+    map.layer = MAP_LAYERS.find(layer => layer.id === "hirise");
+    map.center = { ...JEZERO };
+    map.zoom = 11;
+    map.tiles = new Map();
+    map.activeTiles = new Set();
+    map.tileCacheLimit = 72;
+    map.backgroundTiles = new Map();
+    map.backgroundActiveTiles = new Set();
+    map.backgroundTileCacheLimit = 24;
+    map.backgroundTileContainer = { style: {}, appendChild() {} };
+    map.tileContainer = { appendChild() {} };
+    map.container = { classList: { toggle() {} } };
+    map.notice = { classList: { remove() {} }, hidden: false, textContent: "" };
+    return map;
+}
+
+test("HiRISE uses one shared Viking backdrop rather than a giant parent per detail tile", () =>
+{
+    withFakeTiles(requests =>
+    {
+        const map = activeHiRISEMap();
+        const width = 760;
+        const height = 420;
+        map.renderHiRISETiles(width, height, project(map.center, map.zoom));
+
+        const backgroundRequests = requests.filter(item => item.name === "map-background-tile");
+        const detailRequests = requests.filter(item => item.name === "map-hires-tile");
+
+        assert.ok(backgroundRequests.length >= 1);
+        assert.ok(backgroundRequests.length <= 4);
+        assert.ok(detailRequests.length >= 6);
+        assert.ok(detailRequests.every(item => /JEZ_hirise_soc_006_orthoMosaic/.test(item.url)));
+        assert.ok(backgroundRequests.every(item => /\/8\/\d+\/\d+\.jpg$/.test(item.url)));
+        assert.equal(new Set(backgroundRequests.map(item => item.url)).size, backgroundRequests.length);
+        assert.ok(map.backgroundTiles.size < map.tiles.size);
+
+        for (const tile of map.tiles.values())
+        {
+            assert.equal(tile.className, "map-hires-tile");
+            assert.equal(tile.style.width, undefined, "HiRISE PNG is never scaled to 2,048px");
+        }
+
+        const oldRequests = requests.length;
+        map.renderHiRISETiles(width, height, project(map.center, map.zoom));
+        assert.equal(requests.length, oldRequests, "Second render must only reposition cached images");
+    });
+});
+
+test("zoom 11 → 10 → 11 reuses the same Viking backdrop without new downloads", () =>
+{
+    withFakeTiles(requests =>
+    {
+        const map = activeHiRISEMap();
+        map.renderHiRISETiles(720, 380, project(map.center, map.zoom));
+        const initialBackground = [...map.backgroundTiles.keys()];
+
+        map.zoom = 10;
+        map.renderHiRISETiles(720, 380, project(map.center, map.zoom));
+
+        const beforeReturn = requests.filter(item => item.name === "map-background-tile").length;
+        map.zoom = 11;
+        map.renderHiRISETiles(720, 380, project(map.center, map.zoom));
+
+        const afterReturn = requests.filter(item => item.name === "map-background-tile").length;
+        assert.equal(afterReturn, beforeReturn);
+        assert.ok(initialBackground.every(key => map.backgroundTiles.has(key)));
+    });
+});
+
+test("HiRISE zoom 8 uses only native Viking tiles without HiRISE downloads", () =>
+{
+    withFakeTiles(requests =>
+    {
+        const map = activeHiRISEMap();
+        map.zoom = 8;
+        map.renderHiRISETiles(770, 420, project(map.center, map.zoom));
+
+        assert.equal(map.activeTiles.size, 0);
+        assert.ok(map.backgroundActiveTiles.size > 0);
+        assert.ok(requests.every(item => item.name === "map-background-tile"));
+        assert.ok(requests.every(item => /\/8\/\d+\/\d+\.jpg$/.test(item.url)));
+    });
+});
+
+test("visible Viking imagery hides the unavailable warning during HiRISE loading", () =>
+{
+    withFakeTiles(() =>
+    {
+        const map = activeHiRISEMap();
+        map.renderHiRISETiles(720, 380, project(map.center, map.zoom));
+        const tile = [...map.backgroundTiles.values()][0];
+        tile.onload();
+
+        assert.equal(map.notice.hidden, true);
+        assert.equal(tile.style.opacity, "1");
+        assert.match(map.notice.textContent, /Loading/);
     });
 });
