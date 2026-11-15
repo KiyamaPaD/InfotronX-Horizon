@@ -462,7 +462,29 @@ export function mountAnalyzeDashboard({ shell, store, getCloud, getDem })
 
     // The 3D view lives inside the map, so the dashboard steps aside while it is open.
     new MutationObserver(() => dashboard.classList.toggle("is-peeking", Boolean(mapWrap.querySelector(".map-3d-layer")))).observe(mapWrap, { childList: true });
-    new MutationObserver(() => render()).observe(shell, { attributes: true, attributeFilter: ["data-step"] });
+    // The 3D planet and this page share the same space. Entering Analyze closes the planet (it comes back when you leave),
+    // otherwise the page would sit invisible and unclickable behind it.
+    let reopenPlanet = false;
+    new MutationObserver(() =>
+    {
+        const planet = mapWrap.querySelector(".map-3d-layer");
+
+        if (visible())
+        {
+            if (planet)
+            {
+                reopenPlanet = true;
+                planet.querySelector('[data-3d="close"]')?.click();
+            }
+        }
+        else if (reopenPlanet)
+        {
+            reopenPlanet = false;
+            if (!mapWrap.querySelector(".map-3d-layer")) shell.querySelector('[data-action="open-3d"]')?.click();
+        }
+
+        render();
+    }).observe(shell, { attributes: true, attributeFilter: ["data-step"] });
     let queued = false;
     store.subscribe(() => { if (!queued && visible()) { queued = true; requestAnimationFrame(() => { queued = false; render(); }); } });
     addEventListener("resize", place);

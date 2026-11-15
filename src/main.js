@@ -1182,7 +1182,7 @@ try
     {
         if (tourRequested || !localStorage.getItem("mars-tutorial-seen")) setTimeout(() => tutorial.start(), 700);
         // The planet in 3D is where the app begins.
-        setTimeout(() => { if (!document.querySelector(".map-3d-layer")) get("[data-action='open-3d']")?.click(); }, 350);
+        setTimeout(() => { if (!document.querySelector(".map-3d-layer") && get("#mars-shell").dataset.step !== "analyze") get("[data-action='open-3d']")?.click(); }, 350);
     }, { once: true });
 }
 catch {}
