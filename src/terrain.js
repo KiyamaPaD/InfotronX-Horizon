@@ -469,7 +469,10 @@ export function profileRouteOnDem(dem, points)
     }
 
     let distanceMeters = 0;
-    const samples = [{ distanceMeters, elevationMeters: sampleElevation(dem, points[0]) }];
+    const samples = [{
+        distanceMeters, elevationMeters: sampleElevation(dem, points[0]),
+        lat: points[0].lat, lon: points[0].lon, segmentIndex: 0
+    }];
 
     for (let i = 1; i < points.length; i++)
     {
@@ -482,7 +485,11 @@ export function profileRouteOnDem(dem, points)
         {
             const t = step / steps;
             const point = { lat: points[i - 1].lat + (points[i].lat - points[i - 1].lat) * t, lon: points[i - 1].lon + (points[i].lon - points[i - 1].lon) * t };
-            samples.push({ distanceMeters: distanceMeters + segmentLength * t, elevationMeters: sampleElevation(dem, point) });
+            samples.push({
+                distanceMeters: distanceMeters + segmentLength * t,
+                elevationMeters: sampleElevation(dem, point),
+                lat: point.lat, lon: point.lon, segmentIndex: i - 1
+            });
         }
 
         distanceMeters += segmentLength;

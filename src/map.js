@@ -62,6 +62,7 @@ export class MarsMap
         this.mode = "pan";
         this.scenarioZones = [];
         this.scenarioSignature = "[]";
+        this.terrainProbe = null;
         this.drag = null;
         this.loadedImages = 0;
         this.imageErrors = 0;
@@ -211,6 +212,17 @@ export class MarsMap
 
         this.scenarioZones = zones;
         this.scenarioSignature = signature;
+        this.renderOverlays();
+    }
+
+    setTerrainProbe(point = null)
+    {
+        if (point && !(Number.isFinite(point.lat) && Number.isFinite(point.lon)))
+        {
+            return;
+        }
+
+        this.terrainProbe = point ? { lat: point.lat, lon: point.lon } : null;
         this.renderOverlays();
     }
 
@@ -1476,6 +1488,19 @@ export class MarsMap
             const target = svgElement("circle", { cx: position.x, cy: position.y, r: Math.max(13, radius + 5),
                 fill: "transparent", "data-observation": observation.id, class: "observation-hit" });
             this.overlay.append(halo, target, marker);
+        }
+
+        if (this.terrainProbe)
+        {
+            const position = this.geoToScreen(this.terrainProbe);
+            const halo = svgElement("circle", { cx: position.x, cy: position.y, r: 16,
+                fill: "#f8c882", "fill-opacity": 0.18, "pointer-events": "none" });
+            const ring = svgElement("circle", { cx: position.x, cy: position.y, r: 8,
+                fill: "none", stroke: "#ffdd9c", "stroke-width": 2.2,
+                "pointer-events": "none", class: "terrain-probe-marker" });
+            const dot = svgElement("circle", { cx: position.x, cy: position.y, r: 2.4,
+                fill: "#ffffff", "pointer-events": "none" });
+            this.overlay.append(halo, ring, dot);
         }
     }
 
