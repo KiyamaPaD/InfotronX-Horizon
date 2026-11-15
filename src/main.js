@@ -17,6 +17,7 @@ import { mountMissionCopilot } from "./mission-copilot-ui.js";
 import { mountWorkflowSteps } from "./workflow-steps.js";
 import { animateNumber } from "./motion.js";
 import { Tutorial } from "./tutorial.js";
+import { TUTORIAL_STEPS } from "./tutorial-steps.js";
 import { enableCardTilt } from "./tilt.js";
 import { mountHome } from "./home.js";
 import { mountAnalyzeDashboard } from "./analyze-dashboard.js";
@@ -24,40 +25,7 @@ import { mountAnalyzeDashboard } from "./analyze-dashboard.js";
 const store = new MissionStore();
 const imported = readSharedMission();
 
-const tutorialSteps = [
-    {
-        element: ".brand",
-        title: "Bun venit pe Marte!",
-        text: "Acesta este Mars Atlas, centrul tău de control pentru explorarea craterului Jezero.",
-        position: "bottom"
-    },
-    {
-        element: "#left-sidebar",
-        title: "Planificator Misiune",
-        text: "Aici poți crea rute noi și poți alege ce instrumente de desen să folosești pe hartă.",
-        position: "right"
-    },
-    {
-        element: ".map-controls",
-        title: "Control Hartă",
-        text: "Folosește aceste butoane pentru zoom și pentru a activa modul 3D imersiv.",
-        position: "left"
-    },
-    {
-        element: "#right-sidebar",
-        title: "Analiză Științifică",
-        text: "Aici vei găsi telemetria rutei tale, grafice de elevație și notele de teren.",
-        position: "left"
-    },
-    {
-        element: ".header-share",
-        title: "Partajează Misiunea",
-        text: "Când ești gata, poți trimite planul tău de misiune oricui printr-un link unic.",
-        position: "bottom"
-    }
-];
-
-const tutorial = new Tutorial(tutorialSteps);
+const tutorial = new Tutorial(TUTORIAL_STEPS);
 
 if (imported)
 {

@@ -2309,3 +2309,12 @@ a:not(.source-link):hover
 .ad-consent { display: flex; gap: 10px; align-items: flex-start; color: #aebdca; font-size: 13px; line-height: 1.5; }
 .ad-ask-row { display: flex; align-items: center; gap: 14px; }
 .ad-ask-status { color: #aebdca; }
+
+/* Tutorial: chapter, counter and progress */
+.tutorial-box { width: 340px; }
+.tutorial-overlay { backdrop-filter: none; background: rgba(0, 0, 0, 0.5); }
+.tutorial-meta { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 8px; font-size: 10px; font-weight: 800; letter-spacing: 1.3px; }
+.tutorial-chapter { color: #e9a889; }
+.tutorial-count { color: #8da0b0; }
+.tutorial-progress { height: 4px; margin-bottom: 14px; border-radius: 2px; background: #2a3947; overflow: hidden; }
+.tutorial-progress i { display: block; height: 100%; width: 0; border-radius: 2px; background: linear-gradient(90deg, #f4a47c, #75d1c8); transition: width .4s ease; }
