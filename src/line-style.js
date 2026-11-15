@@ -12,16 +12,17 @@ export const DEFAULT_LINE_STYLE = Object.freeze({
 });
 
 const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
+const number = (value, fallback) => Number.isFinite(Number(value)) && value !== null && value !== "" && typeof value !== "boolean" ? Number(value) : fallback;
 
 export function cleanLineStyle(source)
 {
     const input = source && typeof source === "object" ? source : {};
     return {
-        width: clamp(Number(input.width) || DEFAULT_LINE_STYLE.width, 0.4, 4),
-        opacity: clamp(Number(input.opacity) || DEFAULT_LINE_STYLE.opacity, 0.3, 1),
+        width: clamp(number(input.width, DEFAULT_LINE_STYLE.width), 0.4, 4),
+        opacity: clamp(number(input.opacity, DEFAULT_LINE_STYLE.opacity), 0.3, 1),
         style: ["solid", "dashed", "flowing"].includes(input.style) ? input.style : DEFAULT_LINE_STYLE.style,
         glow: input.glow === undefined ? DEFAULT_LINE_STYLE.glow : Boolean(input.glow),
-        markerSize: clamp(Number(input.markerSize) || DEFAULT_LINE_STYLE.markerSize, 0.5, 2.5),
+        markerSize: clamp(number(input.markerSize, DEFAULT_LINE_STYLE.markerSize), 0.5, 2.5),
         animate: input.animate === undefined ? DEFAULT_LINE_STYLE.animate : Boolean(input.animate)
     };
 }
