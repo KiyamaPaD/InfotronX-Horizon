@@ -147,13 +147,16 @@ function intersects(tile, envelope)
 function trackPage(target)
 {
     const log = { requests: [], responses: [], failures: [], jsErrors: [], networkConsole: [], pending: 0, lastActivity: Date.now() };
+    const attempts = new Map();
     const touch = () => { log.lastActivity = Date.now(); };
 
     target.on("request", request =>
     {
         if (isTileUrl(request.url()))
         {
-            log.requests.push({ url: request.url(), at: Date.now() });
+            const attempt = { url: request.url(), at: Date.now(), status: null, error: null };
+            attempts.set(request, attempt);
+            log.requests.push(attempt);
             log.pending++;
             touch();
         }
@@ -162,6 +165,8 @@ function trackPage(target)
     {
         if (isTileUrl(response.url()))
         {
+            const attempt = attempts.get(response.request());
+            if (attempt) attempt.status = response.status();
             log.responses.push({ url: response.url(), status: response.status(), at: Date.now() });
             touch();
         }
@@ -178,7 +183,10 @@ function trackPage(target)
     {
         if (isTileUrl(request.url()))
         {
-            log.failures.push({ url: request.url(), error: request.failure()?.errorText || "failed", at: Date.now() });
+            const error = request.failure()?.errorText || "failed";
+            const attempt = attempts.get(request);
+            if (attempt) attempt.error = error;
+            log.failures.push({ url: request.url(), error, at: Date.now() });
             log.pending = Math.max(0, log.pending - 1);
             touch();
         }
@@ -222,37 +230,42 @@ async function settle(target, log, timeout = 25000)
     return false;
 }
 
+const DUPLICATE_SEVERITY = ["retry-after-error", "reissue-after-abort", "real-duplicate"];
+
+// Judged on the final outcome of the earlier attempt: only an aborted or never-answered request may be reissued freely.
+function classifyRepeat(previous, current)
+{
+    if (previous.error === "net::ERR_ABORTED" || (previous.status === null && previous.error === null))
+    {
+        return "reissue-after-abort";
+    }
+
+    const failed = previous.error !== null || previous.status >= 400;
+    return failed && current.at - previous.at >= RETRY_GAP_MS ? "retry-after-error" : "real-duplicate";
+}
+
 function findDuplicates(log)
 {
     const byUrl = new Map();
 
     for (const item of log.requests)
     {
-        byUrl.set(item.url, [...(byUrl.get(item.url) || []), item.at]);
+        byUrl.set(item.url, [...(byUrl.get(item.url) || []), item]);
     }
 
     const duplicates = [];
 
-    for (const [url, times] of byUrl)
+    for (const [url, attempts] of byUrl)
     {
-        if (times.length < 2)
+        if (attempts.length < 2)
         {
             continue;
         }
 
-        const errorTimes = [
-            ...log.responses.filter(item => item.url === url && item.status >= 400).map(item => item.at),
-            ...log.failures.filter(item => item.url === url).map(item => item.at)
-        ];
-        let retries = 0;
-
-        for (let index = 1; index < times.length; index++)
-        {
-            const failedBetween = errorTimes.some(at => at >= times[index - 1] && at <= times[index]);
-            if (failedBetween && times[index] - times[index - 1] >= RETRY_GAP_MS) retries++;
-        }
-
-        duplicates.push({ url, level: tileLevel(url), count: times.length, retries, kind: retries === times.length - 1 ? "retry-after-error" : "real-duplicate" });
+        const repeats = attempts.slice(1).map((attempt, index) => classifyRepeat(attempts[index], attempt));
+        const kind = DUPLICATE_SEVERITY[Math.max(...repeats.map(item => DUPLICATE_SEVERITY.indexOf(item)))];
+        const outcomes = attempts.map(item => ({ afterMs: item.at - attempts[0].at, status: item.status, error: item.error }));
+        duplicates.push({ url, level: tileLevel(url), count: attempts.length, kind, repeats, outcomes });
     }
 
     return duplicates;
@@ -504,9 +517,24 @@ async function runStabilityScenarios()
         {
             scenario: item.scenario, requests: item.requests, statusCodes: item.statusCodes,
             httpErrors: item.httpErrors.length, realDuplicates: item.duplicates.filter(entry => entry.kind === "real-duplicate").length,
+            reissueAfterAbort: item.duplicates.filter(entry => entry.kind === "reissue-after-abort").length,
             retries: item.duplicates.filter(entry => entry.kind === "retry-after-error").length,
+            failedRequests: item.failedRequests.length,
             jsErrors: item.jsErrors.length, networkConsoleErrors: item.networkConsoleErrors.length
         }))));
+
+        for (const item of report.scenarios)
+        {
+            for (const entry of item.duplicates)
+            {
+                console.log("DUPLICATE " + item.scenario + " " + entry.kind + " " + entry.count + "x " + entry.url + " " + JSON.stringify(entry.outcomes));
+            }
+
+            for (const entry of item.failedRequests)
+            {
+                console.log("FAILED_REQUEST " + item.scenario + " " + entry.error + " " + entry.url);
+            }
+        }
     }
 
     const notFound = report.scenarios.flatMap(item => item.httpErrors.filter(entry => entry.status === 404).map(entry => item.scenario + " " + entry.url));
