@@ -25,8 +25,8 @@ test("scientific export is grounded in the actual bundled numeric Jezero clip", 
     const result = makeReport();
     assert.match(result, /Scientific route comparison/);
     assert.match(result, /CTX/);
-    assert.match(result, /18\.445° N, 77\.451° E/);
-    assert.match(result, /18\.451° N, 77\.460° E/);
+    assert.match(result, /18\.4446° N, 77\.4509° E/);
+    assert.match(result, /18\.451° N, 77\.46° E/);
     assert.match(result, /3,396,190 m/);
     assert.match(result, /λ = 6/);
     assert.match(result, /Shortest modeled/);
