@@ -17,6 +17,7 @@ Conversations are stored in `public.mars_mission_chat_messages` and are not expo
 The backend additionally uses:
 - `mars_chat_blocks`: a user's own personal block list, used by the chat message SELECT policy to hide blocked authors.
 - `mars_chat_reports`: reporter-owned reports of other users' messages. Reports are **stored for administrative review**, not automatically moderated or guaranteed to be handled within a certain time.
+- Chat report INSERT is restricted to the five user-entered columns; reporters cannot set a report to `reviewed` or spoof its creation timestamp. Only backend administrators can inspect the full report queue.
 - An INSERT trigger imposing **at least three seconds between sends** and **at most 10 messages in a 60-second window** per account, using a transaction-scoped advisory lock.
 - A composite mission ID and time index, row-level permission checks and a limited fetch of the newest 60 messages.
 
@@ -76,7 +77,7 @@ Created or modified:
 
 **Verified:** table creation, RLS policy presence, publication registration, active Edge Function status, security advisor review and automated code/unit tests.
 
-**Outstanding:** manually testing a complete owner/viewer/editor conversation from distinct live accounts; cross-account RLS and block verification using real authenticated tokens; reviewing what happens if a member is removed mid-session; configuring and paying for the model key; a successful real AI provider response; 3D view QA on devices with different GPU/WebGL support; Netlify redeployment of the exact GitHub SHA.
+**Outstanding:** defining and publishing an explicit private-chat retention policy; manually testing a complete owner/viewer/editor conversation from distinct live accounts; cross-account RLS and block verification using real authenticated tokens; reviewing what happens if a member is removed mid-session; configuring and paying for the model key; a successful real AI provider response; 3D view QA on devices with different GPU/WebGL support; Netlify redeployment of the exact GitHub SHA.
 
 The Supabase security advisor currently reports **Leaked Password Protection Disabled** for Supabase Auth. Project owners should consider enabling this in Auth configuration: https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection
 
