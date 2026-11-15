@@ -21,6 +21,21 @@
 
 ---
 
+## Feedback mentor (15 nov 2026)
+
+Mentorul Space Apps a cerut:
+- verificarea calculelor de distanță → **2.7**
+- verificarea instrumentelor de planificare → **2.8**
+- felul în care prezentăm datele științifice → **3.2**, **3.4**
+- menționarea surselor AI folosite → **3.1**, **4.7**
+- un demo scurt despre cum planifică un utilizator o misiune → **4.6** (folosește misiunea demo din **4.2**)
+- o prezentare pe project-showcase → **4.7**
+- dacă avem timp: explicația de ce un traseu e preferabil altuia → **3.4**
+
+Ordinea rămâne: întâi terminăm Etapa 1 (harta).
+
+---
+
 ## ETAPA 1 — Harta (P0, obligatoriu primul)
 
 **Scop:** harta să fie stabilă pe desktop și mobil, fără trucuri de zoom.
@@ -87,6 +102,17 @@
 ### 2.6 Responsive general
 - Toate panourile utilizabile pe 375px, fără scroll orizontal.
 
+### 2.7 Verificarea distanțelor
+- Găsește toate calculele de distanță (analytics, geo, rutare).
+- Trebuie folosită raza Marte 3.396.190 m, nu a Pământului. Verifică formula (mare cerc) și unitățile.
+- Teste cu valori independente: 1° latitudine ≈ 59,27 km, două puncte din Jezero, rută cu 3+ puncte = suma segmentelor.
+- Dacă există distanță 3D (cu panta din DEM), interfața arată clar care e plană și care e pe teren.
+
+### 2.8 Verificarea planificării
+- A*, D* Lite și Pareto testate pe grilă mică, cu ruta corectă cunoscută dinainte.
+- Recalcul corect după mutare/adăugare/ștergere de waypoint și după zonă de excluziune.
+- Fără cuvântul „optim” dacă nu e dovedit; folosește „cel mai bun dintre variantele calculate”.
+
 ---
 
 ## ETAPA 3 — Verificare științifică (P1)
@@ -94,6 +120,7 @@
 ### 3.1 Surse
 - Pagină „Surse și date” în site cu: Viking MDIM 2.1, HiRISE Jezero ortomozaic, MOLA/HRSC, CTX DTM Fergason et al. 2020 (DOI 10.5066/P906QQT8), cu linkuri.
 - Menționează ajutorul AI la cod și documentație (cerință Space Apps).
+- Obligatoriu: ce instrumente AI am folosit și pentru ce (cod, documentație, cercetare).
 
 ### 3.2 Etichete măsurat vs. modelat
 - Fiecare cifră din Analytics să aibă una din etichetele: **Măsurat (NASA/USGS)**, **Calculat**, **Scenariu ilustrativ**, **Notă utilizator**.
@@ -102,6 +129,12 @@
 ### 3.3 Limitele DEM
 - Când o rută iese din clipul DEM (104×96 celule), interfața spune clar „fără date de altitudine aici” în loc să calculeze ceva.
 - NoData nu e tratat niciodată ca teren sigur.
+
+### 3.4 „De ce acest traseu?”
+- Panou lângă rută și în comparația de rute, generat determinist din cifre, fără AI.
+- Conține: distanță, pantă medie/maximă, urcare/coborâre, cât din rută are date HiRISE/DEM vs doar Viking, zone evitate, criteriul și ponderile.
+- La comparație, propoziții de tipul „B e cu 320 m mai lung, dar panta maximă scade de la 18° la 9°”, cu cifre reale.
+- Fiecare cifră etichetată Măsurat / Calculat / Scenariu (vezi 3.2). Cu teste.
 
 ---
 
@@ -123,6 +156,20 @@
 
 ### 4.5 Eligibilitate Space Apps
 - Verificați manual regulile oficiale despre cod scris înainte de hackathon, contributori și resurse folosite. (Asta o fac oamenii, nu Claude Code.)
+
+### 4.6 Demo 2–3 minute
+- `DOCUMENTATIE/DEMO.md` cu scenariul:
+  1. harta Jezero (Viking → HiRISE zoom 10)
+  2. misiune nouă cu 4–5 waypointuri spre deltă
+  3. calcul rută + distanță + profil pantă
+  4. zonă de evitat → recalcul → comparație + „De ce acest traseu” (3.4)
+  5. observație
+  6. salvare / export / share
+  7. pagina de surse (3.1)
+- Misiunea demo din 4.2 trebuie să permită exact scenariul ăsta.
+
+### 4.7 Text pentru project-showcase
+- 5–8 rânduri: problema, ce face aplicația, datele NASA folosite, link site, link repo, echipa, surse AI.
 
 ---
 
