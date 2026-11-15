@@ -834,3 +834,94 @@ test("Viking, controlled CTX and HiRISE layers render in scientific-resolution o
 
     assert.ok(viking >= 0 && viking < context && context < hirise && hirise < routes);
 });
+
+test("HiRISE center tile starts before neighboring detail and CTX requests at zoom 11", () =>
+{
+    withFakeTiles(requests =>
+    {
+        const map = activeHiRISEMap();
+        const center = project(map.center, map.zoom);
+        const centerX = Math.floor(center.x / 256);
+        const centerY = Math.floor(center.y / 256);
+        map.renderHiRISETiles(760, 420, center);
+        const high = requests.filter(item => item.name === "map-hires-tile");
+        const context = requests.filter(item => item.name === "map-context-tile");
+
+        assert.ok(high.length > 0 && context.length > 0);
+        assert.match(high[0].url, new RegExp("/11/" + centerY + "/" + centerX + "\\.png$"));
+        const highIndex = requests.findIndex(item => item.name === "map-hires-tile");
+        const contextIndex = requests.findIndex(item => item.name === "map-context-tile");
+        assert.ok(highIndex >= 0 && highIndex < contextIndex,
+            "HiRISE must be requested before CTX; actual layer stacking is unchanged");
+    });
+});
+
+test("high detail retry budgets prevent endless requests for permanently unavailable NASA tiles", () =>
+{
+    withFakeTiles(requests =>
+    {
+        const map = activeHiRISEMap();
+        map.highDetailFailures = new Map();
+        const center = project(map.center, map.zoom);
+        map.renderHiRISETiles(650, 350, center);
+        const key = [...map.activeTiles][0];
+        const tile = map.tiles.get(key);
+        const first = requests.length;
+        tile.dataset.state = "error";
+        tile.dataset.failedAt = "0";
+        map.highDetailFailures.set(key, 3);
+        map.renderHiRISETiles(650, 350, center);
+        assert.equal(map.tiles.get(key), tile);
+        assert.equal(requests.length, first);
+
+        map.highDetailFailures.set(key, 1);
+        map.renderHiRISETiles(650, 350, center);
+        assert.notEqual(map.tiles.get(key), tile);
+        assert.ok(requests.length > first);
+    });
+});
+
+test("a hung high-resolution NASA request advances to an alternate candidate and is canceled on disposal", () =>
+{
+    withFakeTiles(requests =>
+    {
+        const original = globalThis.window;
+        const timers = new Map();
+        let sequence = 0;
+        globalThis.window = {
+            setTimeout(callback, delay)
+            {
+                const id = ++sequence;
+                timers.set(id, { callback, delay });
+                return id;
+            },
+            clearTimeout(id) { timers.delete(id); }
+        };
+        const nativeSetTimeout = globalThis.setTimeout;
+        const nativeClearTimeout = globalThis.clearTimeout;
+        globalThis.setTimeout = (...args) => globalThis.window.setTimeout(...args);
+        globalThis.clearTimeout = id => globalThis.window.clearTimeout(id);
+
+        try
+        {
+            const map = activeHiRISEMap();
+            map.onTileOutcome = () => {};
+            map.scheduleHighDetailRecovery = () => {};
+            const tile = map.createHiRISETile(2928, 814, 11);
+            tile.startLoading();
+            assert.equal(requests.length, 1);
+            const timer = [...timers.values()][0];
+            assert.equal(timer.delay, 15000);
+            timer.callback();
+            assert.equal(requests.length, 2, "Stalled PNG must try alternate NASA URL");
+            tile.dispose();
+            assert.equal(timers.size, 0, "Disposing a tile must cancel its watchdog timer");
+        }
+        finally
+        {
+            globalThis.window = original;
+            globalThis.setTimeout = nativeSetTimeout;
+            globalThis.clearTimeout = nativeClearTimeout;
+        }
+    });
+});

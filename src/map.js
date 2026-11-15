@@ -4,6 +4,10 @@ import { markerRadiusForZoom, normalizeMarkerIcon } from "./marker-icons.js";
 import { waypointLabel } from "./waypoint-editor.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
+const HIGH_DETAIL_REQUEST_TIMEOUT_MS = 15000;
+const HIGH_DETAIL_RETRY_DELAY_MS = 16000;
+const HIGH_DETAIL_MAX_FAILURES = 3; // The first attempt plus two bounded automatic recoveries.
+
 
 function svgElement(name, attributes)
 {
@@ -88,6 +92,8 @@ export class MarsMap
         this.contextTiles = new Map();
         this.activeContextTiles = new Set();
         this.contextTileCacheLimit = 84;
+        this.highDetailFailures = new Map();
+        this.highDetailRecoveryTimer = null;
         this.overlay = this.container.querySelector(".map-overlays");
         this.notice = this.container.querySelector(".map-load-notice");
         this.networkNotice = this.container.querySelector(".map-network-notice");
@@ -250,6 +256,9 @@ export class MarsMap
         this.activeTiles.clear();
         this.backgroundActiveTiles.clear();
         this.activeContextTiles.clear();
+        clearTimeout(this.highDetailRecoveryTimer);
+        this.highDetailRecoveryTimer = null;
+        this.highDetailFailures.clear();
         this.container.classList.remove("map-has-imagery");
         this.notice.textContent = "Loading Mars imagery…";
         this.layer = MAP_LAYERS.find(layer => layer.id === id) || MAP_LAYERS[0];
@@ -952,6 +961,41 @@ export class MarsMap
         const candidates = this.tileCandidates(x, y, zoom, source);
         let attempt = 0;
         let disposed = false;
+        let requestWatchdog = null;
+        const retryKey = source.id + "-" + zoom + "-" + x + "-" + y;
+
+        const clearWatchdog = () =>
+        {
+            if (requestWatchdog !== null)
+            {
+                clearTimeout(requestWatchdog);
+                requestWatchdog = null;
+            }
+        };
+
+        const requestCandidate = () =>
+        {
+            if (disposed)
+            {
+                return;
+            }
+
+            clearWatchdog();
+            tile.src = candidates[attempt];
+
+            if (typeof window !== "undefined")
+            {
+                requestWatchdog = setTimeout(() =>
+                {
+                    requestWatchdog = null;
+
+                    if (!disposed && tile.dataset.state === "loading")
+                    {
+                        next();
+                    }
+                }, HIGH_DETAIL_REQUEST_TIMEOUT_MS);
+            }
+        };
 
         const report = () =>
         {
@@ -968,19 +1012,23 @@ export class MarsMap
                 return;
             }
 
+            clearWatchdog();
             attempt++;
 
             if (attempt < candidates.length)
             {
-                tile.src = candidates[attempt];
+                requestCandidate();
                 return;
             }
 
             tile.dataset.state = "error";
             tile.dataset.failedAt = String(Date.now());
             tile.style.opacity = "0";
+            this.highDetailFailures ??= new Map();
+            this.highDetailFailures.set(retryKey, (this.highDetailFailures.get(retryKey) || 0) + 1);
             report();
             this.onTileOutcome(false);
+            this.scheduleHighDetailRecovery();
         };
 
         tile.onload = () =>
@@ -990,6 +1038,8 @@ export class MarsMap
                 return;
             }
 
+            clearWatchdog();
+
             if (tile.naturalWidth < 240 || tile.naturalHeight < 240)
             {
                 next();
@@ -997,6 +1047,7 @@ export class MarsMap
             }
 
             tile.dataset.state = "loaded";
+            this.highDetailFailures?.delete(retryKey);
             tile.style.opacity = source.id === "ctx-jezero" ? "0.91" : "1";
 
             report();
@@ -1004,10 +1055,11 @@ export class MarsMap
         };
 
         tile.onerror = next;
-        tile.startLoading = () => { tile.src = candidates[0]; };
+        tile.startLoading = requestCandidate;
         tile.dispose = () =>
         {
             disposed = true;
+            clearWatchdog();
             tile.onload = null;
             tile.onerror = null;
             tile.removeAttribute("src");
@@ -1047,6 +1099,7 @@ export class MarsMap
     renderContextTiles(width, height, center)
     {
         const active = new Set();
+        const waitingToStart = [];
         const source = JEZERO_CTX_CONTEXT;
         this.contextTileContainer.style.display = "";
         this.contextTileContainer.style.maskImage = "";
@@ -1075,7 +1128,9 @@ export class MarsMap
                     active.add(key);
                     let tile = this.contextTiles.get(key);
 
-                    if (tile?.dataset.state === "error" && Date.now() - Number(tile.dataset.failedAt) >= 16000)
+                    if (tile?.dataset.state === "error" &&
+                        (this.highDetailFailures?.get(key) || 0) < HIGH_DETAIL_MAX_FAILURES &&
+                        Date.now() - Number(tile.dataset.failedAt) >= HIGH_DETAIL_RETRY_DELAY_MS)
                     {
                         this.releaseTile(tile);
                         this.contextTiles.delete(key);
@@ -1087,7 +1142,9 @@ export class MarsMap
                         tile = this.createHiRISETile(x, y, this.zoom, source);
                         this.contextTiles.set(key, tile);
                         this.contextTileContainer.appendChild(tile);
-                        tile.startLoading();
+                        waitingToStart.push({
+                            tile, distance: Math.hypot((x + 0.5) * 256 - center.x, (y + 0.5) * 256 - center.y)
+                        });
                     }
 
                     tile.style.left = Math.round(x * 256 - center.x + width / 2) + "px";
@@ -1098,6 +1155,12 @@ export class MarsMap
         }
 
         this.activeContextTiles = active;
+        waitingToStart.sort((left, right) => left.distance - right.distance);
+
+        for (const item of waitingToStart)
+        {
+            item.tile.startLoading();
+        }
 
         if (active.size)
         {
@@ -1135,8 +1198,8 @@ export class MarsMap
     renderHiRISETiles(width, height, center)
     {
         this.renderBackgroundTiles(width, height, center);
-        this.renderContextTiles(width, height, center);
         const active = new Set();
+        const waitingToStart = [];
 
         if (this.zoom >= 9 && this.viewportIntersectsCoverage(this.layer.coverage, width, height, center))
         {
@@ -1161,7 +1224,9 @@ export class MarsMap
                     active.add(key);
                     let tile = this.tiles.get(key);
 
-                    if (tile?.dataset.state === "error" && Date.now() - Number(tile.dataset.failedAt) >= 16000)
+                    if (tile?.dataset.state === "error" &&
+                        (this.highDetailFailures?.get(key) || 0) < HIGH_DETAIL_MAX_FAILURES &&
+                        Date.now() - Number(tile.dataset.failedAt) >= HIGH_DETAIL_RETRY_DELAY_MS)
                     {
                         this.releaseTile(tile);
                         this.tiles.delete(key);
@@ -1173,7 +1238,9 @@ export class MarsMap
                         tile = this.createHiRISETile(x, y, this.zoom);
                         this.tiles.set(key, tile);
                         this.tileContainer.appendChild(tile);
-                        tile.startLoading();
+                        waitingToStart.push({
+                            tile, distance: Math.hypot((x + 0.5) * 256 - center.x, (y + 0.5) * 256 - center.y)
+                        });
                     }
 
                     tile.style.left = Math.round(x * 256 - center.x + width / 2) + "px";
@@ -1184,6 +1251,12 @@ export class MarsMap
         }
 
         this.activeTiles = active;
+        waitingToStart.sort((left, right) => left.distance - right.distance);
+
+        for (const item of waitingToStart)
+        {
+            item.tile.startLoading();
+        }
 
         if (active.size)
         {
@@ -1217,6 +1290,9 @@ export class MarsMap
             }
         }
 
+        // Request the sharp HiRISE center tiles before the CTX context layer.
+        // The visual stacking order remains Viking -> CTX -> HiRISE in the DOM.
+        this.renderContextTiles(width, height, center);
         this.updateHiRISEStatus();
     }
 
@@ -1525,9 +1601,46 @@ export class MarsMap
         if (!offline)
         {
             this.retryFailedTiles(true);
+            this.scheduleHighDetailRecovery();
+        }
+        else
+        {
+            clearTimeout(this.highDetailRecoveryTimer);
+            this.highDetailRecoveryTimer = null;
         }
 
         this.updateNetworkNotice();
+    }
+
+    scheduleHighDetailRecovery()
+    {
+        if (typeof window === "undefined" || this.layer.id !== "hirise" ||
+            this.offline || this.highDetailRecoveryTimer)
+        {
+            return;
+        }
+
+        const incomplete = [
+            ...[...(this.activeTiles || [])].map(key => ({ key, tile: this.tiles.get(key) })),
+            ...[...(this.activeContextTiles || [])].map(key => ({ key, tile: this.contextTiles.get(key) }))
+        ].some(({ key, tile }) => tile?.dataset.state === "error" &&
+            (this.highDetailFailures?.get(key) || 0) < HIGH_DETAIL_MAX_FAILURES);
+
+        if (!incomplete)
+        {
+            return;
+        }
+
+        this.highDetailRecoveryTimer = setTimeout(() =>
+        {
+            this.highDetailRecoveryTimer = null;
+
+            if (!this.offline && this.layer.id === "hirise")
+            {
+                this.retryFailedTiles(true);
+                this.scheduleHighDetailRecovery();
+            }
+        }, HIGH_DETAIL_RETRY_DELAY_MS);
     }
 
     // Expiring failed tiles lets the next render recreate them through the normal retry path; unforced retries run at most every 16 s.
