@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, writeFile } from "node:fs/promises";
 import { chromium } from "playwright";
 import { unproject } from "../src/geo.js";
 
@@ -488,6 +488,56 @@ async function largePanScenario()
     return { scenario: "large-pan-z11-recenter", viewport: VIEWPORTS[2], steps, ...summarize(log) };
 }
 
+function countBy(items, key)
+{
+    const counts = {};
+
+    for (const item of items)
+    {
+        counts[item[key]] = (counts[item[key]] || 0) + 1;
+    }
+
+    return Object.entries(counts).map(([name, count]) => name + " ×" + count).join(", ") || "—";
+}
+
+async function writeStepSummary(report)
+{
+    if (!process.env.GITHUB_STEP_SUMMARY)
+    {
+        return;
+    }
+
+    const kinds = item => kind => item.duplicates.filter(entry => entry.kind === kind).length;
+    const lines = [
+        "## Map stability scenarios",
+        "",
+        "| Scenario | Requests | Unique | HTTP codes | Real duplicates | Reissue after abort | Retry after error | Failed requests | JS errors | Failed to load |",
+        "|---|---:|---:|---|---:|---:|---:|---|---:|---:|",
+        ...report.scenarios.map(item => "| " + [
+            item.scenario, item.requests, item.uniqueUrls,
+            Object.entries(item.statusCodes).map(([code, count]) => code + " ×" + count).join(", ") || "—",
+            kinds(item)("real-duplicate"), kinds(item)("reissue-after-abort"), kinds(item)("retry-after-error"),
+            item.failedRequests.length ? item.failedRequests.length + " (" + countBy(item.failedRequests, "error") + ")" : "0",
+            item.jsErrors.length, item.networkConsoleErrors.length
+        ].join(" | ") + " |"),
+        ""
+    ];
+    const duplicates = report.scenarios.flatMap(item => item.duplicates.map(entry => ({ scenario: item.scenario, ...entry })));
+
+    if (duplicates.length)
+    {
+        lines.push("<details><summary>Repeated tile URLs (" + duplicates.length + ")</summary>", "",
+            "| Scenario | Kind | Count | Attempts | URL |", "|---|---|---:|---|---|",
+            ...duplicates.slice(0, 60).map(entry => "| " + [entry.scenario, entry.kind, entry.count,
+                entry.outcomes.map(item => "+" + item.afterMs + "ms " + (item.error || item.status || "no response")).join("; "),
+                entry.url.replace(/^https:\/\/trek\.nasa\.gov\/tiles\/Mars\/EQ\//, "")].join(" | ") + " |"),
+            "", "</details>", "");
+    }
+
+    lines.push(...report.notes.map(note => "> " + note), "");
+    await appendFile(process.env.GITHUB_STEP_SUMMARY, lines.join("\n") + "\n");
+}
+
 async function runStabilityScenarios()
 {
     const report = {
@@ -513,6 +563,7 @@ async function runStabilityScenarios()
     finally
     {
         await writeFile("browser-map-evidence/report.json", JSON.stringify(report, null, 2));
+        await writeStepSummary(report);
         console.log("STABILITY_REPORT " + JSON.stringify(report.scenarios.map(item => (
         {
             scenario: item.scenario, requests: item.requests, statusCodes: item.statusCodes,
