@@ -1,4 +1,5 @@
 import { analyzeRoute } from "./geo.js";
+import { estimateMarswalk } from "./resources.js";
 import { sampleElevation } from "./terrain.js";
 
 export function buildMissionFacts(mission, dem = null)
@@ -31,6 +32,18 @@ export function buildMissionFacts(mission, dem = null)
             Math.round(terrain.stats.distanceMeters * 100) / 100 : null,
         modeledMaxGradePercent: Number.isFinite(terrain?.stats?.maxGradePercent) ?
             Math.round(terrain.stats.maxGradePercent * 100) / 100 : null,
+        alternatives: mission.routes.slice(0,15).map((item, index) => ({
+            index:index + 1,
+            waypointCount:item.points.length,
+            distanceMeters:Math.round(analyzeRoute(item.points).totalDistance * 100) / 100
+        })),
+        resourceScenario: (() =>
+        {
+            const estimate = estimateMarswalk(summary.totalDistance, mission.evaScenario || {});
+            return { durationHours:estimate.durationHours, oxygenKg:estimate.oxygenKg,
+                batteryWh:estimate.batteryWh, retraceReturn:estimate.assumptions.retraceReturn,
+                speedKmh:estimate.assumptions.speedKmh, illustrative:true };
+        })(),
         terrainModelUnverified: true
     };
 }

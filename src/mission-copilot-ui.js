@@ -3,10 +3,10 @@ import { buildMissionFacts, localMissionExplanation, normalizeCopilotQuestion } 
 export function mountMissionCopilot({ panel, before, store, getDem, getCloud, notify })
 {
     const section = document.createElement("section");
-    section.className = "panel-section science-model-section";
+    section.className = "panel-section science-model-section copilot-section";
     section.innerHTML = `
         <div class="panel-title-row"><h2 class="section-label">MISSION COPILOT</h2><span class="tiny-pill">OPTIONAL · READ-ONLY</span></div>
-        <p class="section-help">Inspect the mission using deterministic mathematics, or optionally request a language-model explanation. AI has no ability to edit, delete, publish or approve mission data.</p>
+        <p class="copilot-kicker">YOUR MISSION, EXPLAINED</p><h3 class="copilot-title">From terrain<br>to understanding.</h3><p class="section-help">Ask about your plan. Explore the evidence. Keep every decision yours.</p><div class="copilot-prompts"><button type="button" data-copilot-prompt="Explain this route and its limitations.">Explain route ↗</button><button type="button" data-copilot-prompt="What can the loaded DEM tell us, and what data are missing?">Read terrain ↗</button><button type="button" data-copilot-prompt="How should I compare alternative routes without assuming the shortest is safest?">Compare routes ↗</button></div><button type="button" id="copilot-propose" class="btn btn-outline wide">Preview terrain route strategies</button>
         <button type="button" id="copilot-local" class="btn btn-outline wide">Analyze mission with verified calculations</button>
         <button type="button" id="copilot-health" class="btn btn-outline wide">Check AI service status</button>
         <form id="copilot-ai-form" class="copilot-ai-form">
@@ -14,11 +14,11 @@ export function mountMissionCopilot({ panel, before, store, getDem, getCloud, no
                 <textarea id="copilot-question" maxlength="240" rows="3" placeholder="Explain the difference between route distance and DEM grid distance."></textarea>
             </label>
             <label class="copilot-consent"><input id="copilot-consent" type="checkbox"/>
-                I agree to send aggregate mission statistics, the DEM source label (if loaded), and my question to the AI provider. Mission titles, raw coordinates, notes, chat messages and profile photos are excluded.
+                I agree to send aggregate route comparisons, illustrative resource estimates, the DEM source label (if loaded), and my question to the AI provider. Mission titles, raw coordinates, notes, chat messages and profile photos are excluded.
             </label>
-            <button type="submit" class="btn btn-outline wide" id="copilot-ask">Ask AI (sign-in + server configuration required)</button>
+            <button type="submit" class="btn btn-outline wide" id="copilot-ask">Ask Copilot ↗</button>
         </form>
-        <pre id="copilot-output" class="copilot-output" role="status" aria-live="polite">Choose local analysis to see sourced metrics without AI or a cloud account.</pre>
+        <pre id="copilot-output" class="copilot-output" role="status" aria-live="polite">Start with a prompt, or calculate a local mission summary. AI explanations require sign-in and an enabled backend.</pre>
         <p class="science-footnote">Responses are optional explanations, never NASA-certified scientific measurements. A server-side model key must be configured separately; no API key belongs in frontend code.</p>`;
     panel.insertBefore(section,before);
     const output = section.querySelector("#copilot-output");
@@ -27,6 +27,36 @@ export function mountMissionCopilot({ panel, before, store, getDem, getCloud, no
     const consent = section.querySelector("#copilot-consent");
     const send = section.querySelector("#copilot-ask");
     const status = section.querySelector("#copilot-health");
+
+    let requestVersion = 0;
+    const missionSignature = () => JSON.stringify(store.current);
+    store.subscribe(() =>
+    {
+        requestVersion++;
+        output.textContent = "Mission updated. Run analysis again to use the current route and assumptions.";
+    });
+    section.querySelectorAll("[data-copilot-prompt]").forEach(button =>
+    {
+        button.addEventListener("click", () =>
+        {
+            question.value = button.dataset.copilotPrompt;
+            question.focus();
+        });
+    });
+    section.querySelector("#copilot-propose").addEventListener("click", () =>
+    {
+        if (!getDem() || store.activeRoute.points.length < 2)
+        {
+            output.textContent = "Load numeric Jezero terrain data and add two waypoints inside its coverage first. Route proposals use the DEM solver; no coordinates are invented by AI.";
+            return;
+        }
+        panel.querySelector('[data-group="terrain"]')?.click();
+        requestVersion++;
+        const compare = panel.querySelector("#terrain-compare");
+        compare?.click();
+        panel.querySelector("#terrain-strategies")?.scrollIntoView({ block:"nearest", behavior:"smooth" });
+        output.textContent = "Terrain strategies requested using your current anchors, grade limit and exclusions. Review the candidates in Terrain, then choose Add editable candidate yourself. No route was added automatically.";
+    });
 
     async function invokeCopilot(cloud, body)
     {
@@ -73,6 +103,7 @@ export function mountMissionCopilot({ panel, before, store, getDem, getCloud, no
             return;
         }
 
+        requestVersion++;
         status.disabled = true;
 
         try
@@ -96,6 +127,7 @@ export function mountMissionCopilot({ panel, before, store, getDem, getCloud, no
     {
         try
         {
+            requestVersion++;
             output.textContent = localMissionExplanation(buildMissionFacts(store.current,getDem()));
         }
         catch(error)
@@ -122,6 +154,10 @@ export function mountMissionCopilot({ panel, before, store, getDem, getCloud, no
             return;
         }
 
+        const version = ++requestVersion;
+        const signature = missionSignature();
+        const userId = cloud.user.id;
+
         try
         {
             const input = normalizeCopilotQuestion(question.value);
@@ -129,6 +165,17 @@ export function mountMissionCopilot({ panel, before, store, getDem, getCloud, no
             send.disabled = true;
             output.textContent = "Requesting a read-only explanation. No mission data are being changed.";
             const response = await invokeCopilot(cloud,{ question:input, facts });
+
+            if (version !== requestVersion)
+            {
+                return;
+            }
+
+            if (signature !== missionSignature() || cloud.user?.id !== userId)
+            {
+                output.textContent = "Mission or account changed during the request. Ask again for the current context.";
+                return;
+            }
 
             if (typeof response?.answer !== "string" || !response.answer.trim())
             {
@@ -140,6 +187,10 @@ export function mountMissionCopilot({ panel, before, store, getDem, getCloud, no
         }
         catch(error)
         {
+            if (version !== requestVersion || signature !== missionSignature() || cloud.user?.id !== userId)
+            {
+                return;
+            }
             let fallback = "";
 
             try

@@ -9,6 +9,30 @@ const MAX_MISSIONS = 30;
 const MAX_ROUTES = 15;
 const MAX_CHECKPOINTS = 8;
 
+function ensureUniqueIds(items)
+{
+    const used = new Set();
+
+    for (const item of items)
+    {
+        if (!item.id?.trim() || used.has(item.id))
+        {
+            item.id = createId();
+        }
+
+        used.add(item.id);
+    }
+
+    return items;
+}
+
+function normalizeRouteIds(routes)
+{
+    ensureUniqueIds(routes);
+    ensureUniqueIds(routes.flatMap(route => route.points));
+    return routes;
+}
+
 export function createMission(title = "Untitled Marswalk")
 {
     const routeId = createId();
@@ -57,7 +81,10 @@ export function removeUntouchedExample(mission)
 {
     if (mission.title !== "Jezero field reconnaissance" || mission.routes.length !== 1 ||
         mission.routes[0].name !== "Primary route" || mission.checkpoints.length !== 0 ||
-        mission.routes[0].points.length !== ORIGINAL_EXAMPLE.length || mission.observations.length !== 1)
+        mission.routes[0].points.length !== ORIGINAL_EXAMPLE.length || mission.observations.length !== 1 ||
+        mission.description !== "Explore Jezero with an editable route. Traversability has not been assessed." ||
+        mission.routes[0].color !== ROUTE_COLORS[0] || mission.routes[0].terrainModel ||
+        Object.keys(DEFAULT_EVA_ASSUMPTIONS).some(key => mission.evaScenario?.[key] !== DEFAULT_EVA_ASSUMPTIONS[key]))
     {
         return mission;
     }
@@ -65,9 +92,11 @@ export function removeUntouchedExample(mission)
     const points = mission.routes[0].points;
     const note = mission.observations[0];
     const originalPoints = points.every((point, index) => Math.abs(point.lat - ORIGINAL_EXAMPLE[index].lat) < 1e-9
-        && Math.abs(point.lon - ORIGINAL_EXAMPLE[index].lon) < 1e-9 && !point.icon);
+        && Math.abs(point.lon - ORIGINAL_EXAMPLE[index].lon) < 1e-9
+        && !["name", "description", "category", "icon", "color"].some(key => point[key]));
     const originalNote = note.title === "Survey checkpoint" && Math.abs(note.lat - 18.45160) < 1e-9
-        && Math.abs(note.lon - 77.45920) < 1e-9 && !note.icon;
+        && Math.abs(note.lon - 77.45920) < 1e-9 && !note.icon
+        && note.note === "Example user note. Not a verified geological discovery." && note.source === "User annotation";
 
     if (originalPoints && originalNote)
     {
@@ -88,7 +117,7 @@ export function validateMission(candidate)
     }
 
     const mission = createMission(String(candidate.title || "Imported mission").slice(0, 90));
-    mission.id = typeof candidate.id === "string" ? candidate.id.slice(0, 80) : mission.id;
+    mission.id = typeof candidate.id === "string" && candidate.id.trim() ? candidate.id.slice(0, 80) : mission.id;
     mission.description = String(candidate.description || "").slice(0, 300);
 
     try
@@ -115,6 +144,8 @@ export function validateMission(candidate)
         createdAt: String(observation.createdAt || new Date().toISOString()),
         ...(typeof observation.icon === "string" ? { icon: normalizeMarkerIcon(observation.icon) } : {})
     })) : [];
+    normalizeRouteIds(mission.routes);
+    ensureUniqueIds(mission.observations);
     mission.checkpoints = Array.isArray(candidate.checkpoints) ? candidate.checkpoints.slice(0, MAX_CHECKPOINTS).filter(item => item && typeof item === "object" && Array.isArray(item.routes) && item.routes.length > 0 && item.routes.length <= MAX_ROUTES).map(item =>
     {
         const routes = item.routes.filter(route => route && typeof route === "object" && Array.isArray(route.points)).map((route, index) => ({
@@ -130,6 +161,8 @@ export function validateMission(candidate)
             source: String(observation.source || "User annotation").slice(0, 160), createdAt: String(observation.createdAt || ""),
             ...(typeof observation.icon === "string" ? { icon: normalizeMarkerIcon(observation.icon) } : {})
         })) : [];
+        normalizeRouteIds(routes);
+        ensureUniqueIds(observations);
         return {
             id: String(item.id || createId()).slice(0, 80),
             label: String(item.label || "Mission checkpoint").slice(0, 70),
@@ -140,6 +173,7 @@ export function validateMission(candidate)
             evaScenario: safeEvaScenario(item.evaScenario)
         };
     }).filter(item => item.routes.length > 0) : [];
+    ensureUniqueIds(mission.checkpoints);
     mission.activeRouteId = mission.routes.some(route => route.id === candidate.activeRouteId) ? candidate.activeRouteId : mission.routes[0]?.id;
     mission.createdAt = typeof candidate.createdAt === "string" ? candidate.createdAt : mission.createdAt;
     mission.updatedAt = new Date().toISOString();
@@ -230,7 +264,7 @@ export class MissionStore
             this.loadedActiveId = typeof stored?.activeId === "string" ? stored.activeId : null;
             const missions = Array.isArray(rows) ? rows.slice(0, MAX_MISSIONS).map(validateMission).filter(Boolean).map(removeUntouchedExample) : [];
 
-            return missions.length ? missions : [createMission("Jezero mission")];
+            return missions.length ? ensureUniqueIds(missions) : [createMission("Jezero mission")];
         }
         catch
         {
@@ -568,7 +602,7 @@ export class MissionStore
         });
     }
 
-    addRoute(name = "Alternative route")
+    addRoute(name = "Alternative route", persist = true)
     {
         if (this.current.routes.length >= MAX_ROUTES)
         {
@@ -578,14 +612,18 @@ export class MissionStore
         const route = { id: createId(), name, color: ROUTE_COLORS[this.current.routes.length % ROUTE_COLORS.length], points: [] };
         this.current.routes.push(route);
         this.current.activeRouteId = route.id;
-        this.save();
+        if (persist)
+        {
+            this.save();
+        }
+
         return route;
     }
 
     duplicateRoute()
     {
         const source = this.activeRoute;
-        const route = this.addRoute(`${source.name} · copy`);
+        const route = this.addRoute(`${source.name} · copy`, false);
 
         if (!route)
         {

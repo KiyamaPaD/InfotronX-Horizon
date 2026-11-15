@@ -7,7 +7,7 @@ const SOURCES_LIMIT = 160;
 
 function originAllowed(origin: string | null): boolean
 {
-    return !origin || ALLOWED_ORIGINS.has(origin) || /^http:\/\/localhost:\d+$/.test(origin);
+    return !origin || ALLOWED_ORIGINS.has(origin) || /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin);
 }
 
 function headers(origin: string | null): Headers
@@ -64,6 +64,17 @@ function verifiedFacts(raw: any): Record<string, unknown> | null
         demCoveredWaypoints:nonnegative(raw.demCoveredWaypoints),
         modeledGridDistanceMeters:nonnegative(raw.modeledGridDistanceMeters),
         modeledMaxGradePercent:nonnegative(raw.modeledMaxGradePercent),
+        alternatives:Array.isArray(raw.alternatives) ? raw.alternatives.slice(0,15).map((item: any, index: number) => ({
+            index:index + 1, waypointCount:nonnegative(item?.waypointCount),
+            distanceMeters:nonnegative(item?.distanceMeters)
+        })) : [],
+        resourceScenario:raw.resourceScenario && typeof raw.resourceScenario === "object" ? {
+            durationHours:nonnegative(raw.resourceScenario.durationHours),
+            oxygenKg:nonnegative(raw.resourceScenario.oxygenKg),
+            batteryWh:nonnegative(raw.resourceScenario.batteryWh),
+            retraceReturn:raw.resourceScenario.retraceReturn === true,
+            speedKmh:nonnegative(raw.resourceScenario.speedKmh), illustrative:true
+        } : null,
         terrainModelUnverified:true
     };
 }
@@ -202,6 +213,8 @@ Deno.serve(async (request: Request): Promise<Response> =>
         "The following user metrics were computed by deterministic code, but are not independently certified.",
         "You have no tools, no file access, no route editing permissions and cannot write to Supabase.",
         "Only explain supplied numbers, source uncertainty and scientific limitations.",
+        "Compare alternatives by their anonymous index. Resource estimates are illustrative user scenarios, not measured telemetry.",
+        "For route proposals, direct the user to Preview terrain route strategies. Actual candidates must come from the local DEM solver; never invent waypoints.",
         "Never invent terrain data, safety improvements, NASA approvals or missing coordinates.",
         "Do not claim any user-defined hazard is a NASA observation.",
         "Avoid publishing raw mission data. Keep under 300 words.",

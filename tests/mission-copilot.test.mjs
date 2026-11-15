@@ -56,3 +56,17 @@ test("Copilot shows diagnostic codes and falls back to deterministic analysis", 
     assert.match(ui,/localMissionExplanation\(buildMissionFacts\(store.current,getDem\(\)\)\)/);
     assert.match(ui,/action:"status"/);
 });
+
+test("Copilot compares anonymized alternatives and uses the saved resource assumptions", () =>
+{
+    const copy = structuredClone(mission);
+    copy.routes.push({ id:"alternative", name:"Private route title", points:[] });
+    copy.evaScenario = { speedKmh:1.5, retraceReturn:false };
+    const facts = buildMissionFacts(copy,dem);
+    assert.equal(facts.alternatives.length,2);
+    assert.equal(facts.alternatives[1].distanceMeters,0);
+    assert.equal(facts.resourceScenario.speedKmh,1.5);
+    assert.equal(facts.resourceScenario.retraceReturn,false);
+    assert.equal(facts.resourceScenario.illustrative,true);
+    assert.doesNotMatch(JSON.stringify(facts),/Private route title|"id":"alternative"|77\.4509/);
+});
