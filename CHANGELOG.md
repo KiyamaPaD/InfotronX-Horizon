@@ -2,6 +2,21 @@
 
 All notable changes to Mars Atlas. Format based on [Keep a Changelog](https://keepachangelog.com/), dates are `YYYY-MM-DD`.
 
+## [Unreleased]
+
+### Added
+- Planning lab (header, "Lab"): 25 small models for mission ideas, each with an example and a readable result: value plan, instruments, geological variety, why there is no route, backup plans, route robustness, what to measure next, navigation without GPS, image alignment, turning radius, vehicle width, side slope, wheel slip, two rovers, meeting point, radio relay from line of sight, time windows, battery over time, equipment temperature, depots, samples and contamination, data budget, recovery after landing, change between two pictures, local 3D points, rover export. Planning aids from the numbers you give, not measurements.
+- 3D: optional slope colours (illustrative), a sharper Viking map when zoomed close, flat surface maps at a higher zoom on capable graphics cards.
+- 2D: a dot that travels along the active route in the Flowing line style, and a data-quality line under the pointer.
+- All tools: search across every tool and a tool count per group.
+- Start page: each NASA source says what it is used for and how good it is.
+- A test checklist page (checklist.html) with ticks kept in the browser.
+
+### Changed
+- The start page no longer draws the Milky Way, Andromeda or nebula backdrop.
+- Surface view: the camera clears nearby hills and uses a tight near plane, so the figure no longer passes through the ground.
+- 3D compass sits beside the tools; long numbers fit their cards.
+
 ## [1.0.0] - 2026-11-15
 
 ### Added
