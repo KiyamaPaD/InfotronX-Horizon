@@ -184,6 +184,7 @@ Ordinea rămâne: întâi terminăm Etapa 1 (harta).
 - Rezolvat: dublura de mai sus era cauza CI-ului roșu din scenariul 503; preview-urile părinte folosesc acum o singură cerere comună (commit b001177).
 - Indicatorul de sursă decide acoperirea HiRISE după centrul hărții. Când vederea taie marginea acoperirii ar trebui să afișeze „HiRISE (partial)”.
 - `net::ERR_BLOCKED_BY_ORB` pe URL-urile de rezervă `default/default` (HiRISE/CTX, văzut pe Slow 3G): verifică în WMTSCapabilities dacă există; dacă nu, nu le mai cerem.
+- Pinch zoom pe telefon: acum sare direct la nivelul următor. Mai fluid ar fi scalare continuă (CSS transform cât timp se mișcă degetele), apoi snap la nivelul întreg la final.
 
 ---
 

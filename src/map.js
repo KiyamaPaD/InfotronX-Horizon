@@ -111,6 +111,10 @@ export class MarsMap
         window.addEventListener("pointerup", event => this.onPointerUp(event));
         window.addEventListener("pointercancel", event => this.onPointerUp(event));
         this.container.addEventListener("wheel", event => this.onWheel(event), { passive: false });
+        // Phones may still scroll or zoom the page under a map gesture (iOS Safari ignores touch-action for pinch); the map owns these gestures.
+        this.container.addEventListener("touchmove", event => event.preventDefault(), { passive: false });
+        this.container.addEventListener("gesturestart", event => event.preventDefault());
+        this.container.addEventListener("gesturechange", event => event.preventDefault());
         this.resizeObserver = new ResizeObserver(() => this.render());
         this.resizeObserver.observe(container);
         this.render();

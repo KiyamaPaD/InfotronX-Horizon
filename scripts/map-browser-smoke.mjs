@@ -1062,6 +1062,34 @@ async function touchScenario()
         await context.close();
     }
 
+    for (const width of [375, 390])
+    {
+        const phone = await browser.newContext({ viewport: { width, height: 844 }, deviceScaleFactor: 1, hasTouch: true, isMobile: true });
+        const page = await phone.newPage();
+
+        try
+        {
+            await page.goto(APP_URL, { waitUntil: "domcontentloaded" });
+            await page.waitForSelector("#map-root");
+            await page.waitForTimeout(800);
+            const session = await phone.newCDPSession(page);
+            const box = await page.locator("#map-root").boundingBox();
+            const mid = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+            const width0 = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
+            await touchSequence(session, interpolate([{ x: mid.x + 100, y: mid.y }], [{ x: mid.x - 100, y: mid.y + 10 }], 10));
+            await touchSequence(session, interpolate([{ x: mid.x - 30, y: mid.y }, { x: mid.x + 30, y: mid.y }], [{ x: mid.x - 70, y: mid.y }, { x: mid.x + 70, y: mid.y }], 10));
+            await page.waitForTimeout(300);
+            const pageState = await page.evaluate(() => ({ scrollX: window.scrollX, scale: window.visualViewport?.scale ?? 1, offsetLeft: window.visualViewport?.offsetLeft ?? 0 }));
+            steps.push({ step: "page-gestures-" + width, width0, pageState });
+            checks.push({ name: width + "px: no horizontal page overflow", ok: width0.scroll === width0.client, detail: "scrollWidth " + width0.scroll + " / clientWidth " + width0.client, hard: true });
+            checks.push({ name: width + "px: swipe and pinch on map leave the page still", ok: pageState.scrollX === 0 && pageState.scale === 1 && pageState.offsetLeft === 0, detail: "scrollX " + pageState.scrollX + ", page scale " + pageState.scale, hard: true });
+        }
+        finally
+        {
+            await phone.close();
+        }
+    }
+
     return { scenario: "touch-375", viewport, steps, checks, ...summarize(log) };
 }
 

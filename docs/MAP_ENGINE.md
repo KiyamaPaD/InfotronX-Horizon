@@ -85,3 +85,26 @@ Zoom 11 uses real CTX and HiRISE tile pixels and preserves transparent coverage 
 - Waypoint icons stay centered on actual latitude/longitude. Their SVG marker size decreases when zooming out instead of radiating into an artificial circle. Manual movement updates real coordinates, not visual offsets.
 - New missions start empty. Only a precisely matched, untouched legacy four-point sample plus its one sample observation is removed during local library load; customized missions and saved checkpoints are preserved. For other old data, the user has a confirmation-gated Clear route action.
 - Zoom 8 remains a consistent Viking global overview without the high-detail CTX rectangle. CTX and HiRISE display from zoom 9 upward and are feathered together across their geographic coverage bounds. These changes improve display consistency but do not create missing NASA source detail or guarantee that every internal mosaic seam is invisible.
+
+## Measured performance (November 15, 2026)
+
+Measured with `scripts/map-performance.mjs` (plan step 1.5) on a developer laptop, Chromium 156 headless, app served locally, NASA Mars Trek tiles over a normal home connection, no throttling. Cold loads use a fresh browser profile each time; values are the median of 3 runs. These are laboratory numbers, not phone measurements.
+
+| Metric | Desktop 1480×960 | Mobile 375×812 |
+|---|---:|---:|
+| First real NASA image (tile fully decoded, not a preview) | 1,559 ms (runs: 1,843 / 1,559 / 1,550) | 1,562 ms (runs: 1,650 / 1,560 / 1,562) |
+| Largest Contentful Paint | 1,636 ms (runs: 1,872 / 1,636 / 1,608) | 1,868 ms (runs: 1,868 / 1,780 / 1,928) |
+| First Contentful Paint | 344 ms | 300 ms |
+| DOMContentLoaded | 288 ms | 282 ms |
+
+The LCP element was a map tile image (`IMG.map-tile-detail`) in every run.
+
+**Two minutes of continuous pan and zoom** (HiRISE layer, zoom 8–11, drags in six directions and a recenter every 12 gestures; 222 gestures on desktop, 256 on mobile):
+
+| | Desktop before | Desktop after (after GC) | Mobile before | Mobile after (after GC) |
+|---|---:|---:|---:|---:|
+| JS heap used | 2.3 MB | 3.8 MB (3.5 MB) | 2.2 MB | 3.5 MB (3.4 MB) |
+| DOM nodes | 2,201 | 2,358 (2,296) | 2,195 | 2,257 (2,257) |
+| Tile images in the DOM | 12 | 97 | 6 | 58 |
+
+Memory stays bounded by the tile cache limits (24 Viking, 84 CTX, 72 HiRISE): the image count plateaus instead of growing with every gesture. Not yet measured: real phones, throttled CPU, and sessions longer than two minutes.
