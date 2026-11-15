@@ -21,7 +21,6 @@ body { background:var(--bg); }
 .header-center-label,.edition-pill,.header-coordinates { display:none; }
 .header-center-title { font-size:12px; color:var(--muted); }
 .header-actions { gap:10px; }
-.header-copilot { color:var(--accent); border-color:#775c4d; }
 .sidebar,.sidebar-content,.map-titlebar,.workspace,.right-tabs,.analytics-quickbar { background:var(--panel); background-image:none; }
 .sidebar-left,.sidebar-right { border-color:var(--line); }
 .panel-section { border-color:var(--line); padding:22px; }
@@ -143,7 +142,6 @@ body { background:var(--bg); }
 .route-options { margin-top:14px; border-top:1px solid var(--line); padding-top:6px; }
 .route-options .route-actions { margin-top:8px; grid-template-columns:1fr 1fr; }
 .route-options .route-color-setting { font-size:10px; letter-spacing:.6px; }
-.header-copilot svg { width:12px; height:12px; vertical-align:middle; margin-left:5px; }
 
 /* Shared spacing: headings 16px from content, controls 8–12px apart. */
 .panel-section { padding:20px; }

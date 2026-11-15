@@ -35,7 +35,6 @@ export const TUTORIAL_STEPS = [
     { chapter: "ALL TOOLS", view: "all", element: ".analytics-readiness", position: "left", title: "What each tool needs", text: "A short checklist: a route with two waypoints, numeric elevation data, and a second route to compare. Tools explain what is missing instead of guessing." },
     { chapter: "ALL TOOLS", view: "all", element: ".bottom-area", position: "top", title: "Route comparison", text: "Compare route distances. Simulate a detour makes an illustrative alternative, and How to choose a route explains how to judge them." },
     { chapter: "ALL TOOLS", view: "all", element: "#tab-notes", position: "left", title: "Field notes", text: "Notes tied to places on the map: samples, hazards or reminders. They stay with your mission." },
-    { chapter: "ALL TOOLS", view: "all", element: ".header-copilot", position: "bottom", title: "Insights", text: "Quick explanations of your route computed on your device. Nothing is sent anywhere unless you ask the optional AI." },
 
     { chapter: "SHARE & HELP", element: ".header-cloud", position: "bottom", title: "Mission Center", text: "Save and open missions, export a backup, keep checkpoints, use the cloud library and share with teammates by email." },
     { chapter: "SHARE & HELP", element: ".header-share", position: "bottom", title: "Share mission", text: "Create a link to your mission. Anyone with the link can see its data, so share it only with people you trust." },

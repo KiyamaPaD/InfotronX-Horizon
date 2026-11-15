@@ -52,7 +52,7 @@ app.innerHTML = `
         <header class="header" role="banner">
             <div class="brand"><div class="brand-symbol"><span></span></div><div><div class="brand-wordmark">MARS <strong>ATLAS</strong></div><div class="brand-subline">INFOTRONX HORIZON</div></div></div>
             <div class="header-center"><span class="header-center-title">Jezero Crater <span class="header-divider"></span> Mars</span></div>
-            <nav class="header-nav" aria-label="Site"><button type="button" data-action="open-home">Start</button><button type="button" data-action="go-planet">Planet 3D</button><button type="button" data-action="go-map">Map 2D</button><button type="button" data-go="plan">Plan</button><button type="button" data-go="analyze">Analyze</button><button type="button" data-go="all">All tools</button><a href="./legal.html#credits">Sources</a><a href="./legal.html">Legal</a><button type="button" data-action="open-lab">Lab</button><button type="button" data-action="open-settings">Settings</button></nav><div class="header-actions"><button class="btn btn-outline compact" id="start-tutorial" title="A step-by-step tour of every part of the app, plus keyboard shortcuts">Help & tour</button><button class="btn btn-outline compact header-copilot" data-action="open-copilot">Insights <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M4 4h8v8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="edition-pill">NASA SPACE APPS · 2026</span><button class="btn btn-accent compact header-share" data-action="share">Share mission <span aria-hidden="true">↗</span></button></div>
+            <nav class="header-nav" aria-label="Site"><button type="button" data-action="open-home">Start</button><button type="button" data-action="go-planet">Planet 3D</button><button type="button" data-action="go-map">Map 2D</button><button type="button" data-go="plan">Plan</button><button type="button" data-go="analyze">Analyze</button><button type="button" data-go="all">All tools</button><a href="./legal.html#credits">Sources</a><a href="./legal.html">Legal</a><button type="button" data-action="open-lab">Lab</button><button type="button" data-action="open-settings">Settings</button></nav><div class="header-actions"><button class="btn btn-outline compact" id="start-tutorial" title="A step-by-step tour of every part of the app, plus keyboard shortcuts">Help & tour</button><span class="edition-pill">NASA SPACE APPS · 2026</span><button class="btn btn-accent compact header-share" data-action="share">Share mission <span aria-hidden="true">↗</span></button></div>
         </header>
         <div class="workspace">
                         <aside class="sidebar sidebar-left" id="left-sidebar">
@@ -593,15 +593,6 @@ function exportJson()
     notify("Mission JSON exported.");
 }
 
-function openCopilot()
-{
-    get('#tab-analytics').click();
-    // The science panel lives in the full workspace; the guided steps hide it.
-    if (get('#mars-shell').dataset.step !== 'all') get('.workflow-all')?.click();
-    setMobilePanel('analytics');
-    missionCopilot.refresh();
-    analyticsNavigation.openSection(missionCopilot.section);
-}
 
 
 async function shareMission()
@@ -810,7 +801,6 @@ document.addEventListener("click", event =>
 
     switch (action)
     {
-        case "open-copilot": openCopilot(); break;
         case "show-guide":
             get("#guide-modal").showModal();
             break;
