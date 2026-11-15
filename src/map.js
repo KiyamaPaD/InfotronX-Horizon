@@ -537,8 +537,23 @@ export class MarsMap
         this.container.classList.add("is-dragging");
     }
 
+    updateQualityReadout(event)
+    {
+        if (event.pointerType === "touch" || !this.container.contains(event.target)) return;
+
+        this.qualityReadout ??= Object.assign(document.createElement("div"), { className: "map-quality-readout" });
+        if (!this.qualityReadout.isConnected) this.container.append(this.qualityReadout);
+
+        const place = this.screenToGeo(event.clientX, event.clientY);
+        const inClip = place.lat <= 18.47 && place.lat >= 18.4377 && place.lon >= 77.443 && place.lon <= 77.4783;
+        this.qualityReadout.textContent = `${Math.abs(place.lat).toFixed(3)}° ${place.lat >= 0 ? "N" : "S"} ${Math.abs(place.lon).toFixed(3)}° ${place.lon >= 0 ? "E" : "W"} · ` +
+            (inClip ? "heights: USGS CTX 20 m (calculated)" : "heights: MOLA 8-bit, approximate") + " · picture: NASA Trek, layer " + this.layer;
+    }
+
     onPointerMove(event)
     {
+        this.updateQualityReadout(event);
+
         if (this.touches?.has(event.pointerId))
         {
             this.touches.set(event.pointerId, { x: event.clientX, y: event.clientY });

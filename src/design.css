@@ -2596,3 +2596,5 @@ a:not(.source-link):hover
 
 .map-3d-surface { display: grid; gap: 4px; margin-bottom: 8px; font-size: 12px; color: #d2dce5; }
 .map-3d-surface select { padding: 6px 8px; border-radius: 8px; border: 1px solid #3c4d5c; background: #0b121b; color: #e7eef4; font: inherit; }
+
+.map-quality-readout { position: absolute; left: 12px; bottom: 10px; z-index: 6; max-width: calc(100% - 24px); padding: 4px 10px; border-radius: 999px; background: #0b121bcc; color: #d2dce5; font-size: 11px; pointer-events: none; }
