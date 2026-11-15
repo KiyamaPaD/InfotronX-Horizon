@@ -1,4 +1,5 @@
 import { SHARE_HASH_PREFIX } from "./constants.js";
+import { cleanWaypointMetadata } from "./waypoint-editor.js";
 import { validateMission } from "./store.js";
 
 function encodeUtf8(text)
@@ -66,7 +67,7 @@ export function toGeoJson(mission)
 {
     const features = mission.routes.filter(route => route.points.length > 0).map(route => ({
         type: "Feature",
-        properties: { name: route.name, type: route.points.length === 1 ? "planned-waypoint" : "planned-route", body: "Mars", coordinates: "east-positive-planetocentric-degrees", validatedForTraversal: false, terrainModel: route.terrainModel ? { ...route.terrainModel, unverified: true } : null },
+        properties: { name: route.name, color: route.color, waypoints: route.points.map(point => ({ ...cleanWaypointMetadata(point), id: point.id || null })), type: route.points.length === 1 ? "planned-waypoint" : "planned-route", body: "Mars", coordinates: "east-positive-planetocentric-degrees", validatedForTraversal: false, terrainModel: route.terrainModel ? { ...route.terrainModel, unverified: true } : null },
         geometry: route.points.length === 1 ? { type: "Point", coordinates: [route.points[0].lon, route.points[0].lat] } : { type: "LineString", coordinates: route.points.map(point => [point.lon, point.lat]) }
     }));
 

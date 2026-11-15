@@ -1,6 +1,7 @@
 import { JEZERO, STORAGE_KEY, ROUTE_COLORS, MAX_OBSERVATIONS, MAX_POINTS_PER_ROUTE } from "./constants.js";
 import { isValidCoordinate } from "./geo.js";
 import { MARKER_ICONS, normalizeMarkerIcon } from "./marker-icons.js";
+import { cleanWaypointMetadata, normalizeColor } from "./waypoint-editor.js";
 import { DEFAULT_EVA_ASSUMPTIONS, validateEvaAssumptions } from "./resources.js";
 
 const createId = () => crypto.randomUUID();
@@ -101,8 +102,8 @@ export function validateMission(candidate)
     mission.routes = candidate.routes.filter(route => route && typeof route === "object" && !Array.isArray(route)).map((route, index) => ({
         id: String(route.id || createId()).slice(0, 80),
         name: String(route.name || `Route ${index + 1}`).slice(0, 70),
-        color: ROUTE_COLORS[index % ROUTE_COLORS.length],
-        points: Array.isArray(route.points) ? route.points.filter(isValidCoordinate).slice(0, MAX_POINTS_PER_ROUTE).map(point => ({ id: String(point.id || createId()).slice(0, 80), lat: Number(point.lat), lon: Number(point.lon), ...(typeof point.icon === "string" ? { icon: normalizeMarkerIcon(point.icon) } : {}) })) : [],
+        color: normalizeColor(route.color, ROUTE_COLORS[index % ROUTE_COLORS.length]),
+        points: Array.isArray(route.points) ? route.points.filter(isValidCoordinate).slice(0, MAX_POINTS_PER_ROUTE).map(point => ({ id: String(point.id || createId()).slice(0, 80), lat: Number(point.lat), lon: Number(point.lon), ...cleanWaypointMetadata(point) })) : [],
         terrainModel: readTerrainMetadata(route.terrainModel)
     }));
     mission.observations = Array.isArray(candidate.observations) ? candidate.observations.filter(observation => observation && typeof observation === "object" && isValidCoordinate(observation)).slice(0, MAX_OBSERVATIONS).map(observation => ({
@@ -119,8 +120,8 @@ export function validateMission(candidate)
         const routes = item.routes.filter(route => route && typeof route === "object" && Array.isArray(route.points)).map((route, index) => ({
             id: String(route.id || createId()).slice(0, 80),
             name: String(route.name || `Route ${index + 1}`).slice(0, 70),
-            color: ROUTE_COLORS[index % ROUTE_COLORS.length],
-            points: route.points.filter(isValidCoordinate).slice(0, MAX_POINTS_PER_ROUTE).map(point => ({ id: String(point.id || createId()).slice(0, 80), lat: Number(point.lat), lon: Number(point.lon), ...(typeof point.icon === "string" ? { icon: normalizeMarkerIcon(point.icon) } : {}) })),
+            color: normalizeColor(route.color, ROUTE_COLORS[index % ROUTE_COLORS.length]),
+            points: route.points.filter(isValidCoordinate).slice(0, MAX_POINTS_PER_ROUTE).map(point => ({ id: String(point.id || createId()).slice(0, 80), lat: Number(point.lat), lon: Number(point.lon), ...cleanWaypointMetadata(point) })),
             terrainModel: readTerrainMetadata(route.terrainModel)
         }));
         const observations = Array.isArray(item.observations) ? item.observations.filter(observation => observation && isValidCoordinate(observation)).slice(0, MAX_OBSERVATIONS).map(observation => ({
@@ -212,6 +213,10 @@ export class MissionStore
         this.missions = this.read();
         this.activeId = this.missions.some(mission => mission.id === this.loadedActiveId) ? this.loadedActiveId : this.missions[0].id;
         this.lastSaveSucceeded = true;
+        this.undoHistory = [];
+        this.redoHistory = [];
+        this.historyMissionId = this.activeId;
+        this.historySnapshot = structuredClone(this.current);
     }
 
     read()
@@ -249,10 +254,37 @@ export class MissionStore
 
     save(touch = true)
     {
+        const snapshot = structuredClone(this.current);
+
+        if (this.historyMissionId !== this.activeId)
+        {
+            this.undoHistory = [];
+            this.redoHistory = [];
+            this.historyMissionId = this.activeId;
+        }
+        else if (touch && this.historySnapshot)
+        {
+            const meaningful = mission => JSON.stringify({ ...mission, updatedAt: null });
+
+            if (meaningful(this.historySnapshot) !== meaningful(snapshot))
+            {
+                this.undoHistory.push(structuredClone(this.historySnapshot));
+
+                if (this.undoHistory.length > 40)
+                {
+                    this.undoHistory.shift();
+                }
+
+                this.redoHistory = [];
+            }
+        }
+
         if (touch)
         {
             this.current.updatedAt = new Date().toISOString();
         }
+
+        this.historySnapshot = structuredClone(this.current);
 
         try
         {
@@ -269,6 +301,73 @@ export class MissionStore
         {
             listener();
         }
+    }
+
+    get canUndo()
+    {
+        return this.undoHistory.length > 0 && this.historyMissionId === this.activeId;
+    }
+
+    get canRedo()
+    {
+        return this.redoHistory.length > 0 && this.historyMissionId === this.activeId;
+    }
+
+    undo()
+    {
+        if (!this.canUndo)
+        {
+            return false;
+        }
+
+        const index = this.missions.findIndex(mission => mission.id === this.activeId);
+        this.redoHistory.push(structuredClone(this.current));
+        this.missions[index] = this.undoHistory.pop();
+        this.save(false);
+        return true;
+    }
+
+    redo()
+    {
+        if (!this.canRedo)
+        {
+            return false;
+        }
+
+        const index = this.missions.findIndex(mission => mission.id === this.activeId);
+        this.undoHistory.push(structuredClone(this.current));
+        this.missions[index] = this.redoHistory.pop();
+        this.save(false);
+        return true;
+    }
+
+    updateMissionDetails(title, description)
+    {
+        const cleanTitle = String(title || "").trim().slice(0, 90);
+
+        if (!cleanTitle)
+        {
+            return false;
+        }
+
+        this.current.title = cleanTitle;
+        this.current.description = String(description || "").trim().slice(0, 300);
+        this.save();
+        return true;
+    }
+
+    setRouteColor(color)
+    {
+        const valid = normalizeColor(color);
+
+        if (!valid)
+        {
+            return false;
+        }
+
+        this.activeRoute.color = valid;
+        this.save();
+        return true;
     }
 
     setEvaScenario(input)
@@ -460,7 +559,11 @@ export class MissionStore
             return false;
         }
 
-        return this.addPoint({ lat: observation.lat, lon: observation.lon });
+        return this.addPoint({
+            lat: observation.lat, lon: observation.lon,
+            name: observation.title, description: observation.note,
+            category: "science", icon: observation.icon || "diamond", color: observation.color || null
+        });
     }
 
     addRoute(name = "Alternative route")
@@ -522,7 +625,8 @@ export class MissionStore
             return false;
         }
 
-        this.activeRoute.points.push({ id: createId(), lat: coordinate.lat, lon: coordinate.lon });
+        this.activeRoute.points.push({ id: createId(), lat: coordinate.lat, lon: coordinate.lon,
+            ...cleanWaypointMetadata(coordinate) });
         this.activeRoute.terrainModel = null;
         this.save();
         return true;
@@ -561,6 +665,28 @@ export class MissionStore
         point.lat = coordinate.lat;
         point.lon = coordinate.lon;
         this.activeRoute.terrainModel = null;
+        this.save();
+        return true;
+    }
+
+    updateWaypoint(id, input)
+    {
+        const point = this.activeRoute.points.find(item => item.id === id);
+        const coordinate = { lat: Number(input?.lat), lon: Number(input?.lon) };
+
+        if (!point || !isValidCoordinate(coordinate))
+        {
+            return false;
+        }
+
+        const moved = point.lat !== coordinate.lat || point.lon !== coordinate.lon;
+        Object.assign(point, cleanWaypointMetadata(input), coordinate);
+
+        if (moved)
+        {
+            this.activeRoute.terrainModel = null;
+        }
+
         this.save();
         return true;
     }
