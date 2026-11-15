@@ -34,5 +34,6 @@ test("map tiles survive short pans and metadata does not reload loaded images", 
     assert.match(map, /tileCacheLimit = 72/);
     assert.match(map, /tile\.style\.display = "none"/);
     assert.match(map, /previousZoom/);
-    assert.match(map, /!this\.tileTemplates\.has\(this\.layer\.id\)/);
+    assert.match(map, /this\.capabilitiesReady = this\.tileTemplates\.has\(this\.layer\.id\)/);
+    assert.match(map, /this\.scheduleCapabilities\(\)/);
 });

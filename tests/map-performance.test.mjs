@@ -94,7 +94,7 @@ test("inactive cached images cannot claim imagery is visible at new zoom", () =>
     const map = Object.create(MarsMap.prototype);
     const classes = new Map();
     map.container = { classList: { toggle(name, enabled) { classes.set(name, enabled); } } };
-    map.notice = { hidden: true, textContent: "" };
+    map.notice = { hidden: true, textContent: "", classList: { toggle() {} } };
     map.activeTiles = new Set(["new"]);
     map.tiles = new Map([
         ["old", { dataset: { state: "loaded" }, naturalWidth: 256 }],
@@ -156,85 +156,146 @@ test("Analytics has focused groups and keeps specialized tools accessible", () =
 });
 
 
-test("once a NASA tile format works, other tiles avoid duplicate format requests", () =>
+function withFakeTiles(run)
 {
     const original = globalThis.document;
-    const requested = [];
-    let image;
+    const requests = [];
 
     globalThis.document = {
         createElement(name)
         {
-            assert.equal(name, "img");
-            image = {
+            const element = {
+                name,
                 dataset: {},
                 style: {},
+                children: [],
                 isConnected: true,
-                set src(value) { requested.push(value); },
-                get src() { return requested.at(-1); }
+                naturalWidth: 256,
+                naturalHeight: 256,
+                append(...items) { this.children.push(...items); },
+                remove() { this.isConnected = false; },
+                removeAttribute(attribute) { if (attribute === "src") { this.url = undefined; } },
+                set src(value) { this.url = value; requests.push({ name: this.className, url: value }); },
+                get src() { return this.url; }
             };
-            return image;
+
+            return element;
         }
     };
 
     try
     {
-        const map = Object.create(MarsMap.prototype);
-        map.layer = {
-            id: "ctx",
-            extensions: ["jpg", "png"],
-            url: "https://trek.nasa.gov/tiles/Mars/EQ/example/1.0.0"
-        };
-        map.tileTemplates = new Map();
-        map.preferredTileSuffix = new Map([["ctx", { matrixSet: "default028mm", extension: "jpg" }]]);
-        map.updateImageryStatus = () => {};
-        map.createTile(1, 1, 4, 0, 0);
-        assert.equal(requested.length, 1);
-        assert.match(requested[0], /default028mm\/4\/1\/1\.jpg$/);
-
-        image.onerror();
-        assert.equal(requested.length, 1);
-        assert.equal(image.dataset.state, "error");
+        return run(requests);
     }
     finally
     {
         globalThis.document = original;
     }
+}
+
+function testMap()
+{
+    const map = Object.create(MarsMap.prototype);
+    map.layer = {
+        id: "ctx",
+        extensions: ["jpg", "png"],
+        url: "https://trek.nasa.gov/tiles/Mars/EQ/example/1.0.0"
+    };
+    map.tileTemplates = new Map();
+    map.preferredTileSuffix = new Map();
+    map.imageErrors = 0;
+    map.loadedImages = 0;
+    map.updateImageryStatus = () => {};
+    return map;
+}
+
+test("working NASA tile format is preferred but alternate paths remain available", () =>
+{
+    const map = testMap();
+    map.preferredTileSuffix.set("ctx:4", { matrixSet: "default028mm", extension: "jpg" });
+    const candidates = map.tileCandidates(1, 1, 4);
+
+    assert.match(candidates[0], /default028mm\/4\/1\/1\.jpg$/);
+    assert.ok(candidates.some(url => url.endsWith(".png")));
+    assert.ok(candidates.some(url => url.includes("/default/default/")));
+    assert.equal(new Set(candidates).size, candidates.length);
 });
 
-
-test("Mars imagery does not stretch 1-pixel placeholders into huge map blocks", () =>
+test("low-resolution parent appears beneath missing detail and cropped correctly", () =>
 {
-    const previous = globalThis.document;
-    let image;
-    globalThis.document = {
-        createElement()
+    withFakeTiles(requests =>
+    {
+        const map = testMap();
+        const tile = map.createTile(5, 6, 10, 0, 0);
+        const [preview, detail] = tile.children;
+
+        assert.equal(requests.length, 0, "Network begins only after the tile is attached");
+        tile.startLoading();
+        assert.equal(requests.length, 2);
+        assert.match(detail.src, /\/10\/6\/5\.jpg$/);
+        assert.match(preview.src, /\/9\/3\/2\.jpg$/);
+        assert.equal(preview.style.left, "-256px");
+        assert.equal(preview.style.top, "0px");
+        assert.equal(preview.style.width, "512px");
+
+        preview.onload();
+        assert.equal(tile.dataset.preview, "loaded");
+        assert.equal(preview.style.opacity, "1");
+
+        detail.naturalWidth = 1;
+        detail.onload();
+        assert.equal(tile.dataset.state, "loading", "A tiny placeholder cannot be accepted as real imagery");
+        assert.notEqual(detail.src, requests[0].url);
+
+        detail.naturalWidth = 256;
+        detail.onload();
+        assert.equal(tile.dataset.state, "loaded");
+        assert.equal(detail.style.opacity, "1");
+        assert.equal(preview.style.opacity, "0");
+    });
+});
+
+test("missing high resolution tiles retain parent context after all alternatives fail", () =>
+{
+    withFakeTiles(() =>
+    {
+        const map = testMap();
+        const tile = map.createTile(9, 12, 10, 0, 0);
+        tile.startLoading();
+        const [preview, detail] = tile.children;
+        preview.onload();
+
+        for (let i = 0; i < 7 && tile.dataset.state !== "error"; i++)
         {
-            image = { dataset: {}, style: {}, isConnected: true, naturalWidth: 1, naturalHeight: 1, set src(value) { this.lastSrc = value; } };
-            return image;
+            detail.onerror();
         }
-    };
 
-    try
-    {
-        const map = Object.create(MarsMap.prototype);
-        map.layer = { id: "ctx", url: "https://example.invalid/1.0.0", extensions: ["jpg"] };
-        map.tiles = new Map();
-        map.tileTemplates = new Map();
-        map.preferredTileSuffix = new Map([["ctx", { matrixSet: "default028mm", extension: "jpg" }]]);
-        map.imageErrors = 0;
-        map.updateImageryStatus = () => {};
-        map.createTile(5, 6, 11, 0, 0);
-        image.onload();
-
-        assert.equal(image.dataset.state, "error");
-        assert.equal(image.style.opacity, "0");
+        assert.equal(tile.dataset.state, "error");
+        assert.equal(tile.dataset.preview, "loaded");
+        assert.equal(preview.style.opacity, "1");
         assert.equal(map.imageErrors, 1);
-    }
-    finally
-    {
-        globalThis.document = previous;
-    }
+        tile.dispose();
+        assert.equal(detail.onload, null);
+        assert.equal(preview.onerror, null);
+    });
+});
+
+test("current zoom only counts loaded parent previews, not stale cached tiles", () =>
+{
+    const map = Object.create(MarsMap.prototype);
+    const classes = new Map();
+    map.container = { classList: { toggle(name, enabled) { classes.set(name, enabled); } } };
+    map.notice = { hidden: false, textContent: "", classList: { toggle(name, enabled) { classes.set(name, enabled); } } };
+    map.activeTiles = new Set(["new"]);
+    map.tiles = new Map([
+        ["old", { dataset: { state: "loaded", preview: "loaded" } }],
+        ["new", { dataset: { state: "error", preview: "loaded" } }]
+    ]);
+
+    map.updateImageryStatus();
+    assert.equal(classes.get("map-has-imagery"), true);
+    assert.equal(classes.get("map-preview-notice"), true);
+    assert.match(map.notice.textContent, /Lower-resolution/);
 });
 
 test("native useful zoom limits avoid enlarging regional relief imagery", () =>
@@ -251,7 +312,7 @@ test("native useful zoom limits avoid enlarging regional relief imagery", () =>
     map.container = { classList: { remove() {} } };
     map.render = () => {};
     map.options = { onViewChange() {}, onLayerChange() {} };
-    map.loadCapabilities = () => {};
+    map.scheduleCapabilities = () => {};
     map.setLayer("mola");
     assert.ok(map.zoom <= 7);
 
