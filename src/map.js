@@ -78,7 +78,7 @@ export class MarsMap
         this.capabilitiesReady = false;
         this.capabilitiesTimer = null;
 
-        this.container.innerHTML = `<div class="map-fallback" aria-hidden="true"><div class="fallback-globe"></div><div class="coordinate-grid"></div></div><div class="map-background-tiles"></div><div class="map-context-tiles"></div><div class="map-tiles"></div><svg class="map-overlays" role="img" aria-label="Editable mission route overlays"></svg><div class="map-attribution">Map tiles © NASA / JPL · Mars Trek</div><div class="map-load-notice" role="status">Loading Mars imagery…</div>`;
+        this.container.innerHTML = `<div class="map-fallback" aria-hidden="true"><div class="fallback-globe"></div><div class="coordinate-grid"></div></div><div class="map-background-tiles"></div><div class="map-context-tiles"></div><div class="map-tiles"></div><svg class="map-overlays" role="img" aria-label="Editable mission route overlays"></svg><div class="map-attribution">Map tiles © NASA / JPL · Mars Trek</div><div class="map-load-notice" role="status">Loading Mars imagery…</div><div class="map-network-notice" role="status" hidden><span class="map-network-dot" aria-hidden="true"></span><span class="map-network-text"></span></div>`;
         this.tileContainer = this.container.querySelector(".map-tiles");
         this.backgroundTileContainer = this.container.querySelector(".map-background-tiles");
         this.backgroundTiles = new Map();
@@ -90,6 +90,12 @@ export class MarsMap
         this.contextTileCacheLimit = 84;
         this.overlay = this.container.querySelector(".map-overlays");
         this.notice = this.container.querySelector(".map-load-notice");
+        this.networkNotice = this.container.querySelector(".map-network-notice");
+        this.offline = navigator.onLine === false;
+        this.awaitingRecovery = false;
+        this.lastRetryAt = 0;
+        window.addEventListener("online", () => this.setOffline(false));
+        window.addEventListener("offline", () => this.setOffline(true));
 
         this.container.addEventListener("pointerdown", event => this.onPointerDown(event));
         this.container.addEventListener("contextmenu", event => this.onContextMenu(event));
@@ -631,6 +637,7 @@ export class MarsMap
             tile.dataset.failedAt = String(Date.now());
             detail.style.opacity = "0";
             report();
+            this.onTileOutcome(false);
         };
 
         detail.onload = () =>
@@ -648,6 +655,7 @@ export class MarsMap
 
             tile.dataset.state = "loaded";
             this.loadedImages++;
+            this.onTileOutcome(true);
             detail.style.opacity = "1";
             preview.style.opacity = selectedLayerId === "hirise" && layer.id === "hirise"
                 && tile.dataset.preview === "loaded" ? "1" : "0";
@@ -812,6 +820,7 @@ export class MarsMap
             tile.dataset.failedAt = String(Date.now());
             tile.style.opacity = "0";
             report();
+            this.onTileOutcome(false);
         };
 
         tile.onload = () =>
@@ -830,6 +839,7 @@ export class MarsMap
             tile.dataset.state = "loaded";
             tile.style.opacity = "1";
             report();
+            this.onTileOutcome(true);
         };
 
         tile.onerror = next;
@@ -970,6 +980,7 @@ export class MarsMap
             tile.dataset.failedAt = String(Date.now());
             tile.style.opacity = "0";
             report();
+            this.onTileOutcome(false);
         };
 
         tile.onload = () =>
@@ -989,6 +1000,7 @@ export class MarsMap
             tile.style.opacity = source.id === "ctx-jezero" ? "0.91" : "1";
 
             report();
+            this.onTileOutcome(true);
         };
 
         tile.onerror = next;
@@ -1261,6 +1273,7 @@ export class MarsMap
         this.notice.hidden = anyImagery || (!this.backgroundActiveTiles.size && !this.activeContextTiles.size && !this.activeTiles.size);
         this.notice.textContent = waiting > 0
             ? "Loading Mars imagery…" : "NASA imagery is unavailable for this area.";
+        this.updateNetworkNotice();
     }
 
     renderTiles()
@@ -1419,6 +1432,7 @@ export class MarsMap
             : missing > 0 && detail > 0
                 ? "Some NASA map areas are unavailable at this zoom."
                 : pending > 0 ? "Loading Mars imagery…" : "NASA imagery is unavailable at this view. Try another basemap.";
+        this.updateNetworkNotice();
     }
 
     renderOverlays()
@@ -1502,6 +1516,94 @@ export class MarsMap
                 fill: "#ffffff", "pointer-events": "none" });
             this.overlay.append(halo, ring, dot);
         }
+    }
+
+    setOffline(offline)
+    {
+        this.offline = offline;
+
+        if (!offline)
+        {
+            this.retryFailedTiles(true);
+        }
+
+        this.updateNetworkNotice();
+    }
+
+    // Expiring failed tiles lets the next render recreate them through the normal retry path; unforced retries run at most every 16 s.
+    retryFailedTiles(force = false)
+    {
+        if (this.offline || !force && Date.now() - this.lastRetryAt < 16000)
+        {
+            return;
+        }
+
+        this.lastRetryAt = Date.now();
+
+        for (const cache of [this.tiles, this.backgroundTiles, this.contextTiles])
+        {
+            for (const tile of cache.values())
+            {
+                if (tile.dataset.state === "error") tile.dataset.failedAt = "0";
+            }
+        }
+
+        this.render();
+    }
+
+    onTileOutcome(loaded)
+    {
+        if (loaded && this.awaitingRecovery)
+        {
+            this.awaitingRecovery = false;
+            this.retryFailedTiles();
+        }
+        else if (!loaded)
+        {
+            this.awaitingRecovery = true;
+        }
+
+        this.updateNetworkNotice();
+    }
+
+    allVisibleTilesFailed()
+    {
+        const states = [
+            ...[...this.activeTiles].map(key => this.tiles.get(key)?.dataset.state),
+            ...[...this.backgroundActiveTiles].map(key => this.backgroundTiles.get(key)?.dataset.state),
+            ...[...this.activeContextTiles].map(key => this.contextTiles.get(key)?.dataset.state)
+        ].filter(Boolean);
+
+        return states.length > 0 && states.every(state => state === "error");
+    }
+
+    updateNetworkNotice()
+    {
+        if (!this.networkNotice)
+        {
+            return;
+        }
+
+        const failing = !this.offline && this.allVisibleTilesFailed();
+        const hasImagery = this.container.classList.contains("map-has-imagery");
+        clearTimeout(this.recoveryTimer);
+
+        if (failing)
+        {
+            this.recoveryTimer = setTimeout(() => this.retryFailedTiles(true), 16000);
+        }
+
+        this.networkNotice.hidden = !(this.offline || failing);
+
+        if (this.networkNotice.hidden)
+        {
+            return;
+        }
+
+        this.notice.hidden = true;
+        this.networkNotice.querySelector(".map-network-text").textContent = this.offline
+            ? (hasImagery ? "No connection · showing imagery already loaded" : "No connection · imagery will load when you are back online")
+            : "NASA imagery is not responding · retrying automatically";
     }
 
     render()

@@ -628,16 +628,19 @@ async function openWatchedScenario(viewport, beforeLoad)
     await context.addInitScript(() =>
     {
         window.__mapMessages = [];
-        let lastNotice = null;
+        const last = {};
         const record = () =>
         {
-            const notice = document.querySelector("#map-root .map-load-notice");
-            const text = notice && !notice.hidden ? notice.textContent : null;
-
-            if (text !== lastNotice)
+            for (const [kind, selector] of [["notice", "#map-root .map-load-notice"], ["network", "#map-root .map-network-notice"]])
             {
-                window.__mapMessages.push({ at: Math.round(performance.now()), kind: "notice", text });
-                lastNotice = text;
+                const element = document.querySelector(selector);
+                const text = element && !element.hidden ? element.textContent : null;
+
+                if (text !== (last[kind] ?? null))
+                {
+                    window.__mapMessages.push({ at: Math.round(performance.now()), kind, text });
+                    last[kind] = text;
+                }
             }
         };
 
@@ -727,9 +730,11 @@ async function slowNetworkScenario()
         const toasts = messages.filter(item => item.kind === "toast");
         steps.push({ step: "slow-3g-messages", firstImageMs, messages });
 
-        checks.push({ name: "slow 3G: first real image", ok: true, detail: firstImageMs + " ms after DOM ready", hard: false });
-        checks.push({ name: "slow 3G: zoom 10 fully loads", ok: loaded, detail: loaded ? "all visible tiles loaded" : "still loading after 90 s", hard: false });
-        checks.push({ name: "slow 3G: no repeated pop-ups", ok: toasts.length <= 1, detail: toasts.length + " toasts", hard: false });
+        const falseOffline = messages.filter(item => item.kind === "network" && item.text);
+        checks.push({ name: "slow 3G: first real image", ok: true, detail: firstImageMs + " ms after DOM ready", hard: true });
+        checks.push({ name: "slow 3G: zoom 10 fully loads", ok: loaded, detail: loaded ? "all visible tiles loaded" : "still loading after 90 s", hard: true });
+        checks.push({ name: "slow 3G: no repeated pop-ups", ok: toasts.length <= 1, detail: toasts.length + " toasts", hard: true });
+        checks.push({ name: "slow 3G: no false offline banner", ok: falseOffline.length === 0, detail: falseOffline.length + " banner episodes", hard: true });
     }
     finally
     {
@@ -784,17 +789,18 @@ async function offlineScenario()
         await capture(target, log, steps, "offline-after-online");
         const afterMessages = (await readMessages(target)).slice(messagesBefore + offlineMessages.length);
         const noticeEpisodes = offlineMessages.filter(item => item.kind === "notice" && item.text).length;
+        const bannerEpisodes = offlineMessages.filter(item => item.kind === "network" && item.text);
         const toasts = [...offlineMessages, ...afterMessages].filter(item => item.kind === "toast");
         const maxAttempts = attemptsPerUrl(offlineRequests);
         const allowedAttempts = 1 + Math.floor(offlineSeconds / 16);
-        const noticeHiddenAfter = await target.evaluate(() => document.querySelector("#map-root .map-load-notice").hidden);
+        const noticeHiddenAfter = await target.evaluate(() => document.querySelector("#map-root .map-load-notice").hidden && document.querySelector("#map-root .map-network-notice").hidden);
 
         steps.push({ step: "offline-analysis", offlineSeconds, offlineRequests: offlineRequests.length, maxAttemptsPerUrl: maxAttempts, allowedAttempts, onlineRequests: log.requests.length - onlineFrom, recovered, recoveryMs, offlineMessages, afterMessages, noticeHiddenAfter });
 
-        checks.push({ name: "offline: no retry storm", ok: maxAttempts <= allowedAttempts, detail: offlineRequests.length + " requests in " + offlineSeconds.toFixed(0) + " s, max " + maxAttempts + " per tile (allowed " + allowedAttempts + ")", hard: false });
-        checks.push({ name: "offline: one clear degradation message", ok: noticeEpisodes + toasts.length === 1, detail: noticeEpisodes + " notice episodes, " + toasts.length + " toasts", hard: false });
-        checks.push({ name: "online again: recovers without user action", ok: recovered, detail: recovered ? recoveryMs + " ms" : "not recovered after 45 s", hard: false });
-        checks.push({ name: "online again: message cleared", ok: noticeHiddenAfter, detail: noticeHiddenAfter ? "notice hidden" : "notice still visible", hard: false });
+        checks.push({ name: "offline: no retry storm", ok: maxAttempts <= allowedAttempts, detail: offlineRequests.length + " requests in " + offlineSeconds.toFixed(0) + " s, max " + maxAttempts + " per tile (allowed " + allowedAttempts + ")", hard: true });
+        checks.push({ name: "offline: one clear degradation message", ok: bannerEpisodes.length === 1 && noticeEpisodes === 0 && toasts.length === 0, detail: bannerEpisodes.length + " banner episodes" + (bannerEpisodes[0] ? " (\"" + bannerEpisodes[0].text + "\")" : "") + ", " + noticeEpisodes + " other notices, " + toasts.length + " toasts", hard: true });
+        checks.push({ name: "online again: recovers without user action", ok: recovered, detail: recovered ? recoveryMs + " ms" : "not recovered after 45 s", hard: true });
+        checks.push({ name: "online again: message cleared", ok: noticeHiddenAfter, detail: noticeHiddenAfter ? "banner and notice hidden" : "a message is still visible", hard: true });
     }
     finally
     {

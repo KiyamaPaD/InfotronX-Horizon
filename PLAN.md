@@ -50,6 +50,11 @@ Ordinea rămâne: întâi terminăm Etapa 1 (harta).
 - Pentru fiecare scenariu salvează: număr de cereri, coduri HTTP, cereri duplicate, screenshot.
 - **Gata când:** zero 404 pe nivelurile folosite, zero cereri duplicate pentru același tile, zero erori în consolă.
 
+### 1.1b Fundalul Viking nu se mai anulează la pan
+- Tile-urile Viking din fundal nu se anulează în timpul pan-ului dacă sunt încă în viewport sau în cache-ul de ~24.
+- Dovadă: pe Slow 3G, testul de browser arată `net::ERR_ABORTED` urmat de o nouă cerere (`reissue-after-abort`) pentru tile-uri Viking zoom 7; în CI, la pan mare, 12 tile-uri Viking cerute de două ori.
+- **Gata când:** `reissue-after-abort` = 0 pentru tile-urile Viking în toate scenariile, inclusiv Slow 3G.
+
 ### 1.2 Marginile HiRISE
 - Fă un test care merge la colțurile envelope-ului HiRISE (S 18.3068, N 18.6693, W 77.2229, E 77.5840) și verifică că tile-urile cerute se intersectează cu envelope-ul.
 - Distinge „lipsesc date în sursă” (PNG transparent) de „bug de poziționare”.
