@@ -330,7 +330,9 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
                 </div>
                 <div class="map-3d-actions"><button type="button" class="btn btn-quiet compact" data-3d="undo">Undo</button><button type="button" class="btn btn-quiet compact" data-3d="redo">Redo</button></div>
             </div>
-            <div class="map-3d-group"><span class="map-3d-label">YOUR ROUTE</span><p class="map-3d-route" data-3d="route"></p></div>
+            <div class="map-3d-group"><span class="map-3d-label">YOUR ROUTE</span><p class="map-3d-route" data-3d="route"></p>
+                <div class="map-3d-actions"><button type="button" class="btn btn-accent compact" data-3d="preview" aria-pressed="false">▶ Fly over the route</button><button type="button" class="btn btn-outline compact" data-3d="speed" title="Fly-over speed" style="flex:0 0 auto">1×</button></div>
+            </div>
             <details class="map-3d-group map-3d-lines"><summary class="map-3d-label">LINES</summary><div data-3d="lines"></div></details>
             <details class="map-3d-group map-3d-legend" open><summary class="map-3d-label">LEGEND</summary>
                 <ul>
@@ -354,6 +356,12 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
             <div class="map-3d-site-actions"><button type="button" class="btn btn-accent compact" data-3d="site-fly">Fly here</button><button type="button" class="btn btn-outline compact" data-3d="site-add">Add as waypoint</button></div>
         </aside>
         <div class="map-3d-tip" hidden></div>
+        <div class="map-3d-profile" data-3d="profile" hidden>
+            <div class="map-3d-profile-head"><span>HEIGHT ALONG THE ROUTE</span><button type="button" class="map-3d-fold" data-3d="profile-fold" aria-label="Fold or unfold the profile">−</button></div>
+            <svg viewBox="0 0 560 120" role="img" aria-label="Elevation profile of the route" preserveAspectRatio="none"></svg>
+            <p class="map-3d-profile-read" data-profile-read>Move over the profile to see the height at each point.</p>
+            <p class="map-3d-profile-note">Heights from NASA MOLA (about 463 m grid), measured from the Mars datum. Small features are not resolved.</p>
+        </div>
         <div class="map-3d-nav">
             <button type="button" class="map-3d-compass" data-3d="compass" aria-label="Compass. North is where the red needle points. Click to return to the default view.">
                 <svg viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="25" fill="#0b121bcc" stroke="#ffffff33"/><g data-3d="needle" style="transform-origin:28px 28px"><path d="M28 7 L34 28 L28 24 L22 28 Z" fill="#e3623a"/><path d="M28 49 L34 28 L28 32 L22 28 Z" fill="#aebdca"/></g><text x="28" y="6" text-anchor="middle" font-size="7" font-weight="700" fill="#fff">N</text></svg>
@@ -623,6 +631,16 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
                 const value = grey(x0, y0) * (1 - tx) * (1 - ty) + grey(x1, y0) * tx * (1 - ty) + grey(x0, y1) * (1 - tx) * ty + grey(x1, y1) * tx * ty;
                 return value / 255 * 0.00867 * factor;
             };
+            const heightMeters = (lat, lon) =>
+            {
+                if (!relief.data) return null;
+
+                const x = Math.min(relief.width - 1, Math.max(0, (lon + 180) / 360 * relief.width)), y = Math.min(relief.height - 1, Math.max(0, (90 - lat) / 180 * relief.height));
+                const x0 = Math.floor(x), y0 = Math.floor(y), x1 = Math.min(relief.width - 1, x0 + 1), y1 = Math.min(relief.height - 1, y0 + 1), tx = x - x0, ty = y - y0;
+                const grey = (cx, cy) => relief.data[(cy * relief.width + cx) * 4];
+                const value = grey(x0, y0) * (1 - tx) * (1 - ty) + grey(x1, y0) * tx * (1 - ty) + grey(x0, y1) * (1 - tx) * ty + grey(x1, y1) * tx * ty;
+                return value / 255 * 29430 - 8201;
+            };
             const applyRelief = () =>
             {
                 for (let i = 0; i < vertexCount; i++)
@@ -674,6 +692,8 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
             const route = new THREE.Group();
             scene.add(route);
             const waypointTargets = [], noteTargets = [], labels = [];
+            let lastRoute = null;
+            let onRouteBuilt = () => {};
             let roverTick = null, ringTick = null;
             const labelCache = new Map();
             const labelTexture = text =>
@@ -765,6 +785,8 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
                 waypointTargets.length = 0;
                 noteTargets.length = 0;
                 labels.length = 0;
+                lastRoute = null;
+                onRouteBuilt();
                 const look = getLineStyle();
                 const colour = routeControls?.getColor?.() || routeColor;
 
@@ -848,6 +870,9 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
                 if (dense.length < 2) return;
 
                 const curve = new THREE.CatmullRomCurve3(dense);
+                const routeCentre = vectors.reduce((sum, vector) => sum.add(vector), new THREE.Vector3()).normalize();
+                lastRoute = { dense, curve, totalAngle, centre: routeCentre.lengthSq() > 0.25 ? routeCentre : defaultDirection };
+                onRouteBuilt();
                 const lineMaterial = new THREE.MeshBasicMaterial({ color: colour, transparent: look.opacity < 1, opacity: look.opacity });
                 const outline = new THREE.MeshBasicMaterial({ color: 0x07121a, transparent: true, opacity: 0.55 * look.opacity });
 
@@ -1260,6 +1285,162 @@ export async function openMap3d({ host, points = [], getPoints, getRoutes, getOb
                 event.currentTarget.setAttribute("aria-expanded", String(!folded));
                 event.currentTarget.textContent = folded ? "+" : "−";
             });
+
+            // Fly-over of the route, with the height profile underneath. The marker on the profile and the camera move together.
+            const profile = get("profile");
+            const profileSvg = profile.querySelector("svg");
+            const profileRead = profile.querySelector("[data-profile-read]");
+            const scrub = new THREE.Mesh(new THREE.SphereGeometry(0.012, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffdd9c, depthTest: false }));
+            scrub.renderOrder = 20;
+            scrub.visible = false;
+            scene.add(scrub);
+            let samples = [];
+            let previewing = null;
+            const PROFILE = { width: 560, height: 120, left: 36, right: 8, top: 10, bottom: 18 };
+            const profileX = t => PROFILE.left + t * (PROFILE.width - PROFILE.left - PROFILE.right);
+
+            const buildProfile = () =>
+            {
+                samples = [];
+
+                if (!lastRoute || lastRoute.dense.length < 2 || !relief.data)
+                {
+                    profile.hidden = true;
+                    return;
+                }
+
+                const { dense } = lastRoute;
+                const stride = Math.max(1, Math.floor(dense.length / 300));
+                let distance = 0;
+
+                for (let i = 0; i < dense.length; i += stride)
+                {
+                    if (i > 0) distance += Math.acos(Math.max(-1, Math.min(1, dense[i].clone().normalize().dot(dense[i - stride].clone().normalize())))) * 3396.19;
+
+                    const place = toLatLon(dense[i]);
+                    samples.push({ distance, height: heightMeters(place.lat, place.lon), lat: place.lat, lon: place.lon, t: i / (dense.length - 1) });
+                }
+
+                const known = samples.filter(sample => sample.height !== null);
+
+                if (known.length < 2 || distance <= 0)
+                {
+                    profile.hidden = true;
+                    return;
+                }
+
+                const low = Math.min(...known.map(sample => sample.height)), high = Math.max(...known.map(sample => sample.height));
+                const span = Math.max(50, high - low);
+                const y = height => PROFILE.top + (1 - (height - low) / span) * (PROFILE.height - PROFILE.top - PROFILE.bottom);
+                const points = known.map(sample => `${profileX(sample.distance / distance).toFixed(1)},${y(sample.height).toFixed(1)}`);
+                const baseline = PROFILE.height - PROFILE.bottom;
+                profileSvg.innerHTML = `<defs><linearGradient id="profile-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e39165" stop-opacity=".5"/><stop offset="1" stop-color="#e39165" stop-opacity="0"/></linearGradient></defs>
+                    <path d="M${points[0].split(",")[0]},${baseline} L${points.join(" L")} L${points.at(-1).split(",")[0]},${baseline} Z" fill="url(#profile-fill)"/>
+                    <polyline points="${points.join(" ")}" fill="none" stroke="#f0a27a" stroke-width="2" stroke-linejoin="round"/>
+                    <text x="2" y="${y(high) + 4}" class="pf-axis">${Math.round(high)} m</text><text x="2" y="${y(low) + 4}" class="pf-axis">${Math.round(low)} m</text>
+                    <text x="${PROFILE.left}" y="${PROFILE.height - 4}" class="pf-axis">0</text><text x="${PROFILE.width - PROFILE.right}" y="${PROFILE.height - 4}" text-anchor="end" class="pf-axis">${distance.toFixed(distance < 10 ? 1 : 0)} km</text>
+                    <line class="pf-cursor" x1="0" x2="0" y1="${PROFILE.top}" y2="${baseline}" visibility="hidden"/>`;
+                profile.dataset.distance = String(distance);
+                profile.hidden = false;
+            };
+            onRouteBuilt = buildProfile;
+
+            const showAt = t =>
+            {
+                if (!lastRoute || !samples.length) return;
+
+                const index = Math.max(0, Math.min(samples.length - 1, Math.round(t * (samples.length - 1))));
+                const sample = samples[index];
+                const cursor = profileSvg.querySelector(".pf-cursor");
+
+                if (cursor)
+                {
+                    cursor.setAttribute("x1", profileX(sample.distance / Number(profile.dataset.distance)));
+                    cursor.setAttribute("x2", profileX(sample.distance / Number(profile.dataset.distance)));
+                    cursor.setAttribute("visibility", "visible");
+                }
+
+                profileRead.textContent = `${sample.distance.toFixed(1)} km along the route · ${sample.height === null ? "no height data" : Math.round(sample.height) + " m (MOLA)"} · ${Math.abs(sample.lat).toFixed(2)}° ${sample.lat >= 0 ? "N" : "S"} ${Math.abs(sample.lon).toFixed(2)}° ${sample.lon >= 0 ? "E" : "W"}`;
+                scrub.position.copy(lastRoute.curve.getPointAt(Math.min(0.9999, Math.max(0, t))));
+                scrub.visible = true;
+            };
+
+            profileSvg.addEventListener("pointermove", event =>
+            {
+                if (previewing) return;
+
+                const box = profileSvg.getBoundingClientRect();
+                const x = (event.clientX - box.left) / box.width * PROFILE.width;
+                showAt(Math.max(0, Math.min(1, (x - PROFILE.left) / (PROFILE.width - PROFILE.left - PROFILE.right))));
+            });
+            profileSvg.addEventListener("pointerleave", () =>
+            {
+                if (previewing) return;
+
+                scrub.visible = false;
+                profileSvg.querySelector(".pf-cursor")?.setAttribute("visibility", "hidden");
+                profileRead.textContent = "Move over the profile to see the height at each point.";
+            });
+            get("profile-fold").addEventListener("click", event =>
+            {
+                const folded = profile.classList.toggle("is-folded");
+                event.currentTarget.textContent = folded ? "+" : "−";
+            });
+
+            const previewButton = get("preview");
+            let speed = 1;
+            const stopPreview = () =>
+            {
+                if (!previewing) return;
+
+                tickers.delete(previewing.tick);
+                previewing = null;
+                controls.enabled = true;
+                camera.up.set(0, 1, 0);
+                previewButton.textContent = "▶ Fly over the route";
+                previewButton.setAttribute("aria-pressed", "false");
+                scrub.visible = false;
+                flyTo(lastRoute ? lastRoute.centre : defaultDirection, 2.4);
+            };
+            const startPreview = () =>
+            {
+                if (!lastRoute || lastRoute.dense.length < 2)
+                {
+                    status.textContent = "Add two or more waypoints to fly over a route.";
+                    return;
+                }
+
+                const { curve, totalAngle } = lastRoute;
+                const seconds = Math.max(12, Math.min(70, totalAngle * 40));
+                const begin = performance.now();
+                const here = new THREE.Vector3(), ahead = new THREE.Vector3();
+                controls.enabled = false;
+                previewButton.textContent = "■ Stop fly-over";
+                previewButton.setAttribute("aria-pressed", "true");
+                const tick = now =>
+                {
+                    const t = Math.min(1, (now - begin) / 1000 * speed / seconds);
+                    curve.getPointAt(Math.min(0.9999, t), here);
+                    curve.getPointAt(Math.min(0.9999, t + 0.02), ahead);
+                    const up = here.clone().normalize();
+                    camera.up.copy(up);
+                    camera.position.copy(here).addScaledVector(up, 0.05);
+                    camera.lookAt(ahead);
+                    showAt(t);
+
+                    if (t >= 1) stopPreview();
+                };
+                previewing = { tick };
+                tickers.add(tick);
+            };
+            previewButton.addEventListener("click", () => (previewing ? stopPreview() : startPreview()));
+            get("speed").addEventListener("click", event =>
+            {
+                speed = speed === 1 ? 2 : speed === 2 ? 4 : 1;
+                event.currentTarget.textContent = speed + "×";
+            });
+            const baseStop = stopListening;
+            stopTools = (previousStop => () => { previousStop?.(); stopPreview(); })(stopTools);
 
             const updateRouteText = () =>
             {
