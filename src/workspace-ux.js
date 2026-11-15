@@ -1,4 +1,4 @@
-export function setupAnalyticsNavigation(panel)
+export function setupAnalyticsNavigation(panel, options = {})
 {
     if (!panel || panel.querySelector(".analytics-quickbar"))
     {
@@ -42,6 +42,73 @@ export function setupAnalyticsNavigation(panel)
     toggleAll.textContent = "Expand group";
 
     let activeGroup = "overview";
+
+    const readiness = document.createElement("section");
+    readiness.className = "analytics-readiness";
+    readiness.setAttribute("aria-label", "How to activate science tools");
+    readiness.innerHTML = `
+        <details open>
+            <summary>How to unlock the science tools <span aria-hidden="true">▾</span></summary>
+            <p>Modules stay available to explore. Some calculations need real user data before they can run.</p>
+            <div class="analytics-ready-list">
+                <div class="analytics-ready-item" data-ready-item="route"><span class="analytics-ready-mark">1</span>
+                    <div><strong>Route geometry</strong><small data-ready-text="route">Draw two waypoints for distance and route models.</small></div>
+                    <button type="button" data-ready-action="draw">Draw</button></div>
+                <div class="analytics-ready-item" data-ready-item="dem"><span class="analytics-ready-mark">2</span>
+                    <div><strong>Numeric elevation data</strong><small data-ready-text="dem">Load Jezero DEM for slope, elevation, contours and A*.</small></div>
+                    <button type="button" data-ready-action="dem">Load DEM</button></div>
+                <div class="analytics-ready-item" data-ready-item="alternative"><span class="analytics-ready-mark">3</span>
+                    <div><strong>Alternative routes</strong><small data-ready-text="alternative">Create a second route for comparisons.</small></div>
+                    <button type="button" data-ready-action="alternative">New route</button></div>
+            </div>
+            <p class="analytics-ready-footnote">No sample waypoint is added automatically. You can enter coordinates manually or explore tools without calculating.</p>
+        </details>`;
+
+    function refresh()
+    {
+        const status = options.getState?.() || {};
+        const count = Number(status.waypoints || 0);
+        const routes = Number(status.routes || 1);
+        const complete = {
+            route: count >= 2,
+            dem: Boolean(status.demLoaded),
+            alternative: routes >= 2
+        };
+        const labels = {
+            route: complete.route ? `${count} waypoints in the selected route — ready` : `${count}/2 waypoints — add ${2 - count} more`,
+            dem: complete.dem ? "Numeric DEM loaded — terrain calculations available" : "Load a numeric DEM — pictures alone cannot provide height",
+            alternative: complete.alternative ? `${routes} routes — comparisons available after both have points` : "Create a second, manually editable route"
+        };
+
+        for (const [key, ready] of Object.entries(complete))
+        {
+            const item = readiness.querySelector(`[data-ready-item="${key}"]`);
+            item.dataset.ready = ready ? "true" : "false";
+            item.querySelector(`[data-ready-text="${key}"]`).textContent = labels[key];
+            item.querySelector("[data-ready-action]").textContent = ready ? "Ready ✓" :
+                key === "route" ? "Draw" : key === "dem" ? "Load DEM" : "New route";
+            item.querySelector("[data-ready-action]").disabled = ready;
+        }
+    }
+
+    readiness.addEventListener("click", event =>
+    {
+        const key = event.target.closest("[data-ready-action]")?.dataset.readyAction;
+
+        if (key === "draw")
+        {
+            options.onDraw?.();
+        }
+        else if (key === "dem")
+        {
+            showGroup("terrain");
+            options.onLoadDem?.();
+        }
+        else if (key === "alternative")
+        {
+            options.onAddRoute?.();
+        }
+    });
 
     function visibleSections()
     {
@@ -118,7 +185,7 @@ export function setupAnalyticsNavigation(panel)
 
         const title = heading.textContent.trim().replace(/\s+/g, " ");
         const group = groupDefinitions.find(definition => definition.items.includes(title))?.id || "models";
-        const expanded = title === "MISSION TELEMETRY" || title === "DEM ROUTE LAB" || title === "MARSWALK RESOURCE MODEL";
+        const expanded = true;
         const id = "analytics-section-" + index;
         section.id = id;
         section.dataset.analyticsGroup = group;
@@ -170,6 +237,9 @@ export function setupAnalyticsNavigation(panel)
     });
 
     quickbar.append(categories, label, select, toggleAll);
-    panel.prepend(quickbar);
+    panel.prepend(quickbar, readiness);
     showGroup(activeGroup);
+    refresh();
+
+    return { refresh };
 }

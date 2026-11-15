@@ -21,7 +21,7 @@ function budgetMarkup(title, used, available, unit)
     return `<div class="eva-budget ${over ? "eva-over" : ""}"><div class="eva-budget-heading"><span>${escapeText(title)}</span><strong>${formatNumber(used, 2)} / ${formatNumber(available, 2)} ${unit}</strong></div><div class="eva-track" role="meter" aria-label="${escapeText(title)} budget used" aria-valuemin="0" aria-valuemax="${available}" aria-valuenow="${Math.min(used, available)}"><span style="width:${percent}%"></span></div><small>${over ? "Above the illustrative reserve-adjusted budget" : "Within the numerical scenario budget, not a safety assessment"}</small></div>`;
 }
 
-export function initScienceWorkbench({ store, map, notify })
+export function initScienceWorkbench({ store, map, notify, onTerrainChange = () => {} })
 {
     const panel = document.querySelector("#analytics-panel");
     const inspector = document.querySelector("#route-inspector")?.closest(".panel-section");
@@ -390,6 +390,7 @@ export function initScienceWorkbench({ store, map, notify })
             demStatus.innerHTML = `<strong>USGS CTX DTM · 20 m SOURCE · ${dem.width} × ${dem.height}</strong><small>${escapeText(dem.source)}</small><small>Real numeric elevations from a documented Mars raster; no-data, vertical datum and uncertainty matter. Study area: 18.438–18.470° N, 77.443–77.478° E.</small>`;
             notify("Real numeric Jezero CTX elevations loaded. Set your route inside the documented coverage.");
             render();
+            onTerrainChange?.();
             return dem;
         }).catch(error =>
         {
@@ -450,6 +451,7 @@ export function initScienceWorkbench({ store, map, notify })
 
         demFile.value = "";
         render();
+        onTerrainChange();
     });
 
     demButton.addEventListener("click", () =>
@@ -587,6 +589,10 @@ export function initScienceWorkbench({ store, map, notify })
     return {
         render,
         loadBundledDem,
+        get isDemReady()
+        {
+            return Boolean(dem);
+        },
         getScenarioBrief()
         {
             const route = store.activeRoute;

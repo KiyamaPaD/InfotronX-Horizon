@@ -144,9 +144,24 @@ const map = new MarsMap(get("#map-root"), store, {
     }
 });
 
-const scienceWorkbench = initScienceWorkbench({ store, map, notify });
+const scienceWorkbench = initScienceWorkbench({ store, map, notify,
+    onTerrainChange: () => analyticsNavigation?.refresh()
+});
 mountCloudWorkspace({ store, notify });
-setupAnalyticsNavigation(get("#analytics-panel"));
+const analyticsNavigation = setupAnalyticsNavigation(get("#analytics-panel"), {
+    getState: () => ({
+        waypoints: store.activeRoute.points.length,
+        routes: store.current.routes.length,
+        demLoaded: scienceWorkbench.isDemReady
+    }),
+    onDraw: () => get('[data-mode="draw"]').click(),
+    onLoadDem: async () =>
+    {
+        await scienceWorkbench.loadBundledDem();
+        analyticsNavigation.refresh();
+    },
+    onAddRoute: () => get('[data-action="new-route"]').click()
+});
 
 function closeMapContextMenu()
 {
@@ -349,6 +364,7 @@ function render()
     renderRouteComparison(get("#route-comparison"), mission.routes, mission.activeRouteId);
     renderRouteComparison(get("#route-comparison-mobile"), mission.routes, mission.activeRouteId);
     scienceWorkbench.render();
+    analyticsNavigation.refresh();
     map.render();
 }
 
