@@ -340,8 +340,9 @@ export class MarsMap
     {
         event.preventDefault();
         const pointId = event.target.closest?.("[data-point]")?.dataset.point || null;
+        const observationId = event.target.closest?.("[data-observation]")?.dataset.observation || null;
         this.options.onContextMenu?.({
-            pointId,
+            pointId, observationId,
             coordinate: this.screenToGeo(event.clientX, event.clientY),
             clientX: event.clientX,
             clientY: event.clientY
@@ -357,12 +358,14 @@ export class MarsMap
 
         const target = event.target.closest?.("[data-point]");
         const pointId = target?.dataset.point;
+        const observationId = event.target.closest?.("[data-observation]")?.dataset.observation || null;
         const selectedPoint = this.store.activeRoute.points.find(item => item.id === pointId);
         this.drag = {
             pointerId: event.pointerId, startX: event.clientX, startY: event.clientY,
             startCenter: project(this.center, this.zoom), moved: false,
             pointId: this.mode === "edit" ? pointId : null,
             selectedPointId: pointId,
+            selectedObservationId: observationId,
             startPoint: selectedPoint ? { lat: selectedPoint.lat, lon: selectedPoint.lon } : null,
             targetRoute: event.target.closest?.("[data-route]")?.dataset.route
         };
@@ -426,6 +429,12 @@ export class MarsMap
 
         if (drag.moved || !this.container.contains(event.target))
         {
+            return;
+        }
+
+        if (drag.selectedObservationId)
+        {
+            this.options.onObservationSelect?.(drag.selectedObservationId);
             return;
         }
 
@@ -1458,12 +1467,15 @@ export class MarsMap
             const position = this.geoToScreen(observation);
             const radius = markerRadiusForZoom(this.zoom);
             const halo = svgElement("circle", { cx: position.x, cy: position.y, r: radius + 3, fill: "#7ed4c5", opacity: 0.15 });
-            const marker = markerShape(position, observation.icon || "diamond", "#8fe5d8");
+            const marker = markerShape(position, observation.icon || "diamond", "#8fe5d8",
+                { class: "observation-node", "data-observation": observation.id });
             marker.setAttribute("transform", `translate(${position.x} ${position.y}) scale(${radius / 7}) translate(${-position.x} ${-position.y})`);
             const title = svgElement("title", {});
             title.textContent = observation.title;
             marker.appendChild(title);
-            this.overlay.append(halo, marker);
+            const target = svgElement("circle", { cx: position.x, cy: position.y, r: Math.max(13, radius + 5),
+                fill: "transparent", "data-observation": observation.id, class: "observation-hit" });
+            this.overlay.append(halo, target, marker);
         }
     }
 

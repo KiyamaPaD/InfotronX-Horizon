@@ -44,7 +44,7 @@ app.innerHTML = `
             </aside>
             <main class="center-column">
                 <div class="map-titlebar"><div class="map-title-copy"><div class="titlebar-kicker"><span class="titlebar-live-dot"></span> EXPLORE · PLAN · ANALYZE <span>/</span> JEZERO REGION</div><div class="map-title">Explore Jezero <span class="map-title-small">/ Mars</span></div><p class="map-title-caption">Draw routes, explore terrain and compare mission plans across Jezero.</p></div><div class="map-title-actions"><div class="map-data-badge"><span class="map-source-eyebrow">CURRENT IMAGERY</span><strong id="map-source-name">VIKING GLOBAL</strong></div><span class="map-zoom-text" id="zoom-text">ZOOM 7</span><button class="btn btn-outline map-focus-btn" data-action="focus-mode" aria-pressed="false" title="Expand map workspace"><span aria-hidden="true">⛶</span> <span>Focus map</span></button></div></div>
-                <div class="map-wrap"><div class="map-root" id="map-root" role="region" tabindex="-1" aria-label="Interactive Mars map. Draw routes with map tools or enter waypoint coordinates manually."></div><div class="map-context-menu" id="map-context-menu" role="menu" aria-label="Map actions" hidden><button type="button" role="menuitem" data-context-action="edit-waypoint">✎ Edit waypoint</button><button type="button" role="menuitem" data-context-action="delete-waypoint">× Delete waypoint</button><button type="button" role="menuitem" data-context-action="add-waypoint">＋ Place waypoint here</button><button type="button" role="menuitem" data-context-action="add-note">◇ Add field note here</button></div><div class="map-top-overlay"><div class="mode-indicator"><span class="indicator-symbol" aria-hidden="true">⌖</span><span id="mode-description">Explore mode · drag to navigate</span></div><div class="planet-tag"><span class="planet-tag-indicator"></span> PLANET MARS <span>·</span> JEZERO</div></div><div class="mobile-map-toolbar" role="group" aria-label="Map editing tools"><button data-mode="pan" class="active" aria-pressed="true">↔ Explore</button><button data-mode="draw" aria-pressed="false">✎ Draw</button><button data-mode="edit" aria-pressed="false">◎ Move</button><button data-mode="observe" aria-pressed="false">✧ Note</button></div><div class="map-controls"><button data-action="zoom-in" title="Maximum map detail" aria-label="Zoom in" disabled>＋</button><button data-action="zoom-out" title="Zoom out" aria-label="Zoom out">−</button><span class="control-break"></span><button data-action="focus-route" title="Fit active route" aria-label="Fit active route">⌖</button><button data-action="reset-map" title="Reset map" aria-label="Reset map">⟲</button></div><div class="map-bottom-overlay"><div class="live-coordinate" id="live-coordinates">18.44460° N · 77.45090° E</div><span class="map-scale">SPHERICAL DISTANCE MODEL</span></div></div>
+                <div class="map-wrap"><div class="map-root" id="map-root" role="region" tabindex="-1" aria-label="Interactive Mars map. Draw routes with map tools or enter waypoint coordinates manually."></div><div class="map-context-menu" id="map-context-menu" role="menu" aria-label="Map actions" hidden><button type="button" role="menuitem" data-context-action="edit-waypoint">✎ Edit waypoint</button><button type="button" role="menuitem" data-context-action="delete-waypoint">× Delete waypoint</button><button type="button" role="menuitem" data-context-action="edit-observation">✎ Edit observation</button><button type="button" role="menuitem" data-context-action="delete-observation">× Delete observation</button><button type="button" role="menuitem" data-context-action="add-waypoint">＋ Place waypoint here</button><button type="button" role="menuitem" data-context-action="add-note">◇ Add field note here</button></div><div class="map-top-overlay"><div class="mode-indicator"><span class="indicator-symbol" aria-hidden="true">⌖</span><span id="mode-description">Explore mode · drag to navigate</span></div><div class="planet-tag"><span class="planet-tag-indicator"></span> PLANET MARS <span>·</span> JEZERO</div></div><div class="mobile-map-toolbar" role="group" aria-label="Map editing tools"><button data-mode="pan" class="active" aria-pressed="true">↔ Explore</button><button data-mode="draw" aria-pressed="false">✎ Draw</button><button data-mode="edit" aria-pressed="false">◎ Move</button><button data-mode="observe" aria-pressed="false">✧ Note</button></div><div class="map-controls"><button data-action="zoom-in" title="Maximum map detail" aria-label="Zoom in" disabled>＋</button><button data-action="zoom-out" title="Zoom out" aria-label="Zoom out">−</button><span class="control-break"></span><button data-action="focus-route" title="Fit active route" aria-label="Fit active route">⌖</button><button data-action="reset-map" title="Reset map" aria-label="Reset map">⟲</button></div><div class="map-bottom-overlay"><div class="live-coordinate" id="live-coordinates">18.44460° N · 77.45090° E</div><span class="map-scale">SPHERICAL DISTANCE MODEL</span></div></div>
                 <div class="bottom-area"><div class="bottom-section-header"><div><span class="section-label">ROUTE COMPARISON</span><p>Compare route distances. Shorter does not necessarily mean safer.</p></div><button class="btn btn-outline small" data-action="simulate-detour">↗ Simulate a detour</button></div><div class="route-comparison" id="route-comparison"></div></div>
             </main>
             <aside class="sidebar sidebar-right" id="right-sidebar">
@@ -66,7 +66,7 @@ app.innerHTML = `
         <div class="toast-stack" id="toasts" aria-live="polite" aria-atomic="false"></div>
         <dialog class="modal guide-modal" id="guide-modal" aria-labelledby="guide-title"><div class="modal-header"><span class="section-label">FIELD OPERATIONS / QUICK GUIDE</span><button class="modal-x" type="button" data-action="close-modal" aria-label="Close guide">×</button></div><h2 id="guide-title">Your mission starts here.</h2><p>Use the map directly to build and inspect a mission plan in three steps.</p><div class="guide-steps"><div><span>01</span><div><strong>Draw your path</strong><p>Choose Draw, then tap the map to place waypoints. Use Move to adjust them.</p></div></div><div><span>02</span><div><strong>Study the route</strong><p>Open Science to compare distance, read route checks and inspect observations.</p></div></div><div><span>03</span><div><strong>Save and share</strong><p>Mission changes save locally. Create checkpoints, export data or share a link.</p></div></div></div><div class="guide-shortcuts"><strong>Keyboard shortcuts</strong><span>D · Draw</span><span>M · Move</span><span>E · Explore</span><span>N · Observe</span><span>Ctrl+Z / Ctrl+Y · Undo / Redo</span><span>Right click · Map actions</span><span>Esc · Explore / close panel</span></div><div class="guide-disclaimer">Routes are analytical plans, not certified for real astronaut navigation.</div><div class="dialog-actions"><button class="btn btn-accent" data-action="close-modal">Start exploring ↗</button></div></dialog>
         <dialog class="modal" id="mission-modal"><form method="dialog" id="mission-form"><div class="modal-header"><span class="section-label" id="modal-eyebrow">NEW MISSION</span><button class="modal-x" type="button" data-action="close-modal" aria-label="Close dialog">×</button></div><h2 id="modal-title">Create a mission</h2><p id="modal-hint">Plan your next Marswalk.</p><label class="field-label" for="mission-input">MISSION NAME</label><input id="mission-input" class="field-input" maxlength="90" autocomplete="off" required /><div id="mission-description-field"><label class="field-label" for="mission-description-input">MISSION DESCRIPTION</label><textarea id="mission-description-input" class="field-input" rows="3" maxlength="300" placeholder="Mission purpose, objectives or field notes"></textarea></div><div class="dialog-actions"><button type="button" class="btn btn-outline" data-action="close-modal">Cancel</button><button id="mission-submit" type="submit" class="btn btn-accent">Create mission</button></div></form></dialog>
-        <dialog class="modal" id="observation-modal"><form method="dialog" id="observation-form"><div class="modal-header"><span class="section-label">GEOREFERENCED NOTE</span><button class="modal-x" type="button" data-action="close-modal" aria-label="Close dialog">×</button></div><h2>Record observation</h2><p id="observation-location"></p><label class="field-label" for="observation-title">TITLE</label><input id="observation-title" class="field-input" maxlength="80" required placeholder="Sample site, landmark, hazard hypothesis..."/><label class="field-label" for="observation-note">FIELD NOTES</label><textarea id="observation-note" class="field-input" maxlength="500" rows="4" placeholder="Describe what you observed. Mark uncertainty clearly."></textarea><label class="field-label" for="observation-source">SOURCE / EVIDENCE REFERENCE (OPTIONAL)</label><input id="observation-source" class="field-input" maxlength="160" placeholder="Example: NASA Mars Trek / user field note"/><div class="dialog-actions"><button type="button" class="btn btn-outline" data-action="close-modal">Cancel</button><button type="submit" class="btn btn-accent">Save note</button></div></form></dialog>
+        <dialog class="modal" id="observation-modal"><form method="dialog" id="observation-form"><div class="modal-header"><span class="section-label">GEOREFERENCED NOTE</span><button class="modal-x" type="button" data-action="close-modal" aria-label="Close dialog">×</button></div><h2>Record observation</h2><p id="observation-location"></p><label class="field-label" for="observation-title">TITLE</label><input id="observation-title" class="field-input" maxlength="80" required placeholder="Sample site, landmark, hazard hypothesis..."/><label class="field-label" for="observation-note">FIELD NOTES</label><textarea id="observation-note" class="field-input" maxlength="500" rows="4" placeholder="Describe what you observed. Mark uncertainty clearly."></textarea><label class="field-label" for="observation-source">SOURCE / EVIDENCE REFERENCE (OPTIONAL)</label><input id="observation-source" class="field-input" maxlength="160" placeholder="Example: NASA Mars Trek / user field note"/><div class="dialog-actions"><button type="button" class="btn btn-outline" data-action="delete-editing-observation" id="observation-delete" hidden>Delete note</button><button type="button" class="btn btn-outline" data-action="close-modal">Cancel</button><button type="submit" class="btn btn-accent" id="observation-submit">Save note</button></div></form></dialog>
         <dialog class="modal" id="coordinate-modal"><form method="dialog" id="coordinate-form"><div class="modal-header"><span class="section-label">MANUAL INPUT</span><button class="modal-x" type="button" data-action="close-modal" aria-label="Close dialog">×</button></div><h2>Enter coordinates</h2><p>Enter a precise Mars position in planetocentric east-positive decimal degrees.</p><label class="field-label" for="latitude-input">LATITUDE (−90 TO 90)</label><input id="latitude-input" class="field-input" type="number" step="any" min="-90" max="90" required placeholder="18.4446"/><label class="field-label" for="longitude-input">LONGITUDE (−180 TO 180)</label><input id="longitude-input" class="field-input" type="number" step="any" min="-180" max="180" required placeholder="77.4509"/><div class="dialog-actions"><button type="button" class="btn btn-outline" data-action="close-modal">Cancel</button><button type="submit" class="btn btn-accent"><span id="coordinate-submit-label">Add waypoint</span></button></div></form></dialog>
         <dialog class="modal waypoint-editor-modal" id="waypoint-editor-modal" aria-labelledby="waypoint-editor-title"><form id="waypoint-editor-form"><div class="modal-header"><span class="section-label">WAYPOINT / MANUAL EDITOR V2</span><button class="modal-x" type="button" data-action="close-modal" aria-label="Close waypoint editor">×</button></div><h2 id="waypoint-editor-title">Edit waypoint</h2><p>Every change belongs to your mission and can be undone.</p><label class="field-label" for="waypoint-name-input">WAYPOINT NAME</label><input id="waypoint-name-input" class="field-input" maxlength="80" autocomplete="off" placeholder="e.g. Delta sampling site"/><label class="field-label" for="waypoint-category-input">CATEGORY</label><select id="waypoint-category-input" class="field-input"></select><label class="field-label" for="waypoint-description-input">DESCRIPTION / PURPOSE</label><textarea id="waypoint-description-input" class="field-input" rows="3" maxlength="500" placeholder="What is this point for? Separate hypotheses from measured facts."></textarea><div class="waypoint-editor-grid"><div><label class="field-label" for="waypoint-icon-input">MARKER SHAPE</label><select id="waypoint-icon-input" class="field-input"></select></div><div><label class="field-label" for="waypoint-color-input">MARKER COLOR</label><input id="waypoint-color-input" class="field-input color-field" type="color" value="#ec9976"/></div></div><label class="editor-color-default"><input id="waypoint-use-route-color" type="checkbox" checked/> Use active route color</label><div class="waypoint-editor-grid"><div><label class="field-label" for="waypoint-lat-input">LATITUDE (°)</label><input id="waypoint-lat-input" class="field-input" type="number" step="any" min="-90" max="90" required/></div><div><label class="field-label" for="waypoint-lon-input">LONGITUDE (°)</label><input id="waypoint-lon-input" class="field-input" type="number" step="any" min="-180" max="180" required/></div></div><div class="dialog-actions waypoint-editor-actions"><button type="button" class="btn btn-outline" data-action="delete-editing-waypoint">Delete point</button><button type="button" class="btn btn-outline" data-action="close-modal">Cancel</button><button type="submit" class="btn btn-accent">Save waypoint</button></div></form></dialog>
         <dialog class="modal library-modal" id="library-modal"><div class="modal-header"><span class="section-label">MISSION LIBRARY</span><button class="modal-x" type="button" data-action="close-modal" aria-label="Close dialog">×</button></div><h2>Your saved missions</h2><p>Your missions are saved on this device. Export a JSON backup to keep a copy.</p><div class="library-list" id="library-list"></div><div class="dialog-actions"><label class="btn btn-outline file-input-button">↑ Import JSON<input type="file" accept=".json,application/json" id="import-json" hidden /></label><button class="btn btn-accent" data-action="new-mission">＋ New mission</button></div></dialog>
@@ -76,6 +76,7 @@ const get = selector => document.querySelector(selector);
 let currentMode = "pan";
 let modalAction = "new-mission";
 let observationCoordinate = null;
+let editingObservationId = null;
 let editingWaypointId = null;
 let mapContextTarget = null;
 
@@ -125,6 +126,7 @@ const map = new MarsMap(get("#map-root"), store, {
         get("[data-action='zoom-out']").disabled = zoom <= 3;
     },
     onWaypointSelect: id => openWaypointEditor(id),
+    onObservationSelect: id => openObservationEditor(id),
     onContextMenu: details => showMapContextMenu(details),
     onMapClick: (point, mode) =>
 {
@@ -137,10 +139,7 @@ const map = new MarsMap(get("#map-root"), store, {
         }
         else if (mode === "observe")
         {
-            observationCoordinate = point;
-            get("#observation-location").textContent = `${formatCoordinate(point.lat, "lat")} · ${formatCoordinate(point.lon, "lon")}`;
-            get("#observation-form").reset();
-            get("#observation-modal").showModal();
+            openObservationAt(point);
         }
     }
 });
@@ -162,8 +161,20 @@ function showMapContextMenu(details)
 
     menu.querySelectorAll("[data-context-action]").forEach(button =>
     {
-        const onlyMarker = ["edit-waypoint", "delete-waypoint"].includes(button.dataset.contextAction);
-        button.hidden = onlyMarker ? !details.pointId : Boolean(details.pointId);
+        const action = button.dataset.contextAction;
+
+        if (["edit-waypoint", "delete-waypoint"].includes(action))
+        {
+            button.hidden = !details.pointId;
+        }
+        else if (["edit-observation", "delete-observation"].includes(action))
+        {
+            button.hidden = !details.observationId;
+        }
+        else
+        {
+            button.hidden = Boolean(details.pointId || details.observationId);
+        }
     });
 
     menu.style.left = Math.max(8, Math.min(details.clientX, window.innerWidth - 246)) + "px";
@@ -174,10 +185,38 @@ function showMapContextMenu(details)
 
 function openObservationAt(point)
 {
+    editingObservationId = null;
     observationCoordinate = point;
-    get("#observation-location").textContent = `${formatCoordinate(point.lat, "lat")} · ${formatCoordinate(point.lon, "lon")}`;
     get("#observation-form").reset();
+    get("#observation-modal h2").textContent = "Record observation";
+    get("#observation-submit").textContent = "Save note";
+    get("#observation-delete").hidden = true;
+    get("#observation-location").textContent = `${formatCoordinate(point.lat, "lat")} · ${formatCoordinate(point.lon, "lon")}`;
     get("#observation-modal").showModal();
+}
+
+function openObservationEditor(id)
+{
+    const observation = store.current.observations.find(item => item.id === id);
+
+    if (!observation)
+    {
+        return;
+    }
+
+    closeMapContextMenu();
+    editingObservationId = id;
+    observationCoordinate = { lat: observation.lat, lon: observation.lon };
+    get("#observation-form").reset();
+    get("#observation-modal h2").textContent = "Edit field observation";
+    get("#observation-submit").textContent = "Save changes";
+    get("#observation-delete").hidden = false;
+    get("#observation-title").value = observation.title;
+    get("#observation-note").value = observation.note;
+    get("#observation-source").value = observation.source;
+    get("#observation-location").textContent = `${formatCoordinate(observation.lat, "lat")} · ${formatCoordinate(observation.lon, "lon")}`;
+    get("#observation-modal").showModal();
+    get("#observation-title").focus();
 }
 
 function openWaypointEditor(id)
@@ -230,7 +269,7 @@ function renderWaypoints()
 
 function renderObservations()
 {
-    get("#observation-list").innerHTML = store.current.observations.length ? store.current.observations.map(observation => `<div class="note-card"><div class="note-head"><strong>${safe(observation.title)}</strong><select class="marker-icon-select" data-observation-icon="${safe(observation.id)}" title="Change observation icon" aria-label="Change observation marker icon">${MARKER_ICONS.map(icon => `<option value="${icon.id}" ${normalizeMarkerIcon(observation.icon || "diamond") === icon.id ? "selected" : ""}>${icon.symbol} ${icon.label}</option>`).join("")}</select><button class="remove-btn" title="Delete note" aria-label="Delete note" data-delete-observation="${safe(observation.id)}">×</button></div><p>${safe(observation.note || "No details provided.")}</p><small>${formatCoordinate(observation.lat, "lat")} · ${formatCoordinate(observation.lon, "lon")}</small><div class="note-origin">${safe(observation.source)} · USER-REPORTED / UNVERIFIED</div><button class="btn btn-outline note-waypoint" data-observation-waypoint="${safe(observation.id)}" title="Append this observation to the active route">＋ Use as waypoint</button></div>`).join("") : `<div class="empty-inline">No observations yet. Mark something worth investigating.</div>`;
+    get("#observation-list").innerHTML = store.current.observations.length ? store.current.observations.map(observation => `<div class="note-card"><div class="note-head"><strong>${safe(observation.title)}</strong><button class="edit-point-btn" data-edit-observation="${safe(observation.id)}" title="Edit observation" aria-label="Edit observation">Edit</button><select class="marker-icon-select" data-observation-icon="${safe(observation.id)}" title="Change observation icon" aria-label="Change observation marker icon">${MARKER_ICONS.map(icon => `<option value="${icon.id}" ${normalizeMarkerIcon(observation.icon || "diamond") === icon.id ? "selected" : ""}>${icon.symbol} ${icon.label}</option>`).join("")}</select><button class="remove-btn" title="Delete note" aria-label="Delete note" data-delete-observation="${safe(observation.id)}">×</button></div><p>${safe(observation.note || "No details provided.")}</p><small>${formatCoordinate(observation.lat, "lat")} · ${formatCoordinate(observation.lon, "lon")}</small><div class="note-origin">${safe(observation.source)} · USER-REPORTED / UNVERIFIED</div><button class="btn btn-outline note-waypoint" data-observation-waypoint="${safe(observation.id)}" title="Append this observation to the active route">＋ Use as waypoint</button></div>`).join("") : `<div class="empty-inline">No observations yet. Mark something worth investigating.</div>`;
 }
 
 function renderInspector()
@@ -455,6 +494,7 @@ document.addEventListener("click", event =>
     const pointToDelete = event.target.closest("[data-delete-point]")?.dataset.deletePoint;
     const pointToEdit = event.target.closest("[data-edit-point]")?.dataset.editPoint;
     const noteToDelete = event.target.closest("[data-delete-observation]")?.dataset.deleteObservation;
+    const noteToEdit = event.target.closest("[data-edit-observation]")?.dataset.editObservation;
     const noteToWaypoint = event.target.closest("[data-observation-waypoint]")?.dataset.observationWaypoint;
     const pointToMove = event.target.closest("[data-move-point]")?.dataset.movePoint;
     const pointDirection = Number(event.target.closest("[data-point-direction]")?.dataset.pointDirection);
@@ -477,6 +517,18 @@ document.addEventListener("click", event =>
             if (confirm("Delete this waypoint? You can use Undo to restore it."))
             {
                 store.removePoint(target.pointId);
+            }
+        }
+        else if (contextAction === "edit-observation" && target.observationId)
+        {
+            openObservationEditor(target.observationId);
+        }
+        else if (contextAction === "delete-observation" && target.observationId)
+        {
+            if (confirm("Delete this observation? Undo restores it if needed."))
+            {
+                store.deleteObservation(target.observationId);
+                notify("Observation removed from the map.");
             }
         }
         else if (contextAction === "add-waypoint")
@@ -560,7 +612,12 @@ document.addEventListener("click", event =>
         store.removePoint(pointToDelete);
     }
 
-    if (noteToDelete)
+    if (noteToEdit)
+    {
+        openObservationEditor(noteToEdit);
+    }
+
+    if (noteToDelete && confirm("Delete this observation? You can use Undo to restore it."))
     {
         store.deleteObservation(noteToDelete);
     }
@@ -636,6 +693,17 @@ document.addEventListener("click", event =>
         case "close-modal":
             event.target.closest("dialog")?.close();
             editingWaypointId = null;
+            editingObservationId = null;
+            break;
+        case "delete-editing-observation":
+            if (editingObservationId && confirm("Delete this observation? Undo can restore it."))
+            {
+                store.deleteObservation(editingObservationId);
+                get("#observation-modal").close();
+                editingObservationId = null;
+                observationCoordinate = null;
+                notify("Observation removed from the map.");
+            }
             break;
         case "delete-editing-waypoint":
             if (editingWaypointId && confirm("Delete this waypoint? You can use Undo to restore it."))
@@ -841,8 +909,21 @@ get("#observation-form").addEventListener("submit", event =>
 
     if (observationCoordinate)
     {
-        store.addObservation(observationCoordinate, get("#observation-title").value.trim(), get("#observation-note").value.trim(), get("#observation-source").value.trim() || "User annotation");
+        const title = get("#observation-title").value.trim();
+        const note = get("#observation-note").value.trim();
+        const source = get("#observation-source").value.trim() || "User annotation";
+        const saved = editingObservationId ? store.updateObservation(editingObservationId, { title, note, source }) :
+            store.addObservation(observationCoordinate, title, note, source);
+
+        if (!saved)
+        {
+            notify("Could not save observation. Check the fields and mission limits.");
+            return;
+        }
+
         get("#observation-modal").close();
+        editingObservationId = null;
+        observationCoordinate = null;
         notify("Georeferenced observation saved.");
     }
 });

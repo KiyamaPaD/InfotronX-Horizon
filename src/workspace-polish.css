@@ -1081,3 +1081,16 @@
         flex:1 1 auto;
     }
 }
+
+/* Field observations are real editable markers with a touch-friendly hit area. */
+.map-overlays .observation-node,
+.map-overlays .observation-hit
+{
+    cursor:pointer;
+    pointer-events:all;
+}
+#observation-delete:not([hidden])
+{
+    margin-right:auto;
+    color:#ffb5ab;
+}

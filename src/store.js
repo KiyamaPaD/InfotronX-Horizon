@@ -747,6 +747,29 @@ export class MissionStore
         return true;
     }
 
+    updateObservation(id, input)
+    {
+        const observation = this.current.observations.find(item => item.id === id);
+
+        if (!observation)
+        {
+            return false;
+        }
+
+        const title = String(input?.title || "").trim().slice(0, 80);
+
+        if (!title)
+        {
+            return false;
+        }
+
+        observation.title = title;
+        observation.note = String(input?.note || "").trim().slice(0, 500);
+        observation.source = String(input?.source || "User annotation").trim().slice(0, 160) || "User annotation";
+        this.save();
+        return true;
+    }
+
     setObservationIcon(id, icon)
     {
         const observation = this.current.observations.find(item => item.id === id);
