@@ -1327,3 +1327,193 @@
         justify-self:start;
     }
 }
+
+/* Crew profile remains private until the user explicitly changes access policies in a later version. */
+.cloud-modal .mission-hub-tabs
+{
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:6px;
+}
+#hub-crew
+{
+    min-width:0;
+}
+.crew-profile-login
+{
+    color:#b5c8d2;
+    font-size:13px;
+    line-height:1.6;
+}
+.crew-profile-login button
+{
+    margin-top:12px;
+}
+.crew-profile-hero
+{
+    display:flex;
+    gap:14px;
+    align-items:center;
+    padding:13px;
+    border:1px solid #40586a;
+    border-radius:13px;
+    background:linear-gradient(130deg,#1d3441,#13222f);
+    min-width:0;
+}
+.crew-avatar
+{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    position:relative;
+    width:90px;
+    height:90px;
+    flex:0 0 90px;
+    overflow:hidden;
+    border-radius:50%;
+    border:2px solid #81cbbb;
+    background:#385466;
+    color:#d9f6ed;
+    font:bold 28px 'Space Grotesk',sans-serif;
+}
+.crew-avatar img
+{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    border-radius:50%;
+    object-fit:cover;
+}
+.crew-avatar img[hidden],
+.crew-avatar span[hidden]
+{
+    display:none;
+}
+.crew-preview
+{
+    display:flex;
+    flex-direction:column;
+    gap:5px;
+    min-width:0;
+}
+.crew-preview span
+{
+    font-size:10px;
+    font-weight:800;
+    letter-spacing:1px;
+    color:#97c6ce;
+}
+.crew-preview strong
+{
+    color:#f3f8fb;
+    font:bold 19px 'Space Grotesk',sans-serif;
+    overflow-wrap:anywhere;
+}
+.crew-preview small
+{
+    color:#bbd1d8;
+    font-size:11px;
+}
+.crew-stats
+{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:8px;
+    margin:13px 0;
+}
+.crew-stats>div
+{
+    display:flex;
+    flex-direction:column;
+    gap:5px;
+    padding:11px 8px;
+    border:1px solid #324b5e;
+    border-radius:9px;
+    background:#0e1f2e;
+    text-align:center;
+}
+.crew-stats strong
+{
+    color:#92e0c9;
+    font:bold 20px 'Space Grotesk',sans-serif;
+}
+.crew-stats small
+{
+    color:#9bb7c5;
+    font-size:10px;
+}
+.crew-profile-form,
+.crew-profile-fields
+{
+    display:grid;
+    gap:13px;
+    min-width:0;
+}
+.crew-profile-fields
+{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+}
+.crew-profile-form label
+{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    color:#c7d8e0;
+    font-size:11px;
+    font-weight:700;
+}
+.crew-profile-form :is(input,textarea)
+{
+    width:100%;
+    min-width:0;
+    padding:10px 12px;
+    background:#142734;
+    border:1px solid #4a6879;
+    border-radius:8px;
+    color:#eff6f7;
+    font-size:12px;
+}
+.crew-profile-form textarea
+{
+    resize:vertical;
+}
+.crew-profile-form input[type=file]
+{
+    padding:9px;
+    cursor:pointer;
+}
+.crew-profile-actions
+{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:flex-end;
+    gap:8px;
+}
+.crew-profile-actions button:first-child
+{
+    margin-right:auto;
+}
+#crew-message
+{
+    margin:13px 0 4px;
+    color:#a9d6cb;
+    line-height:1.55;
+    font-size:12px;
+}
+@media(max-width:640px)
+{
+    .cloud-modal .mission-hub-tabs
+    {
+        grid-template-columns:repeat(2,minmax(0,1fr));
+    }
+    .crew-profile-fields
+    {
+        grid-template-columns:1fr;
+    }
+    .crew-avatar
+    {
+        width:72px;
+        height:72px;
+        flex-basis:72px;
+    }
+}

@@ -1,6 +1,6 @@
 import { CrewProfileService, MAX_AVATAR_BYTES } from "./crew-profile.js";
 
-export function mountCrewProfile({ dialog, cloud, store, run })
+export function mountCrewProfile({ dialog, cloud, store, run, openCloudTab })
 {
     const section = dialog.querySelector("#hub-crew");
     const service = new CrewProfileService(cloud);
@@ -143,6 +143,8 @@ export function mountCrewProfile({ dialog, cloud, store, run })
             setMessage("Profile photo removed from your account.");
         }, setMessage);
     });
+
+    get("#crew-go-login").addEventListener("click", openCloudTab);
 
     reset();
 
