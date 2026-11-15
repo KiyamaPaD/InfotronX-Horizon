@@ -812,6 +812,50 @@ try
     assert.equal(await page.locator("#hub-cloud").isVisible(), true);
     await page.locator("#cloud-close").click();
 
+    // Responsive viewport audit: the screenshot regression on the waypoint sidebar.
+    for (const width of [320, 375, 768, 1024, 1480])
+    {
+        await page.setViewportSize({ width, height: width >= 1200 ? 960 : 820 });
+
+        if (width <= 1200)
+        {
+            await page.evaluate(() => document.querySelector('[data-action="show-analytics"]').click());
+        }
+
+        await page.locator('.analytics-categories [data-group="overview"]').click();
+        const geometry = await page.locator('[data-waypoint-row]').first().evaluate(row =>
+        {
+            const list = row.closest("#waypoint-list");
+            const actions = row.querySelector(".waypoint-actions");
+            const label = row.querySelector(".waypoint-coordinates strong");
+            const bounds = row.getBoundingClientRect();
+            const actionBounds = actions.getBoundingClientRect();
+            const listBounds = list.getBoundingClientRect();
+            return {
+                usableWidth: bounds.width,
+                labelWidth: label.getBoundingClientRect().width,
+                titleWhitespace: getComputedStyle(label).whiteSpace,
+                buttonsVisible: [...actions.querySelectorAll("button")].every(button =>
+                    button.getBoundingClientRect().width > 25),
+                noSideOverflow: actionBounds.left >= bounds.left - 2 &&
+                    actionBounds.right <= bounds.right + 2 &&
+                    bounds.right <= listBounds.right + 2,
+                noPageOverflow: document.documentElement.scrollWidth <= window.innerWidth + 2
+            };
+        });
+        console.log(JSON.stringify({ label: "Waypoint responsive QA", viewport: width, ...geometry }));
+        assert.equal(geometry.titleWhitespace, "nowrap");
+        assert.ok(geometry.labelWidth >= 90);
+        assert.equal(geometry.buttonsVisible, true);
+        assert.equal(geometry.noSideOverflow, true);
+        assert.equal(geometry.noPageOverflow, true);
+
+        if (width === 375)
+        {
+            await page.locator("#waypoint-list").screenshot({ path: "browser-map-evidence/waypoint-mobile-375.png" });
+        }
+    }
+
     // Guided actions are explicit and do not insert an unrequested example.
     const beforeGuide = await page.locator('[data-waypoint-row]').count();
     await page.locator('[data-ready-action="alternative"]').click();
