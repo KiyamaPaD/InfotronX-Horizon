@@ -266,7 +266,7 @@ try
     await page.locator('#map-context-menu [data-context-action="edit-waypoint"]').click();
     assert.equal(await page.locator("#waypoint-name-input").inputValue(), "Delta science site");
     await page.locator("#waypoint-editor-modal").screenshot({ path: "browser-map-evidence/waypoint-editor-v2.png" });
-    await page.locator('#waypoint-editor-modal [data-action="close-modal"]').click();
+    await page.locator("#waypoint-editor-modal .modal-x").click();
 
     await page.reload({ waitUntil: "domcontentloaded" });
     assert.match(await page.locator("#waypoint-list .waypoint-coordinates strong").first().textContent(), /Delta science site/,
