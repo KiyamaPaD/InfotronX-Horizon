@@ -711,7 +711,7 @@ test("zoom 11 → 10 → 11 reuses the same Viking backdrop without new download
     });
 });
 
-test("HiRISE zoom 8 uses native Jezero CTX over the Viking background", () =>
+test("HiRISE zoom 8 uses uniform Viking imagery without a sharp CTX patch", () =>
 {
     withFakeTiles(requests =>
     {
@@ -721,10 +721,10 @@ test("HiRISE zoom 8 uses native Jezero CTX over the Viking background", () =>
 
         assert.equal(map.activeTiles.size, 0);
         assert.ok(map.backgroundActiveTiles.size > 0);
-        assert.ok(map.activeContextTiles.size > 0);
+        assert.equal(map.activeContextTiles.size, 0);
         assert.ok(requests.every(item => item.name !== "map-hires-tile"));
         assert.ok(requests.filter(item => item.name === "map-background-tile").every(item => /\/7\/\d+\/\d+\.jpg$/.test(item.url)));
-        assert.ok(requests.filter(item => item.name === "map-context-tile").every(item => /JEZ_ctx_B_soc_008_orthoMosaic_6m/.test(item.url)));
+        assert.equal(requests.filter(item => item.name === "map-context-tile").length, 0);
     });
 });
 
