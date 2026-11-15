@@ -13,7 +13,7 @@ export function mountMissionCopilot({ panel, before, store, getDem, getCloud, no
                 <textarea id="copilot-question" maxlength="240" rows="3" placeholder="Explain the difference between route distance and DEM grid distance."></textarea>
             </label>
             <label class="copilot-consent"><input id="copilot-consent" type="checkbox"/>
-                I agree to send only aggregate mission statistics and my question to the AI provider. Mission titles, raw coordinates, notes, chat messages and profile photos are excluded.
+                I agree to send aggregate mission statistics, the DEM source label (if loaded), and my question to the AI provider. Mission titles, raw coordinates, notes, chat messages and profile photos are excluded.
             </label>
             <button type="submit" class="btn btn-outline wide" id="copilot-ask">Ask AI (sign-in + server configuration required)</button>
         </form>

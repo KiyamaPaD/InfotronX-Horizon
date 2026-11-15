@@ -54,7 +54,7 @@ The optional external **Ask AI** workflow is implemented as a read-only Supabase
 
 The endpoint:
 - Requires a signed-in user, explicit per-request consent and a question 1–240 characters.
-- Accepts only a bounded summary of active route distance, counts, optional DEM source/coverage and previously modeled route statistics. **No raw waypoint coordinates, mission titles, observation text, chat messages, passwords or photos** are transmitted.
+- Accepts only a bounded summary of active route distance, counts, **the optional DEM source label** and coverage, and previously modeled route statistics. The consent checkbox names the source label explicitly. **No raw waypoint coordinates, mission titles, observation text, chat messages, passwords or photos** are transmitted.
 - Uses OpenAI's Responses API with `store: false`, bounded output, explicit read-only scientific instructions and **no function/tool write permissions**.
 - Limits the invoking account through an RLS-protected `mars_copilot_requests` table and a trigger to five requests per ten minutes. External upstream costs remain the project owner's responsibility.
 - Returns a clear unavailable message when a server secret or upstream AI provider is unavailable. It does not silently fall back to fake AI answers.

@@ -284,6 +284,16 @@ export function mountMissionChat({ dialog, cloud, notify, run, openCloudTab })
         el("#team-chat-login").hidden = true;
         el("#team-chat-signed").hidden = false;
         const prior = picker.value || activeId;
+
+        try
+        {
+            await cloud.claimEmailInvitations();
+        }
+        catch
+        {
+            // A pending email confirmation is not a chat entitlement. Open the cloud library for invite details.
+        }
+
         const missions = await cloud.listMissions();
         picker.replaceChildren();
 
