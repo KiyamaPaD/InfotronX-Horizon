@@ -702,6 +702,7 @@ export class MarsMap
         let detail = 0;
         let preview = 0;
         let pending = 0;
+        let missing = 0;
 
         for (const key of this.activeTiles)
         {
@@ -715,20 +716,26 @@ export class MarsMap
             {
                 preview++;
             }
-            else if (tile?.dataset.state !== "error" || tile?.dataset.preview !== "error")
+            else if (tile?.dataset.state === "error" && tile?.dataset.preview === "error")
+            {
+                missing++;
+            }
+            else
             {
                 pending++;
             }
         }
 
         const anyImagery = detail + preview > 0;
-        const showingPreview = preview > 0;
+        const reducedDetail = preview > 0 || missing > 0 && detail > 0;
         this.container.classList.toggle("map-has-imagery", anyImagery);
-        this.notice.classList.toggle("map-preview-notice", showingPreview);
-        this.notice.hidden = !showingPreview && (detail > 0 || !this.activeTiles.size);
-        this.notice.textContent = showingPreview
-            ? "Lower-resolution context is shown where detailed NASA tiles are unavailable."
-            : pending ? "Loading Mars imagery…" : "NASA imagery is unavailable at this view. Try another basemap.";
+        this.notice.classList.toggle("map-preview-notice", reducedDetail);
+        this.notice.hidden = !reducedDetail && (detail > 0 || !this.activeTiles.size);
+        this.notice.textContent = preview > 0
+            ? "Lower-resolution NASA imagery is shown in some areas."
+            : missing > 0 && detail > 0
+                ? "Some NASA map areas are unavailable at this zoom."
+                : pending > 0 ? "Loading Mars imagery…" : "NASA imagery is unavailable at this view. Try another basemap.";
     }
 
     renderOverlays()
