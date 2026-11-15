@@ -89,11 +89,13 @@ function updateImageryLabel(map)
     const source = map.getImageryLayer();
     const overview = source.id !== map.layer.id;
     get("#map-source-name").textContent = map.layer.id === "hirise" && map.zoom >= 9
-        ? "HIRISE + VIKING" : source.name.toUpperCase();
+        ? "HIRISE + CTX" : map.layer.id === "hirise" && map.zoom === 8
+            ? "CTX + VIKING" : source.name.toUpperCase();
     get(".map-source-eyebrow").textContent = overview ? "GLOBAL OVERVIEW" : "CURRENT IMAGERY";
-    get(".map-data-badge").title = overview
-        ? "Viking global imagery. HiRISE Jezero is available only within its mapped coverage."
-        : source.description;
+    get(".map-data-badge").title = map.layer.id === "hirise" && map.zoom >= 8
+        ? "NASA Jezero CTX context (6 m/pixel) over Viking, with HiRISE detail (25 cm/pixel) where available."
+        : overview ? "Viking global overview; NASA CTX and HiRISE are available at higher zoom."
+            : source.description;
 }
 
 const map = new MarsMap(get("#map-root"), store, {

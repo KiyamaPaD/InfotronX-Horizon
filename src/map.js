@@ -1,4 +1,4 @@
-import { JEZERO, MAP_LAYERS } from "./constants.js";
+import { JEZERO, JEZERO_CTX_CONTEXT, MAP_LAYERS } from "./constants.js";
 import { clamp, formatCoordinate, project, unproject } from "./geo.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -44,12 +44,16 @@ export class MarsMap
         this.capabilitiesReady = false;
         this.capabilitiesTimer = null;
 
-        this.container.innerHTML = `<div class="map-fallback" aria-hidden="true"><div class="fallback-globe"></div><div class="coordinate-grid"></div></div><div class="map-background-tiles"></div><div class="map-tiles"></div><svg class="map-overlays" role="img" aria-label="Editable mission route overlays"></svg><div class="map-attribution">Map tiles © NASA / JPL · Mars Trek</div><div class="map-load-notice" role="status">Loading Mars imagery…</div>`;
+        this.container.innerHTML = `<div class="map-fallback" aria-hidden="true"><div class="fallback-globe"></div><div class="coordinate-grid"></div></div><div class="map-background-tiles"></div><div class="map-context-tiles"></div><div class="map-tiles"></div><svg class="map-overlays" role="img" aria-label="Editable mission route overlays"></svg><div class="map-attribution">Map tiles © NASA / JPL · Mars Trek</div><div class="map-load-notice" role="status">Loading Mars imagery…</div>`;
         this.tileContainer = this.container.querySelector(".map-tiles");
         this.backgroundTileContainer = this.container.querySelector(".map-background-tiles");
         this.backgroundTiles = new Map();
         this.backgroundActiveTiles = new Set();
         this.backgroundTileCacheLimit = 24;
+        this.contextTileContainer = this.container.querySelector(".map-context-tiles");
+        this.contextTiles = new Map();
+        this.activeContextTiles = new Set();
+        this.contextTileCacheLimit = 84;
         this.overlay = this.container.querySelector(".map-overlays");
         this.notice = this.container.querySelector(".map-load-notice");
 
@@ -193,6 +197,7 @@ export class MarsMap
         clearTimeout(this.capabilitiesTimer);
         this.activeTiles.clear();
         this.backgroundActiveTiles.clear();
+        this.activeContextTiles.clear();
         this.container.classList.remove("map-has-imagery");
         this.notice.textContent = "Loading Mars imagery…";
         this.layer = MAP_LAYERS.find(layer => layer.id === id) || MAP_LAYERS[0];
@@ -402,21 +407,24 @@ export class MarsMap
             return fallback;
         }
 
-        const bounds = this.layer.coverage;
-
         if (Number.isInteger(tileX) && Number.isInteger(tileY))
         {
-            const northwest = unproject({ x: tileX * 256, y: tileY * 256 }, zoom);
-            const southeast = unproject({ x: (tileX + 1) * 256, y: (tileY + 1) * 256 }, zoom);
-            const intersects = northwest.lon < bounds.east && southeast.lon > bounds.west
-                && northwest.lat > bounds.south && southeast.lat < bounds.north;
-
-            return intersects ? this.layer : fallback;
+            return this.tileIntersectsCoverage(this.layer.coverage, zoom, tileX, tileY) ? this.layer : fallback;
         }
 
         const point = this.center;
+        const bounds = this.layer.coverage;
         return point.lon >= bounds.west && point.lon <= bounds.east
             && point.lat >= bounds.south && point.lat <= bounds.north ? this.layer : fallback;
+    }
+
+    tileIntersectsCoverage(bounds, zoom, x, y)
+    {
+        const northwest = unproject({ x: x * 256, y: y * 256 }, zoom);
+        const southeast = unproject({ x: (x + 1) * 256, y: (y + 1) * 256 }, zoom);
+
+        return northwest.lon < bounds.east && southeast.lon > bounds.west
+            && northwest.lat > bounds.south && southeast.lat < bounds.north;
     }
 
     tileCandidates(x, y, zoom, layer = this.getImageryLayer(zoom))
@@ -832,16 +840,16 @@ export class MarsMap
         }
     }
 
-    createHiRISETile(x, y, zoom)
+    createHiRISETile(x, y, zoom, source = this.layer)
     {
         const tile = document.createElement("img");
-        tile.className = "map-hires-tile";
+        tile.className = source.id === "ctx-jezero" ? "map-context-tile" : "map-hires-tile";
         tile.alt = "";
         tile.draggable = false;
         tile.decoding = "async";
         tile.dataset.state = "loading";
         tile.style.opacity = "0";
-        const candidates = this.tileCandidates(x, y, zoom, this.layer);
+        const candidates = this.tileCandidates(x, y, zoom, source);
         let attempt = 0;
         let disposed = false;
 
@@ -905,9 +913,91 @@ export class MarsMap
         return tile;
     }
 
+    renderContextTiles(width, height, center)
+    {
+        const active = new Set();
+        const source = JEZERO_CTX_CONTEXT;
+        this.contextTileContainer.style.display = "";
+
+        if (this.zoom >= 8)
+        {
+            const minX = Math.floor((center.x - width / 2) / 256);
+            const maxX = Math.floor((center.x + width / 2) / 256);
+            const minY = Math.floor((center.y - height / 2) / 256);
+            const maxY = Math.floor((center.y + height / 2) / 256);
+            const worldWidth = 2 ** (this.zoom + 1);
+            const worldHeight = 2 ** this.zoom;
+
+            for (let y = minY; y <= maxY; y++)
+            {
+                for (let x = minX; x <= maxX; x++)
+                {
+                    if (x < 0 || y < 0 || x >= worldWidth || y >= worldHeight
+                        || !this.tileIntersectsCoverage(source.coverage, this.zoom, x, y))
+                    {
+                        continue;
+                    }
+
+                    const key = "ctx-jezero-" + this.zoom + "-" + x + "-" + y;
+                    active.add(key);
+                    let tile = this.contextTiles.get(key);
+
+                    if (tile?.dataset.state === "error" && Date.now() - Number(tile.dataset.failedAt) >= 16000)
+                    {
+                        this.releaseTile(tile);
+                        this.contextTiles.delete(key);
+                        tile = null;
+                    }
+
+                    if (!tile)
+                    {
+                        tile = this.createHiRISETile(x, y, this.zoom, source);
+                        this.contextTiles.set(key, tile);
+                        this.contextTileContainer.appendChild(tile);
+                        tile.startLoading();
+                    }
+
+                    tile.style.left = Math.round(x * 256 - center.x + width / 2) + "px";
+                    tile.style.top = Math.round(y * 256 - center.y + height / 2) + "px";
+                    tile.style.display = "";
+                }
+            }
+        }
+
+        this.activeContextTiles = active;
+
+        for (const [key, tile] of this.contextTiles)
+        {
+            if (!active.has(key))
+            {
+                tile.style.display = "none";
+            }
+        }
+
+        if (this.contextTiles.size > this.contextTileCacheLimit)
+        {
+            for (const [key, tile] of this.contextTiles)
+            {
+                if (active.has(key))
+                {
+                    continue;
+                }
+
+                this.releaseTile(tile);
+                this.contextTiles.delete(key);
+
+                if (this.contextTiles.size <= this.contextTileCacheLimit - 12)
+                {
+                    break;
+                }
+            }
+        }
+    }
+
     renderHiRISETiles(width, height, center)
     {
         this.renderBackgroundTiles(width, height, center);
+        this.renderContextTiles(width, height, center);
         const active = new Set();
 
         if (this.zoom >= 9)
@@ -1006,6 +1096,20 @@ export class MarsMap
             }
         }
 
+        for (const key of this.activeContextTiles)
+        {
+            const tile = this.contextTiles.get(key);
+
+            if (tile?.dataset.state === "loaded")
+            {
+                loaded++;
+            }
+            else if (tile?.dataset.state !== "error")
+            {
+                waiting++;
+            }
+        }
+
         for (const key of this.activeTiles)
         {
             const tile = this.tiles.get(key);
@@ -1023,7 +1127,7 @@ export class MarsMap
         const anyImagery = loaded > 0;
         this.container.classList.toggle("map-has-imagery", anyImagery);
         this.notice.classList.remove("map-preview-notice");
-        this.notice.hidden = anyImagery || (!this.backgroundActiveTiles.size && !this.activeTiles.size);
+        this.notice.hidden = anyImagery || (!this.backgroundActiveTiles.size && !this.activeContextTiles.size && !this.activeTiles.size);
         this.notice.textContent = waiting > 0
             ? "Loading Mars imagery…" : "NASA imagery is unavailable for this area.";
     }
@@ -1052,6 +1156,10 @@ export class MarsMap
         }
 
         this.backgroundTileContainer.style.display = "none";
+        if (this.contextTileContainer)
+        {
+            this.contextTileContainer.style.display = "none";
+        }
         const minX = Math.floor((center.x - width / 2) / 256);
         const maxX = Math.floor((center.x + width / 2) / 256);
         const minY = Math.floor((center.y - height / 2) / 256);

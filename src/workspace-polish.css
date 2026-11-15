@@ -876,3 +876,23 @@
     pointer-events:none;
     image-rendering:auto;
 }
+
+
+/* NASA-controlled Jezero CTX 6m context, above Viking and below transparent HiRISE. */
+.map-context-tiles
+{
+    position:absolute;
+    inset:0;
+    overflow:hidden;
+    pointer-events:none;
+}
+.map-context-tile
+{
+    position:absolute;
+    display:block;
+    width:256px;
+    height:256px;
+    max-width:none;
+    pointer-events:none;
+    image-rendering:auto;
+}

@@ -42,4 +42,15 @@ export const MAP_LAYERS = [
     }
 ];
 
+// Local photographic backdrop for HiRISE, hidden from the basemap selector.
+export const JEZERO_CTX_CONTEXT = Object.freeze({
+    id: "ctx-jezero",
+    name: "CTX Jezero",
+    dataset: "JEZ_ctx_B_soc_008_orthoMosaic_6m_Eqc_latTs0_lon0",
+    url: "https://trek.nasa.gov/tiles/Mars/EQ/JEZ_ctx_B_soc_008_orthoMosaic_6m_Eqc_latTs0_lon0/1.0.0",
+    extensions: ["png"],
+    coverage: { south: 18.2110274, north: 18.7211945, west: 77.1604655, east: 77.6991776 },
+    maxUsefulZoom: 11
+});
+
 export const ROUTE_COLORS = ["#ec9976", "#75d1c8", "#e2c77d", "#b1a8f1", "#77aaf1"];
