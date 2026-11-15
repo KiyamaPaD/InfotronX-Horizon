@@ -322,13 +322,13 @@ test("native useful zoom limits avoid enlarging regional relief imagery", () =>
 });
 
 
-test("CTX stops at stable zoom 10 without requesting unavailable level 11", () =>
+test("HiRISE stops at zoom 10 without requesting unsupported level 11", () =>
 {
-    const ctx = MAP_LAYERS.find(layer => layer.id === "ctx");
-    assert.equal(ctx.maxUsefulZoom, 10);
+    const hirise = MAP_LAYERS.find(layer => layer.id === "hirise");
+    assert.equal(hirise.maxUsefulZoom, 10);
     const map = Object.create(MarsMap.prototype);
     map.zoom = 10;
-    map.layerMaxZoom = ctx.maxUsefulZoom;
+    map.layerMaxZoom = hirise.maxUsefulZoom;
     let renders = 0;
     map.render = () => renders++;
     map.options = { onViewChange() { throw new Error("Unexpected map update"); } };
@@ -395,38 +395,73 @@ test("partially available NASA map data is reported without disguising missing a
 });
 
 
-test("CTX uses clean Viking global imagery at zooms 3-4 instead of CTX beta gaps", () =>
+test("the default global basemap uses Viking imagery at all supported zooms", () =>
 {
     const map = testMap();
-    map.layer = MAP_LAYERS.find(layer => layer.id === "ctx");
+    map.layer = MAP_LAYERS.find(layer => layer.id === "viking");
 
-    assert.equal(map.getImageryLayer(3).id, "viking");
-    assert.equal(map.getImageryLayer(4).id, "viking");
-    assert.equal(map.getImageryLayer(5).id, "ctx");
-    assert.equal(map.getImageryLayer(10).id, "ctx");
-    assert.match(map.tileCandidates(9, 3, 3)[0], /Mars_Viking_MDIM21_ClrMosaic_global_232m/);
+    for (const zoom of [3, 4, 5, 6, 7, 8])
+    {
+        assert.equal(map.getImageryLayer(zoom).id, "viking");
+        assert.match(map.tileCandidates(9, 3, zoom)[0], /Mars_Viking_MDIM21_ClrMosaic_global_232m/);
+    }
 
-    map.layer = MAP_LAYERS.find(layer => layer.id === "mola");
-    assert.equal(map.getImageryLayer(3).id, "mola");
+    assert.ok(!MAP_LAYERS.some(layer => layer.dataset.includes("CTX_beta01")));
 });
 
-test("the actual tile source follows the current zoom and map selection", () =>
+test("HiRISE is shown only inside the controlled Jezero mosaic footprint", () =>
+{
+    const map = testMap();
+    map.layer = MAP_LAYERS.find(layer => layer.id === "hirise");
+    map.center = { ...JEZERO };
+
+    assert.equal(map.getImageryLayer(8).id, "viking");
+    assert.equal(map.getImageryLayer(9).id, "hirise");
+    assert.equal(map.getImageryLayer(10).id, "hirise");
+
+    const x = Math.floor((JEZERO.lon + 180) / 360 * 2 ** 11);
+    const y = Math.floor((90 - JEZERO.lat) / 180 * 2 ** 10);
+    assert.equal(map.getImageryLayer(10, x, y).id, "hirise");
+
+    map.center = { lat: 17.3, lon: 70.4 };
+    assert.equal(map.getImageryLayer(10).id, "viking");
+
+    map.layer = MAP_LAYERS.find(layer => layer.id === "mola");
+    assert.equal(map.getImageryLayer(8).id, "mola");
+});
+
+test("HiRISE imagery and native Viking fallback use geographically aligned tiles", () =>
 {
     withFakeTiles(requests =>
     {
         const map = testMap();
-        map.layer = MAP_LAYERS.find(layer => layer.id === "ctx");
-        const tile = map.createTile(9, 3, 3, 0, 0);
-        tile.startLoading();
-
+        map.layer = MAP_LAYERS.find(layer => layer.id === "viking");
+        const low = map.createTile(9, 3, 3, 0, 0);
+        low.startLoading();
         assert.equal(requests.length, 1);
         assert.match(requests[0].url, /Mars_Viking_MDIM21_ClrMosaic_global_232m/);
-        assert.equal(tile.dataset.state, "loading");
-        tile.dispose();
+        low.dispose();
 
-        const next = map.createTile(9, 3, 5, 0, 0);
-        next.startLoading();
-        assert.match(requests.at(-2).url, /CTX_beta01_uncontrolled_5m_Caltech/);
-        next.dispose();
+        map.layer = MAP_LAYERS.find(layer => layer.id === "hirise");
+        map.center = { ...JEZERO };
+        const x = Math.floor((JEZERO.lon + 180) / 360 * 2 ** 11);
+        const y = Math.floor((90 - JEZERO.lat) / 180 * 2 ** 10);
+        const high = map.createTile(x, y, 10, 0, 0);
+        high.startLoading();
+        assert.match(requests.at(-2).url, /JEZ_hirise_soc_006_orthoMosaic/);
+        assert.match(requests.at(-1).url, /Mars_Viking_MDIM21_ClrMosaic_global_232m/);
+        high.dispose();
+
+        const outside = map.createTile(1000, 300, 10, 0, 0);
+        outside.startLoading();
+        const detail = outside.children[1];
+        assert.match(detail.src, /Mars_Viking_MDIM21_ClrMosaic_global_232m/);
+        assert.match(detail.src, /\/8\/75\/250\./);
+        assert.equal(detail.style.width, "1024px");
+        assert.equal(detail.style.left, "0px");
+        assert.equal(detail.style.top, "-512px");
+        outside.dispose();
     });
+});
+
 });
